@@ -1,6 +1,6 @@
 """Prediction functions."""
 import numpy as np
-from core.transforms import Transforms
+from core.math.transforms import Transforms
 
 
 class Predictor:

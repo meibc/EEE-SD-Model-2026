@@ -11,6 +11,8 @@ class PreparedData:
     M: np.ndarray
     ts: np.ndarray
     v_names: list[str]
+    ts_cdc: np.ndarray | None = None
+    cdc_names: list[str] | None = None
 
 
 @dataclass

@@ -33,9 +33,13 @@ class DataLoader:
         return tbl_all, tbl_states
     
     def load_cdc(self):
-        """load CDC data from Excel file"""
-        df = pd.read_excel(self.data_path, sheet_name="CDC")
-        return df
+        """Load CDC data from Excel file and keep MSM rows only."""
+        tbl_cdc = pd.read_excel(self.data_path, sheet_name="cdc")
+
+        # Keep only MSM population rows.
+        tbl_cdc = tbl_cdc[tbl_cdc["Population"] == "MSM"].copy()
+
+        return tbl_cdc
 
     def get_sign_mask(self):
         """Return sign mask matrix."""

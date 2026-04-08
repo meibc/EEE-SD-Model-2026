@@ -1,9 +1,9 @@
 import numpy as np
 
 from data.unit import Unit
-from estimation.jacobian import JacobianEstimator
-from estimation.shrinkage import ShrinkageCalculator
-from estimation.transforms import FeatureTransformer
+from models.sbm.estimation.jacobian import JacobianEstimator
+from models.sbm.estimation.shrinkage import ShrinkageCalculator
+from models.sbm.estimation.transforms import FeatureTransformer
 from pipeline.data_prep import DataPrep
 from pipeline.results import (
     FitResult,
@@ -13,7 +13,7 @@ from pipeline.results import (
     PredictionResults,
     RunOutput,
 )
-from simulation.predictor import Predictor
+from models.sbm.prediction.predictor import Predictor
 from config.base import BaseConfig
 from config.optimization import OptimConfig
 from config.shrinkage import ShrinkageConfig
