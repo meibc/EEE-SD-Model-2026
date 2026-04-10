@@ -5,7 +5,7 @@ from config.base import BaseConfig
 from config.optimization import OptimConfig
 from config.shrinkage import ShrinkageConfig
 from models.sbm.runner import SBRunner
-from pipeline.results import RunOutput
+from engine.results import RunOutput
 
 
 def main():

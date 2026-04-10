@@ -16,9 +16,9 @@ STATE_TO_DIVISION = {
 
 DEFAULT_CDC_NAMES = [
     "PrEP Eligible",
-    "Estimated HIV prevalence (MSM)",
+    "Estimated HIV incidence (MSM)",
     "HIV diagnoses",
-    "PrEP",
+    "PrEP"
 ]
 
 class UnitDataBuilder:

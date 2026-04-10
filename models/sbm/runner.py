@@ -4,8 +4,8 @@ from data.unit import Unit
 from models.sbm.estimation.jacobian import JacobianEstimator
 from models.sbm.estimation.shrinkage import ShrinkageCalculator
 from models.sbm.estimation.transforms import FeatureTransformer
-from pipeline.data_prep import DataPrep
-from pipeline.results import (
+from data.data_prep import DataPrep
+from engine.results import (
     FitResult,
     FitResults,
     PreparedData,
@@ -59,7 +59,7 @@ class SBRunner:
 
         pred_results = self._predict_all(fit_results, data) if predict else None
 
-        return RunOutput(fit=fit_results, predictions=pred_results)
+        return RunOutput(fit=fit_results, predictions=pred_results, inputs=data)
 
     def _fit_all(self, data: PreparedData) -> FitResults:
         results = {}

@@ -7,7 +7,7 @@ class BaseConfig:
     """Model configuration."""
 
     # Data
-    data_path: Path = Path("Factor Analysis v2.xlsx")
+    data_path: Path = Path("Factor Analysis Final.xlsx")
 
     # Variables
     v_names: list[str] = field(default_factory=lambda: [
