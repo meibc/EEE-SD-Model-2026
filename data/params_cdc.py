@@ -5,6 +5,7 @@ from dataclasses import dataclass
 from pathlib import Path
 import numpy as np
 import arviz as az
+from .params_base import GeoIndexedParamsLoader
 
 
 @dataclass
@@ -16,7 +17,7 @@ class CDCParams:
     kappa_prep: float
 
 
-class CDCParamsLoader:
+class CDCParamsLoader(GeoIndexedParamsLoader):
     """Load CDC parameters from arviz posterior."""
     
     def __init__(self, nc_path: Path, trans_npz_path: Path):
@@ -34,7 +35,6 @@ class CDCParamsLoader:
         post = idata.posterior
         
         # Get geo names from beta_inc_dim_0 coordinate
-        # (This is where you assigned geos)
         geo_coord = 'beta_inc_dim_0'
         geo_names = list(post.coords[geo_coord].values)
         n_geos = len(geo_names)
@@ -47,6 +47,7 @@ class CDCParamsLoader:
         # Load kappa_prep from trans_npz
         trans = np.load(self.trans_npz_path, allow_pickle=True)
         outputs = trans['outputs'].item()
+        years = np.asarray(trans['years'], dtype=int)
         kappa_prep = {geo: outputs[geo]['params']['kappa_prep'] for geo in outputs}
         
         self._cache = {
@@ -55,22 +56,17 @@ class CDCParamsLoader:
             'kdx': kdx,
             'U0': U0,
             'kappa_prep': kappa_prep,
+            'years': years,
         }
         return self._cache
     
     @property
-    def geo_names(self) -> list[str]:
-        return self._load()['geo_names']
-    
-    @property
     def n_samples(self) -> int:
         return self._load()['beta'].shape[0]
-    
-    def _get_geo_idx(self, unit_id: str) -> int:
-        geo_names = self.geo_names
-        if unit_id in geo_names:
-            return geo_names.index(unit_id)
-        raise ValueError(f"Unit '{unit_id}' not found. Available: {geo_names}")
+
+    @property
+    def years(self) -> np.ndarray:
+        return self._load()['years']
     
     def load_point_estimates(self, unit_id: str) -> CDCParams:
         """Load posterior means for one geography."""

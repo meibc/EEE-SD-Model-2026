@@ -39,12 +39,10 @@ class Predictor:
 
         Ypred = self.transforms.inverse_logit(Xpred)
         return Ypred, Xpred
-
-    def predict_trajectory(self, J, X0, u, n_steps: int) -> tuple[np.ndarray, np.ndarray]:
+    
+    def predict_trajectory(self, J, X0, u, n_steps: int, state_interventions=None, rel_interventions=None) -> tuple[np.ndarray, np.ndarray]:
         """
-        Recursive trajectory simulation (for forecasting).
-        Uses PREDICTED X at t-1 to predict t.
-
+        Recursive trajectory simulation with optional state overrides (in X space).
         Args:
             J: (m, m) - single J matrix (typically final estimate)
             X0: (m,) - initial state in X space
@@ -59,8 +57,25 @@ class Predictor:
         Xpred = np.zeros((m, n_steps))
         Xpred[:, 0] = X0
 
+        J_base = J.copy()
+
         for t in range(1, n_steps):
-            Xpred[:, t] = self.predict_next(J, Xpred[:, t - 1], u)
+
+            # 🔴 Build time-varying J
+            J_t = J_base.copy()
+            if rel_interventions:
+                for iv in rel_interventions:
+                    J_t = iv.apply(J_t, t)
+
+            # 🔵 System dynamics
+            X_next = J_t @ Xpred[:, t - 1] + u
+
+            # 🟢 Apply state interventions
+            if state_interventions:
+                for iv in state_interventions:
+                    X_next = iv.apply(X_next, Xpred[:, t - 1], t, transforms=self.transforms)
+
+            Xpred[:, t] = X_next
 
         Ypred = self.transforms.inverse_logit(Xpred)
         return Ypred, Xpred

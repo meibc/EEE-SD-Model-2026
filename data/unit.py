@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 from dataclasses import dataclass
 import numpy as np
 
@@ -39,3 +41,9 @@ class Unit:
             return None
         idx = self.cdc_names.index(name)
         return self.cdc_values[idx, :]
+    
+    @staticmethod
+    def to_dict(units: list['Unit']) -> dict[str, 'Unit']:
+        """Convert list of Units to dict keyed by id."""
+        return {u.id: u for u in units}
+

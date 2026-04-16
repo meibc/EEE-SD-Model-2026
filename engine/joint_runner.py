@@ -1,4 +1,5 @@
-# engine/joint_runner.py
+from __future__ import annotations
+
 """Joint SEM → CDC pipeline."""
 
 from pathlib import Path
@@ -8,22 +9,24 @@ from tqdm import tqdm
 
 from data.unit import Unit
 from data.params_cdc import CDCParamsLoader
-from models.shared.alignment import align_to_years
+from data.params_sem import SEMParamsLoader
+from models.shared.alignment import align_to_years, extend_to_end_year
+from models.shared.intervention import (
+    build_relationship_interventions,
+    build_state_interventions,
+)
 from models.shared.transforms import hazard_proxy
 from models.epi.prediction.predictor import CDCPredictor
+from models.sbm.prediction.predictor import Predictor
+from core.math.transforms import Transforms
 from engine.results import (
     RunOutput,
     CDCInputs,
     JointResult,
     JointOutput,
-    SEMSamples,
     UncertaintySample,
     UncertaintyResult,
 )
-
-
-CDC_YEARS = np.array([2017, 2018, 2019, 2020, 2021, 2022])
-
 
 # =============================================================================
 # Deterministic Runner
@@ -41,26 +44,82 @@ class JointRunner:
         sem_output: RunOutput,
         cdc_params_loader: CDCParamsLoader,
         units: dict[str, Unit],
-        cdc_years: np.ndarray = CDC_YEARS,
+        model_years: np.ndarray | None = None,
+        state_intervention_codes: list[str] | None = None,
+        relationship_intervention_codes: list[str] | None = None,
+        intervention_duration_steps: int = 1,
         hivtest_var: str = 'hivtest12',
         prep_var: str = 'prep_used',
         n_elig_var: str = 'PrEP Eligible',
-        gamma_tau: float = 1.0,
     ):
         self.sem_output = sem_output
         self.cdc_loader = cdc_params_loader
         self.units = units
-        self.cdc_years = cdc_years
         self.hivtest_var = hivtest_var
         self.prep_var = prep_var
         self.n_elig_var = n_elig_var
-        self.gamma_tau = gamma_tau
+        self.state_intervention_codes = list(state_intervention_codes or [])
+        self.relationship_intervention_codes = list(relationship_intervention_codes or [])
+        self.intervention_duration_steps = int(intervention_duration_steps)
+        self.predictor = Predictor()
+        self.transforms = Transforms()
         
         # Cache from SEM output
         self._v_names = sem_output.predictions.v_names
-        self._sem_years = sem_output.predictions.ts
+        self.model_years = (
+            np.asarray(model_years, dtype=int)
+            if model_years is not None
+            else np.asarray(sem_output.predictions.ts, dtype=int)
+        )
+        self._sem_years = extend_to_end_year(
+            sem_output.predictions.ts,
+            target_end_year=int(self.model_years[-1]) if self.model_years.size > 0 else None,
+        )
         self._hivtest_idx = self._v_names.index(hivtest_var)
         self._prep_idx = self._v_names.index(prep_var)
+
+    def _build_sem_trajectory(self, unit_id: str) -> np.ndarray:
+        unit = self.units[unit_id]
+        fit = self.sem_output.fit.results[unit_id]
+        J_fit = np.asarray(fit.J, dtype=float)
+        J = J_fit[:, :, -1] if J_fit.ndim == 3 else J_fit
+
+        y0 = np.asarray(unit.amis_values[:, 0], dtype=float)
+        x0 = self.transforms.logit(y0)
+        u = np.zeros(J.shape[0], dtype=float)
+
+        if (
+            self.sem_output.predictions is not None
+            and unit_id in self.sem_output.predictions.results
+        ):
+            n_steps = self.sem_output.predictions.results[unit_id].Ypred_trajectory.shape[1]
+        else:
+            n_steps = len(self._sem_years)
+
+        state_iv = build_state_interventions(
+            unit,
+            self._sem_years,
+            self._v_names,
+            codes=self.state_intervention_codes,
+            duration_steps=self.intervention_duration_steps,
+        )
+        rel_iv = build_relationship_interventions(
+            unit,
+            self._sem_years,
+            self._v_names,
+            codes=self.relationship_intervention_codes,
+            duration_steps=self.intervention_duration_steps,
+        )
+
+        ypred, _ = self.predictor.predict_trajectory(
+            J,
+            x0,
+            u,
+            n_steps,
+            state_interventions=state_iv,
+            rel_interventions=rel_iv,
+        )
+        return ypred
     
     def _build_cdc_inputs(self, unit_id: str, sem_traj: np.ndarray) -> CDCInputs:
         """Transform SEM trajectory → CDC inputs."""
@@ -69,22 +128,21 @@ class JointRunner:
         prep_on = sem_traj[self._prep_idx, :]
         
         # Align to CDC years
-        hivtest = align_to_years(self._sem_years, hivtest, self.cdc_years)
-        prep_on = align_to_years(self._sem_years, prep_on, self.cdc_years)
+        hivtest = align_to_years(self._sem_years, hivtest, self.model_years)
+        prep_on = align_to_years(self._sem_years, prep_on, self.model_years)
         
         # Transform hivtest → tau
-        tau = hazard_proxy(hivtest, gamma_tau=self.gamma_tau)
+        tau = hazard_proxy(hivtest)
         
         # Get N_elig from unit
         unit = self.units[unit_id]
         n_elig = unit.get_cdc(self.n_elig_var)
-        if n_elig is None:
-            raise ValueError(f"'{self.n_elig_var}' not found for '{unit_id}'")
-        if len(n_elig) != len(self.cdc_years):
-            n_elig = align_to_years(unit.cdc_years, n_elig, self.cdc_years)
+
+        if len(n_elig) != len(self.model_years):
+            n_elig = align_to_years(unit.cdc_years, n_elig, self.model_years)
         
         return CDCInputs(
-            years=self.cdc_years,
+            years=self.model_years,
             tau=tau,
             prep_on=prep_on,
             N_elig=n_elig,
@@ -92,7 +150,14 @@ class JointRunner:
     
     def predict(self, unit_id: str) -> JointResult:
         """Run for one unit."""
-        sem_traj = self.sem_output.predictions.results[unit_id].Ypred_trajectory
+        if (
+            self.state_intervention_codes
+            or self.relationship_intervention_codes
+            or self.sem_output.predictions is None
+        ):
+            sem_traj = self._build_sem_trajectory(unit_id)
+        else:
+            sem_traj = self.sem_output.predictions.results[unit_id].Ypred_trajectory
         cdc_inputs = self._build_cdc_inputs(unit_id, sem_traj)
         
         cdc_params = self.cdc_loader.load_point_estimates(unit_id)
@@ -108,7 +173,10 @@ class JointRunner:
     def run(self, unit_ids: list[str] | None = None) -> JointOutput:
         """Run for all units."""
         if unit_ids is None:
-            unit_ids = list(self.sem_output.predictions.results.keys())
+            if self.sem_output.predictions is not None:
+                unit_ids = list(self.sem_output.predictions.results.keys())
+            else:
+                unit_ids = list(self.sem_output.fit.results.keys())
         
             # Filter to units with CDC params
         available = set(self.cdc_loader.geo_names)
@@ -118,12 +186,12 @@ class JointRunner:
         if skipped:
             print(f"Skipping {len(skipped)} units without CDC params: {skipped}")
         
-        results = {uid: self.predict(uid) for uid in unit_ids}
+        results = {uid: self.predict(uid) for uid in valid_ids}
         
         return JointOutput(
             results=results,
             sem_years=self._sem_years,
-            cdc_years=self.cdc_years,
+            cdc_years=self.model_years,
             v_names=self._v_names,
         )
 
@@ -141,52 +209,103 @@ class UncertaintyRunner:
     
     def __init__(
         self,
-        sem_samples: SEMSamples,
+        sem_loader: SEMParamsLoader,
         cdc_params_loader: CDCParamsLoader,
         units: dict[str, Unit],
-        cdc_years: np.ndarray = CDC_YEARS,
+        model_years: np.ndarray | None = None,
+        state_intervention_codes: list[str] | None = None,
+        relationship_intervention_codes: list[str] | None = None,
+        intervention_duration_steps: int = 1,
+        v_names: list[str] | None = None,
         hivtest_var: str = 'hivtest12',
         prep_var: str = 'prep_used',
         n_elig_var: str = 'PrEP Eligible',
-        gamma_tau: float = 1.0,
     ):
-        self.sem_samples = sem_samples
+        self.sem_loader = sem_loader
         self.cdc_loader = cdc_params_loader
         self.units = units
-        self.cdc_years = cdc_years
         self.hivtest_var = hivtest_var
         self.prep_var = prep_var
         self.n_elig_var = n_elig_var
-        self.gamma_tau = gamma_tau
-        
-        # Cache indices
-        self._v_names = sem_samples.v_names
-        self._sem_years = sem_samples.ts
+        self.state_intervention_codes = list(state_intervention_codes or [])
+        self.relationship_intervention_codes = list(relationship_intervention_codes or [])
+        self.intervention_duration_steps = int(intervention_duration_steps)
+        self.predictor = Predictor()
+        self.transforms = Transforms()
+
+        self._v_names = list(v_names if v_names is not None else sem_loader.v_names)
+        self.model_years = np.asarray(
+            model_years if model_years is not None else sem_loader.ts,
+            dtype=int,
+        )
+        self._sem_years = extend_to_end_year(
+            sem_loader.ts,
+            target_end_year=int(self.model_years[-1]) if self.model_years.size > 0 else None,
+        )
+        self.S_sem = sem_loader.n_samples
+        self._unit_order = list(sem_loader.geo_names)
+
         self._hivtest_idx = self._v_names.index(hivtest_var)
         self._prep_idx = self._v_names.index(prep_var)
-        
-        self.S_sem = sem_samples.n_samples
         self.S_cdc = cdc_params_loader.n_samples
+
+    def _build_sem_trajectory(self, unit_id: str, sem_idx: int) -> np.ndarray:
+        sem_params = self.sem_loader.load_sample(sem_idx, unit_id)
+        J = np.asarray(sem_params.J, dtype=float)
+
+        unit = self.units[unit_id]
+
+        y0 = np.asarray(unit.amis_values[:, 0], dtype=float)
+        x0 = self.transforms.logit(y0)
+
+        u = np.zeros(J.shape[0], dtype=float)
+        n_steps = len(self._sem_years)
+
+        state_iv = build_state_interventions(
+            unit,
+            self._sem_years,
+            self._v_names,
+            codes=self.state_intervention_codes,
+            duration_steps=self.intervention_duration_steps,
+        )
+
+        rel_iv = build_relationship_interventions(
+            unit,
+            self._sem_years,
+            self._v_names,
+            codes=self.relationship_intervention_codes,
+            duration_steps=self.intervention_duration_steps,
+        )
+
+        ypred, xpred = self.predictor.predict_trajectory(
+            J,
+            x0,
+            u,
+            n_steps,
+            state_interventions=state_iv,
+            rel_interventions=rel_iv,
+        )
+
+        return ypred
     
     def _build_cdc_inputs(self, unit_id: str, sem_traj: np.ndarray) -> CDCInputs:
         """Transform SEM trajectory → CDC inputs."""
         hivtest = sem_traj[self._hivtest_idx, :]
         prep_on = sem_traj[self._prep_idx, :]
         
-        hivtest = align_to_years(self._sem_years, hivtest, self.cdc_years)
-        prep_on = align_to_years(self._sem_years, prep_on, self.cdc_years)
+        hivtest = align_to_years(self._sem_years, hivtest, self.model_years)
+        prep_on = align_to_years(self._sem_years, prep_on, self.model_years)
         
-        tau = hazard_proxy(hivtest, gamma_tau=self.gamma_tau)
+        tau = hazard_proxy(hivtest)
         
         unit = self.units[unit_id]
         n_elig = unit.get_cdc(self.n_elig_var)
-        if n_elig is None:
-            raise ValueError(f"'{self.n_elig_var}' not found for '{unit_id}'")
-        if len(n_elig) != len(self.cdc_years):
-            n_elig = align_to_years(unit.cdc_years, n_elig, self.cdc_years)
+
+        if len(n_elig) != len(self.model_years):
+            n_elig = align_to_years(unit.cdc_years, n_elig, self.model_years)
         
         return CDCInputs(
-            years=self.cdc_years,
+            years=self.model_years,
             tau=tau,
             prep_on=prep_on,
             N_elig=n_elig,
@@ -199,7 +318,7 @@ class UncertaintyRunner:
         cdc_idx: int,
     ) -> UncertaintySample:
         """Single MC sample."""
-        sem_traj = self.sem_samples.get_unit_samples(unit_id)[sem_idx]
+        sem_traj = self._build_sem_trajectory(unit_id, sem_idx)
         cdc_inputs = self._build_cdc_inputs(unit_id, sem_traj)
         
         cdc_params = self.cdc_loader.load_sample(cdc_idx, unit_id)
@@ -237,7 +356,7 @@ class UncertaintyRunner:
         return UncertaintyResult(
             unit_id=unit_id,
             samples=samples,
-            years=self.cdc_years,
+            years=self.model_years,
         )
     
     def run_all(
@@ -249,39 +368,22 @@ class UncertaintyRunner:
     ) -> dict[str, UncertaintyResult]:
         """Run MC for multiple units."""
         if unit_ids is None:
-            unit_ids = self.sem_samples.unit_order
+            unit_ids = list(self._unit_order)
+
+        # Keep only units available in all required sources.
+        available_cdc = set(self.cdc_loader.geo_names)
+        available_units = set(self.units.keys())
+        available_sem = set(self._unit_order)
+        unit_ids = [
+            uid for uid in unit_ids
+            if uid in available_cdc and uid in available_units and uid in available_sem
+        ]
         
         results = {}
         for i, uid in enumerate(unit_ids):
             results[uid] = self.run(uid, n_samples, seed + i, show_progress)
         
         return results
-
-
-# =============================================================================
-# Loaders & Helpers
-# =============================================================================
-
-def load_sem_output(path: Path) -> RunOutput:
-    """Load SEM output from pickle."""
-    with open(path, 'rb') as f:
-        return pickle.load(f)
-
-
-def load_sem_samples(path: Path) -> SEMSamples:
-    """Load SEM samples from npz."""
-    data = np.load(path, allow_pickle=True)
-    return SEMSamples(
-        samples=data['Ypreds_stack'],
-        unit_order=list(data['unit_order']),
-        v_names=list(data['v_names']),
-        ts=data['ts'],
-    )
-
-
-def build_units_dict(units_list: list[Unit]) -> dict[str, Unit]:
-    """Convert list of Units to dict."""
-    return {u.id: u for u in units_list}
 
 
 # =============================================================================
@@ -301,14 +403,15 @@ def run_joint(
 
 
 def run_uncertainty(
-    sem_samples: SEMSamples,
+    sem_loader: SEMParamsLoader,
     cdc_params_loader: CDCParamsLoader,
     units: dict[str, Unit],
     unit_ids: list[str] | None = None,
     n_samples: int = 1000,
     seed: int = 123,
+    show_progress: bool = True,
     **kwargs,
 ) -> dict[str, UncertaintyResult]:
     """Run uncertainty pipeline."""
-    runner = UncertaintyRunner(sem_samples, cdc_params_loader, units, **kwargs)
-    return runner.run_all(unit_ids, n_samples, seed)
+    runner = UncertaintyRunner(sem_loader, cdc_params_loader, units, **kwargs)
+    return runner.run_all(unit_ids, n_samples, seed, show_progress=show_progress)
