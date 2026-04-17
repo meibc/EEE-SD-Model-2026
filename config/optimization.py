@@ -3,8 +3,9 @@ from dataclasses import dataclass
 class OptimConfig: 
     """Optimization configuration"""
 
-    wR: float = 0.01  # weight for covariance fit
+    # wR: float = 0.01  # weight for covariance fit
     wX: float = 10.0  # weight for trend fit
+    wR: float = 0.01
 
     B0_diag: float = 0.5
     B0_off_diag: float = 0.2

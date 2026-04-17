@@ -2,9 +2,11 @@
 __pycache__/
 *.py[cod]
 *$py.class
+.ipynb_checkpoints/
 
 # Virtual environments
 .venv/
+.venv313/
 venv/
 env/
 
@@ -18,5 +20,15 @@ dist/
 .mypy_cache/
 .ruff_cache/
 
+# Editor / OS files
+.vscode/
+.idea/
+.DS_Store
+
 # Local output
 output/
+
+# Optional local artifacts (uncomment if you do not want these in git)
+# *.pkl
+# *.npz
+# *.nc

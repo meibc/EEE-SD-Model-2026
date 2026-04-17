@@ -31,38 +31,41 @@ from visualization.plotter import (
 @dataclass
 class MainOptions:
     # SEM
-    load_fits: bool = False
-    save_fits: bool = True
+    load_fits: bool = True
+    save_fits: bool = False
     run_predict: bool = True
     output_dir: Path = Path("output")
     sem_pickle_name: str = "output.pkl"
     plot_only: bool = False
 
     # Joint / CDC
-    run_joint_deterministic: bool = False
+    run_joint_deterministic: bool = True
     run_joint_uncertainty: bool = True
     cdc_posterior_path: Path = Path("cdc_posteriors.nc")
     cdc_trans_path: Path = Path("trans_results.npz")
-    sem_params_path: Path = Path("sem_mc_results.npz")
+    # sem_params_path: Path = Path("sem_mc_results.npz")
+    sem_params_path: Path = Path("sem_mc_samples_v2.npz")
     n_uncertainty_samples: int = 1000
     seed: int = 123
-    show_progress: bool = False
+    show_progress: bool = True
     enable_interventions: bool = True
     run_baseline_comparison: bool = True
+    # state_intervention_codes: list[str] = field(default_factory=lambda: ["reduce_ahs"])
     state_intervention_codes: list[str] = field(default_factory=list)
-    relationship_intervention_codes: list[str] = field(default_factory=lambda: ['weaken_stigma_to_prep'])
+    # relationship_intervention_codes: list[str] = field(default_factory=list)
+    relationship_intervention_codes: list[str] = field(default_factory=lambda: ["weaken_stigma_to_care"])
     intervention_duration_steps: int = 1
 
     # Forecasting
     target_end_year: int = 2034
 
     # Export
-    export_unified_csv: bool = False
+    export_unified_csv: bool = True
     unified_csv_name: str = "unified_outputs.csv"
 
     # Visualization
     show_state_plots: bool = True
-    show_sem_j_violin_plots: bool = False
+    show_sem_j_violin_plots: bool = True
     n_states_to_plot: int = 5
     states_to_plot: list[str] = field(
         default_factory=lambda: ["CA", "NY", "TX", "FL", "IL"]
