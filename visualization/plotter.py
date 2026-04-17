@@ -17,7 +17,7 @@ from config.plotting import (
     OBSERVED_COLOR,
     SEM_PLOT_VARS,
 )
-from pipeline.results import JointOutput, RunOutput, UncertaintyResult
+from pipeline.results import JointOutput, RunOutput, UncertaintyOutput
 
 
 def _extend_years(years: Iterable[float | int], target_len: int) -> np.ndarray:
@@ -333,7 +333,7 @@ def plot_deterministic_comparison(
 
 def plot_state_uncertainty_outputs(
     sem_output: RunOutput,
-    uncertainty: dict[str, UncertaintyResult],
+    uncertainty: UncertaintyOutput,
     state_ids: list[str] | None = None,
     max_states: int = 5,
     hivtest_var: str = "hivtest12",
@@ -350,7 +350,7 @@ def plot_state_uncertainty_outputs(
     unit_map = {u.id: u for u in sem_output.inputs.units}
     available_states = [
         uid
-        for uid in uncertainty
+        for uid in uncertainty.results
         if uid in unit_map and getattr(unit_map[uid], "kind", None) == "state"
     ]
     available_states = sorted(available_states)
@@ -377,7 +377,7 @@ def plot_state_uncertainty_outputs(
 
     for state_id in selected:
         unit = unit_map[state_id]
-        u_res = uncertainty[state_id]
+        u_res = uncertainty.results[state_id]
 
         sem_stack = np.asarray([s.sem_trajectory for s in u_res.samples], dtype=float)  # (S, m, T)
         sem_years = _extend_years(sem_obs_years, sem_stack.shape[2])
@@ -519,8 +519,8 @@ def plot_state_uncertainty_outputs(
 
 def plot_uncertainty_comparison(
     sem_output: RunOutput,
-    baseline: dict[str, UncertaintyResult],
-    intervention: dict[str, UncertaintyResult],
+    baseline: UncertaintyOutput,
+    intervention: UncertaintyOutput,
     state_ids: list[str] | None = None,
     max_states: int = 5,
     q_low: float = 0.025,
@@ -533,8 +533,8 @@ def plot_uncertainty_comparison(
     unit_map = {u.id: u for u in sem_output.inputs.units}
     available_states = [
         uid
-        for uid in baseline
-        if uid in intervention and uid in unit_map and getattr(unit_map[uid], "kind", None) == "state"
+        for uid in baseline.results
+        if uid in intervention.results and uid in unit_map and getattr(unit_map[uid], "kind", None) == "state"
     ]
     available_states = sorted(available_states)
     if not available_states:
@@ -555,8 +555,8 @@ def plot_uncertainty_comparison(
 
     for state_id in selected:
         unit = unit_map[state_id]
-        b_res = baseline[state_id]
-        i_res = intervention[state_id]
+        b_res = baseline.results[state_id]
+        i_res = intervention.results[state_id]
 
         b_sem = np.asarray([s.sem_trajectory for s in b_res.samples], dtype=float)
         i_sem = np.asarray([s.sem_trajectory for s in i_res.samples], dtype=float)

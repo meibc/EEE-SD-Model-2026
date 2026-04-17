@@ -58,8 +58,6 @@ class RunOutput:
     fit: FitResults
     predictions: PredictionResults | None
 
-# Add to existing results.py
-
 @dataclass
 class CDCInputs:
     """Inputs to CDC model (constructed by connector)."""
@@ -97,38 +95,6 @@ class JointOutput:
     cdc_years: np.ndarray
     v_names: list[str]
 
-@dataclass
-class SEMSamples:
-    """Pre-computed SEM posterior samples."""
-    samples: np.ndarray     # canonical shape: (S, G, m, T)
-    unit_order: list[str]
-    v_names: list[str]
-    ts: np.ndarray
-    
-    def get_unit_samples(self, unit_id: str) -> np.ndarray:
-        """Get samples for one unit: (S, m, T)"""
-        idx = self.unit_order.index(unit_id)
-        arr = self.samples[:, idx, :, :]
-
-        # Canonical fast path: (S, m, T)
-        if arr.ndim != 3:
-            raise ValueError(f"Expected 3D unit samples, got shape={arr.shape}")
-        if arr.shape[1] == len(self.v_names):
-            return arr
-
-        # Backward compatibility if stored as (S, T, m)
-        if arr.shape[2] == len(self.v_names):
-            return arr.transpose(0, 2, 1)
-
-        raise ValueError(
-            f"Cannot infer variable axis for unit '{unit_id}': "
-            f"shape={arr.shape}, len(v_names)={len(self.v_names)}"
-        )
-    
-    @property
-    def n_samples(self) -> int:
-        return self.samples.shape[0]
-
 
 @dataclass
 class UncertaintySample:
@@ -157,8 +123,39 @@ class UncertaintyResult:
     def get_quantiles(
         self, 
         var: str, 
-        q: list[float] = [0.025, 0.5, 0.975],
+        q: tuple[float, ...] = (0.025, 0.5, 0.975),
     ) -> dict[float, np.ndarray]:
         arr = self.get_stack(var)
         return {qi: np.quantile(arr, qi, axis=0) for qi in q}
+
+
+@dataclass
+class UncertaintyOutput:
+    """MC results for all units."""
+    results: dict[str, UncertaintyResult]
+    years: np.ndarray
+    v_names: list[str]
+
+
+@dataclass
+class DeterministicScenarios:
+    """Deterministic scenario outputs."""
+    output: JointOutput | None = None
+    baseline: JointOutput | None = None
+    intervention: JointOutput | None = None
+
+
+@dataclass
+class UncertaintyScenarios:
+    """Uncertainty scenario outputs."""
+    output: UncertaintyOutput | None = None
+    baseline: UncertaintyOutput | None = None
+    intervention: UncertaintyOutput | None = None
+
+
+@dataclass
+class SimulationOutputs:
+    """Top-level simulation containers."""
+    deterministic: DeterministicScenarios
+    uncertainty: UncertaintyScenarios
     

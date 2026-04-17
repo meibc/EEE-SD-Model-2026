@@ -5,7 +5,7 @@ from pathlib import Path
 import numpy as np
 import pandas as pd
 
-from pipeline.results import JointOutput, RunOutput, UncertaintyResult
+from pipeline.results import JointOutput, RunOutput, UncertaintyOutput
 from models.shared.alignment import extend_years
 
 
@@ -13,7 +13,7 @@ def export_unified_table(
     output_path: Path,
     sem_output: RunOutput | None = None,
     joint_output: JointOutput | None = None,
-    uncertainty: dict[str, UncertaintyResult] | None = None,
+    uncertainty: UncertaintyOutput | None = None,
     quantiles: tuple[float, ...] = (0.025, 0.5, 0.975),
 ) -> pd.DataFrame:
     """
@@ -106,7 +106,7 @@ def export_unified_table(
 
     if uncertainty is not None:
         cdc_vars = ["prep_on_count", "incidence", "diagnosed", "undiagnosed"]
-        for unit_id, result in uncertainty.items():
+        for unit_id, result in uncertainty.results.items():
             years = np.asarray(result.years, dtype=float)
             for var in cdc_vars:
                 qvals = result.get_quantiles(var, q=list(quantiles))

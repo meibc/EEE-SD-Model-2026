@@ -9,11 +9,11 @@ from config.joint import JointConfig
 
 @dataclass
 class RunConfig:
-    execution_mode: Literal["run", "plot_only"] = "plot_only"
+    execution_mode: Literal["run", "plot_only"] = "run"
 
     # SEM
-    sem_fit_mode: Literal["fit_and_save", "fit_no_save", "load"] = "load"
-    run_predict: bool = False
+    sem_fit_mode: Literal["fit_and_save", "fit_no_save", "load"] = "fit_and_save"
+    run_predict: bool = True
     output_dir: Path = Path("output")
     sem_pickle_name: str = "output.pkl"
 
@@ -26,13 +26,13 @@ class RunConfig:
     sem_params_path: Path = Path("sem_mc_samples_v2.npz")
     n_uncertainty_samples: int = 1000
     seed: int = 123
-    show_progress: bool = False
+    show_progress: bool = True
     state_intervention_codes: list[str] = field(default_factory=lambda: ["reduce_ahs"])
     relationship_intervention_codes: list[str] = field(default_factory=list)
     intervention_duration_steps: int = 1
 
     # Forecasting
-    target_end_year: int = 2034
+    target_end_year: int = 2036
 
     # Export
     export_unified_csv: bool = True
@@ -41,9 +41,9 @@ class RunConfig:
     # Visualization
     show_state_plots: bool = True
     show_sem_j_violin_plots: bool = True
-    n_states_to_plot: int = 5
+    n_states_to_plot: int = 2
     states_to_plot: list[str] = field(
-        default_factory=lambda: ["CA", "NY", "TX", "FL", "IL"]
+        default_factory=lambda: ["CA", "TX"]
     )
 
     def validate(self) -> None:

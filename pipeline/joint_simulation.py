@@ -25,6 +25,7 @@ from pipeline.results import (
     JointOutput,
     UncertaintySample,
     UncertaintyResult,
+    UncertaintyOutput,
 )
 
 # =============================================================================
@@ -332,7 +333,7 @@ class UncertaintyRunner:
         n_samples: int = 1000,
         seed: int = 123,
         show_progress: bool = True,
-    ) -> dict[str, UncertaintyResult]:
+    ) -> UncertaintyOutput:
         """Run MC for multiple units."""
         if unit_ids is None:
             unit_ids = list(self._unit_order)
@@ -350,7 +351,11 @@ class UncertaintyRunner:
         for i, uid in enumerate(unit_ids):
             results[uid] = self.run(uid, n_samples, seed + i, show_progress)
         
-        return results
+        return UncertaintyOutput(
+            results=results,
+            years=self.model_years,
+            v_names=self._v_names,
+        )
 
 
 # =============================================================================
@@ -378,7 +383,7 @@ def run_uncertainty(
     seed: int = 123,
     show_progress: bool = True,
     **kwargs,
-) -> dict[str, UncertaintyResult]:
+) -> UncertaintyOutput:
     """Run uncertainty pipeline."""
     runner = UncertaintyRunner(sem_loader, cdc_params_loader, units, **kwargs)
     return runner.run_all(unit_ids, n_samples, seed, show_progress=show_progress)
