@@ -3,8 +3,8 @@ from pathlib import Path
 
 
 @dataclass
-class BaseConfig:
-    """Model configuration."""
+class SEMConfig:
+    """SEM model configuration."""
 
     # Data
     data_path: Path = Path("Factor Analysis Final.xlsx")

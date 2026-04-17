@@ -2,7 +2,7 @@
 """CDC epi model predictor."""
 
 import numpy as np
-from engine.results import CDCInputs, CDCOutput
+from pipeline.results import CDCInputs, CDCOutput
 from data.params_cdc import CDCParams
 
 

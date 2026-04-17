@@ -1,12 +1,12 @@
 import numpy as np
 from data.unit_builder import UnitDataBuilder
 from data.loader import DataLoader
-from config.base import BaseConfig
-from engine.results import PreparedData
+from config.sem import SEMConfig
+from pipeline.results import PreparedData
 
 
 class DataPrep:
-    def __init__(self, baseconfig: BaseConfig):
+    def __init__(self, baseconfig: SEMConfig):
         self.base = baseconfig
         self.loader = DataLoader(self.base.data_path)
 

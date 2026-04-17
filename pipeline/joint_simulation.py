@@ -10,16 +10,15 @@ from tqdm import tqdm
 from data.unit import Unit
 from data.params_cdc import CDCParamsLoader
 from data.params_sem import SEMParamsLoader
-from models.shared.alignment import align_to_years, extend_to_end_year
+from models.shared.alignment import build_cdc_inputs_from_sem, extend_to_end_year
 from models.shared.intervention import (
     build_relationship_interventions,
     build_state_interventions,
 )
-from models.shared.transforms import hazard_proxy
 from models.epi.prediction.predictor import CDCPredictor
 from models.sbm.prediction.predictor import Predictor
 from core.math.transforms import Transforms
-from engine.results import (
+from pipeline.results import (
     RunOutput,
     CDCInputs,
     JointResult,
@@ -121,33 +120,6 @@ class JointRunner:
         )
         return ypred
     
-    def _build_cdc_inputs(self, unit_id: str, sem_traj: np.ndarray) -> CDCInputs:
-        """Transform SEM trajectory → CDC inputs."""
-        # Extract variables
-        hivtest = sem_traj[self._hivtest_idx, :]
-        prep_on = sem_traj[self._prep_idx, :]
-        
-        # Align to CDC years
-        hivtest = align_to_years(self._sem_years, hivtest, self.model_years)
-        prep_on = align_to_years(self._sem_years, prep_on, self.model_years)
-        
-        # Transform hivtest → tau
-        tau = hazard_proxy(hivtest)
-        
-        # Get N_elig from unit
-        unit = self.units[unit_id]
-        n_elig = unit.get_cdc(self.n_elig_var)
-
-        if len(n_elig) != len(self.model_years):
-            n_elig = align_to_years(unit.cdc_years, n_elig, self.model_years)
-        
-        return CDCInputs(
-            years=self.model_years,
-            tau=tau,
-            prep_on=prep_on,
-            N_elig=n_elig,
-        )
-    
     def predict(self, unit_id: str) -> JointResult:
         """Run for one unit."""
         if (
@@ -158,7 +130,16 @@ class JointRunner:
             sem_traj = self._build_sem_trajectory(unit_id)
         else:
             sem_traj = self.sem_output.predictions.results[unit_id].Ypred_trajectory
-        cdc_inputs = self._build_cdc_inputs(unit_id, sem_traj)
+        tau, prep_on, n_elig = build_cdc_inputs_from_sem(
+            sem_traj=sem_traj,
+            unit=self.units[unit_id],
+            hivtest_idx=self._hivtest_idx,
+            prep_idx=self._prep_idx,
+            sem_years=self._sem_years,
+            model_years=self.model_years,
+            n_elig_var=self.n_elig_var,
+        )
+        cdc_inputs = CDCInputs(years=self.model_years, tau=tau, prep_on=prep_on, N_elig=n_elig)
         
         cdc_params = self.cdc_loader.load_point_estimates(unit_id)
         cdc_output = CDCPredictor(cdc_params).predict(cdc_inputs, unit_id)
@@ -277,7 +258,7 @@ class UncertaintyRunner:
             duration_steps=self.intervention_duration_steps,
         )
 
-        ypred, xpred = self.predictor.predict_trajectory(
+        ypred, _ = self.predictor.predict_trajectory(
             J,
             x0,
             u,
@@ -288,29 +269,6 @@ class UncertaintyRunner:
 
         return ypred
     
-    def _build_cdc_inputs(self, unit_id: str, sem_traj: np.ndarray) -> CDCInputs:
-        """Transform SEM trajectory → CDC inputs."""
-        hivtest = sem_traj[self._hivtest_idx, :]
-        prep_on = sem_traj[self._prep_idx, :]
-        
-        hivtest = align_to_years(self._sem_years, hivtest, self.model_years)
-        prep_on = align_to_years(self._sem_years, prep_on, self.model_years)
-        
-        tau = hazard_proxy(hivtest)
-        
-        unit = self.units[unit_id]
-        n_elig = unit.get_cdc(self.n_elig_var)
-
-        if len(n_elig) != len(self.model_years):
-            n_elig = align_to_years(unit.cdc_years, n_elig, self.model_years)
-        
-        return CDCInputs(
-            years=self.model_years,
-            tau=tau,
-            prep_on=prep_on,
-            N_elig=n_elig,
-        )
-    
     def predict_sample(
         self,
         unit_id: str,
@@ -319,7 +277,16 @@ class UncertaintyRunner:
     ) -> UncertaintySample:
         """Single MC sample."""
         sem_traj = self._build_sem_trajectory(unit_id, sem_idx)
-        cdc_inputs = self._build_cdc_inputs(unit_id, sem_traj)
+        tau, prep_on, n_elig = build_cdc_inputs_from_sem(
+            sem_traj=sem_traj,
+            unit=self.units[unit_id],
+            hivtest_idx=self._hivtest_idx,
+            prep_idx=self._prep_idx,
+            sem_years=self._sem_years,
+            model_years=self.model_years,
+            n_elig_var=self.n_elig_var,
+        )
+        cdc_inputs = CDCInputs(years=self.model_years, tau=tau, prep_on=prep_on, N_elig=n_elig)
         
         cdc_params = self.cdc_loader.load_sample(cdc_idx, unit_id)
         cdc_output = CDCPredictor(cdc_params).predict(cdc_inputs, unit_id)
@@ -347,7 +314,7 @@ class UncertaintyRunner:
         samples = []
         iterator = zip(idx_sem, idx_cdc)
         if show_progress:
-            iterator = tqdm(list(iterator), desc=f"MC {unit_id}")
+            iterator = tqdm(zip(idx_sem, idx_cdc), total=n_samples, desc=f"MC {unit_id}")
         
         for s_sem, s_cdc in iterator:
             sample = self.predict_sample(unit_id, int(s_sem), int(s_cdc))

@@ -4,12 +4,13 @@ SEM + CDC joint modeling pipeline with deterministic and uncertainty runs, optio
 
 ## Project Layout
 
-- `main.py`: main entrypoint and run orchestration.
+- `main.py`: thin entrypoint that calls pipeline runner.
+- `pipeline/pipeline.py`: run orchestration and mode branching.
 - `config/`: model and optimization config dataclasses.
 - `data/`: data loaders, unit builders, SEM/CDC parameter loaders.
 - `models/sbm/`: SEM estimation and prediction.
 - `models/epi/`: CDC/EPI prediction.
-- `engine/joint_runner.py`: SEM -> CDC deterministic + uncertainty connectors.
+- `pipeline/joint_simulation.py`: SEM -> CDC deterministic + uncertainty connectors.
 - `visualization/plotter.py`: plotting helpers.
 - `output/`: saved run artifacts.
 
@@ -37,37 +38,47 @@ Default run:
 python main.py
 ```
 
-This uses `MainOptions` defaults defined in `main.py`.
+This uses `RunConfig` defaults defined in `config/run.py`.
 
-## Common Run Modes (via `MainOptions` in `main.py`)
+## Common Run Modes (via `RunConfig` in `config/run.py`)
 
 - Deterministic only:
-  - `run_joint_deterministic=True`
-  - `run_joint_uncertainty=False`
+  - `execution_mode="run"`
+  - `joint_mode="deterministic"`
 
 - Uncertainty only:
-  - `run_joint_deterministic=False`
-  - `run_joint_uncertainty=True`
+  - `execution_mode="run"`
+  - `joint_mode="uncertainty"`
+
+- Baseline only:
+  - `scenario_mode="baseline"`
+
+- Intervention only:
+  - `scenario_mode="intervention"`
+  - set one or both:
+    - `state_intervention_codes`
+    - `relationship_intervention_codes`
 
 - Baseline vs intervention comparison:
-  - `enable_interventions=True`
-  - `run_baseline_comparison=True`
+  - `scenario_mode="compare"`
   - set one or both:
     - `state_intervention_codes`
     - `relationship_intervention_codes`
 
 - Plot-only (reuse saved outputs):
-  - `plot_only=True`
+  - `execution_mode="plot_only"`
 
 ## Intervention Controls
 
-Configured in `MainOptions` (`main.py`):
+Configured in `RunConfig` (`config/run.py`):
 
+- `execution_mode: "run" | "plot_only"`
+- `sem_fit_mode: "fit_and_save" | "fit_no_save" | "load"`
+- `joint_mode: "none" | "deterministic" | "uncertainty"`
+- `scenario_mode: "baseline" | "intervention" | "compare"`
 - `state_intervention_codes: list[str]`
 - `relationship_intervention_codes: list[str]`
 - `intervention_duration_steps: int`
-- `enable_interventions: bool`
-- `run_baseline_comparison: bool`
 
 Intervention definitions live in:
 

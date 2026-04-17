@@ -5,7 +5,7 @@ from models.sbm.estimation.jacobian import JacobianEstimator
 from models.sbm.estimation.shrinkage import ShrinkageCalculator
 from models.sbm.estimation.transforms import FeatureTransformer
 from data.data_prep import DataPrep
-from engine.results import (
+from pipeline.results import (
     FitResult,
     FitResults,
     PreparedData,
@@ -14,7 +14,7 @@ from engine.results import (
     RunOutput,
 )
 from models.sbm.prediction.predictor import Predictor
-from config.base import BaseConfig
+from config.sem import SEMConfig
 from config.optimization import OptimConfig
 from config.shrinkage import ShrinkageConfig
 
@@ -22,7 +22,7 @@ from config.shrinkage import ShrinkageConfig
 class SBRunner:
     def __init__(
         self,
-        base_config: BaseConfig,
+        base_config: SEMConfig,
         opt_config: OptimConfig,
         shrink_config: ShrinkageConfig,
     ):

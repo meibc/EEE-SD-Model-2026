@@ -4,6 +4,8 @@
 import numpy as np
 from scipy.interpolate import interp1d
 
+from models.shared.transforms import hazard_proxy
+
 
 def align_to_years(
     years_src: np.ndarray,
@@ -88,3 +90,26 @@ def build_model_years(
     """Build canonical model years anchored to CDC native years (annual)."""
     return extend_to_end_year(cdc_native_years, target_end_year=target_end_year, step=1)
 
+
+def build_cdc_inputs_from_sem(
+    sem_traj: np.ndarray,
+    unit,
+    hivtest_idx: int,
+    prep_idx: int,
+    sem_years: np.ndarray,
+    model_years: np.ndarray,
+    n_elig_var: str,
+) -> tuple[np.ndarray, np.ndarray, np.ndarray]:
+    """Build aligned CDC input series (tau, prep_on, N_elig) from SEM trajectory."""
+    hivtest = sem_traj[hivtest_idx, :]
+    prep_on = sem_traj[prep_idx, :]
+
+    hivtest = align_to_years(sem_years, hivtest, model_years)
+    prep_on = align_to_years(sem_years, prep_on, model_years)
+    tau = hazard_proxy(hivtest)
+
+    n_elig = unit.get_cdc(n_elig_var)
+    if len(n_elig) != len(model_years):
+        n_elig = align_to_years(unit.cdc_years, n_elig, model_years)
+
+    return tau, prep_on, n_elig

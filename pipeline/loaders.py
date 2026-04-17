@@ -1,11 +1,11 @@
-# engine/loaders.py
+# pipeline/loaders.py
 """I/O utilities for pipeline outputs."""
 
 from pathlib import Path
 import pickle
 from typing import Any
 
-from engine.results import RunOutput
+from pipeline.results import RunOutput
 
 ## General-purpose loaders/savers
 def save(obj: Any, path: Path) -> None:
