@@ -48,7 +48,8 @@ def _covariance_loss(J, Sigma, Sigma_eta, wR) -> tuple[float, np.ndarray]:
         Sigma_eta_diag = np.diag(np.diag(Sigma_eta))
 
         ER = -Sigma + J @ Sigma @ J.T + Sigma_eta_diag
-        gradR = 4 * wR * ER @ J @ Sigma   # NO Delta_t
+        # d/dJ ||-Sigma + J Sigma J' + Sigma_eta||_F^2 = 4 * E * J * Sigma
+        gradR = 4 * wR * ER @ J @ Sigma
 
         LR = wR * np.sum(ER ** 2)
 
