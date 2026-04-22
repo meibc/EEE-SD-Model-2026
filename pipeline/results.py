@@ -65,6 +65,8 @@ class CDCInputs:
     tau: np.ndarray         # (T,) from SEM
     prep_on: np.ndarray     # (T,) from SEM  
     N_elig: np.ndarray      # (T,) from CDC data
+    risk_behavior: np.ndarray  # (T,) from SEM
+    no_vs: np.ndarray       # (T,) prevalence - viral suppression
 
 
 @dataclass

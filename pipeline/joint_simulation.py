@@ -50,14 +50,20 @@ class JointRunner:
         intervention_duration_steps: int = 1,
         hivtest_var: str = 'hivtest12',
         prep_var: str = 'prep_used',
+        risk_var: str = 'risk_behavior',
         n_elig_var: str = 'PrEP Eligible',
+        prevalence_var: str = 'Estimated HIV prevalence (MSM)',
+        viral_suppression_var: str = 'HIV viral suppression',
     ):
         self.sem_output = sem_output
         self.cdc_loader = cdc_params_loader
         self.units = units
         self.hivtest_var = hivtest_var
         self.prep_var = prep_var
+        self.risk_var = risk_var
         self.n_elig_var = n_elig_var
+        self.prevalence_var = prevalence_var
+        self.viral_suppression_var = viral_suppression_var
         self.state_intervention_codes = list(state_intervention_codes or [])
         self.relationship_intervention_codes = list(relationship_intervention_codes or [])
         self.intervention_duration_steps = int(intervention_duration_steps)
@@ -77,6 +83,7 @@ class JointRunner:
         )
         self._hivtest_idx = self._v_names.index(hivtest_var)
         self._prep_idx = self._v_names.index(prep_var)
+        self._risk_idx = self._v_names.index(risk_var)
 
     def _build_sem_trajectory(self, unit_id: str) -> np.ndarray:
         unit = self.units[unit_id]
@@ -132,16 +139,26 @@ class JointRunner:
         else:
             sem_traj = self.sem_output.predictions.results[unit_id].Ypred_trajectory
         sem_years = extend_years(self._sem_years, sem_traj.shape[1])
-        tau, prep_on, n_elig = build_cdc_inputs_from_sem(
+        tau, prep_on, n_elig, risk_behavior, no_vs = build_cdc_inputs_from_sem(
             sem_traj=sem_traj,
             unit=self.units[unit_id],
             hivtest_idx=self._hivtest_idx,
             prep_idx=self._prep_idx,
+            risk_idx=self._risk_idx,
             sem_years=sem_years,
             model_years=self.model_years,
             n_elig_var=self.n_elig_var,
+            prevalence_var=self.prevalence_var,
+            viral_suppression_var=self.viral_suppression_var,
         )
-        cdc_inputs = CDCInputs(years=self.model_years, tau=tau, prep_on=prep_on, N_elig=n_elig)
+        cdc_inputs = CDCInputs(
+            years=self.model_years,
+            tau=tau,
+            prep_on=prep_on,
+            N_elig=n_elig,
+            risk_behavior=risk_behavior,
+            no_vs=no_vs,
+        )
         
         cdc_params = self.cdc_loader.load_point_estimates(unit_id)
         cdc_output = CDCPredictor(cdc_params).predict(cdc_inputs, unit_id)
@@ -202,14 +219,20 @@ class UncertaintyRunner:
         v_names: list[str] | None = None,
         hivtest_var: str = 'hivtest12',
         prep_var: str = 'prep_used',
+        risk_var: str = 'risk_behavior',
         n_elig_var: str = 'PrEP Eligible',
+        prevalence_var: str = 'Estimated HIV prevalence (MSM)',
+        viral_suppression_var: str = 'HIV viral suppression',
     ):
         self.sem_loader = sem_loader
         self.cdc_loader = cdc_params_loader
         self.units = units
         self.hivtest_var = hivtest_var
         self.prep_var = prep_var
+        self.risk_var = risk_var
         self.n_elig_var = n_elig_var
+        self.prevalence_var = prevalence_var
+        self.viral_suppression_var = viral_suppression_var
         self.state_intervention_codes = list(state_intervention_codes or [])
         self.relationship_intervention_codes = list(relationship_intervention_codes or [])
         self.intervention_duration_steps = int(intervention_duration_steps)
@@ -230,6 +253,7 @@ class UncertaintyRunner:
 
         self._hivtest_idx = self._v_names.index(hivtest_var)
         self._prep_idx = self._v_names.index(prep_var)
+        self._risk_idx = self._v_names.index(risk_var)
         self.S_cdc = cdc_params_loader.n_samples
 
     def _build_sem_trajectory(self, unit_id: str, sem_idx: int) -> np.ndarray:
@@ -280,16 +304,26 @@ class UncertaintyRunner:
         """Single MC sample."""
         sem_traj = self._build_sem_trajectory(unit_id, sem_idx)
         sem_years = extend_years(self._sem_years, sem_traj.shape[1])
-        tau, prep_on, n_elig = build_cdc_inputs_from_sem(
+        tau, prep_on, n_elig, risk_behavior, no_vs = build_cdc_inputs_from_sem(
             sem_traj=sem_traj,
             unit=self.units[unit_id],
             hivtest_idx=self._hivtest_idx,
             prep_idx=self._prep_idx,
+            risk_idx=self._risk_idx,
             sem_years=sem_years,
             model_years=self.model_years,
             n_elig_var=self.n_elig_var,
+            prevalence_var=self.prevalence_var,
+            viral_suppression_var=self.viral_suppression_var,
         )
-        cdc_inputs = CDCInputs(years=self.model_years, tau=tau, prep_on=prep_on, N_elig=n_elig)
+        cdc_inputs = CDCInputs(
+            years=self.model_years,
+            tau=tau,
+            prep_on=prep_on,
+            N_elig=n_elig,
+            risk_behavior=risk_behavior,
+            no_vs=no_vs,
+        )
         
         cdc_params = self.cdc_loader.load_sample(cdc_idx, unit_id)
         cdc_output = CDCPredictor(cdc_params).predict(cdc_inputs, unit_id)

@@ -46,6 +46,42 @@ def align_to_years(
     
     return out
 
+
+def align_to_years_hold_last(
+    years_src: np.ndarray,
+    values_src: np.ndarray,
+    years_tgt: np.ndarray,
+) -> np.ndarray:
+    """
+    Interpolate to target years but hold boundary values outside observed range.
+
+    This is useful when extrapolation is undesirable for forecast years.
+    """
+    years_src = np.asarray(years_src, dtype=float).ravel()
+    values_src = np.asarray(values_src, dtype=float).ravel()
+    years_tgt = np.asarray(years_tgt, dtype=float).ravel()
+
+    valid = ~np.isnan(values_src)
+    if valid.sum() == 0:
+        return np.full_like(years_tgt, np.nan, dtype=float)
+    if valid.sum() == 1:
+        return np.full_like(years_tgt, values_src[valid][0], dtype=float)
+
+    xs = years_src[valid]
+    ys = values_src[valid]
+    idx = np.argsort(xs)
+    xs = xs[idx]
+    ys = ys[idx]
+
+    f = interp1d(
+        xs,
+        ys,
+        kind='linear',
+        bounds_error=False,
+        fill_value=(float(ys[0]), float(ys[-1])),
+    )
+    return np.asarray(f(years_tgt), dtype=float)
+
 # models/shared/alignment.py
 
 def extend_years(years: np.ndarray, target_len: int) -> np.ndarray:
@@ -96,20 +132,31 @@ def build_cdc_inputs_from_sem(
     unit,
     hivtest_idx: int,
     prep_idx: int,
+    risk_idx: int,
     sem_years: np.ndarray,
     model_years: np.ndarray,
     n_elig_var: str,
-) -> tuple[np.ndarray, np.ndarray, np.ndarray]:
-    """Build aligned CDC input series (tau, prep_on, N_elig) from SEM trajectory."""
+    prevalence_var: str,
+    viral_suppression_var: str,
+) -> tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray, np.ndarray]:
+    """Build aligned CDC input series from SEM trajectory and CDC raw data."""
     hivtest = sem_traj[hivtest_idx, :]
     prep_on = sem_traj[prep_idx, :]
+    risk_behavior = sem_traj[risk_idx, :]
 
     hivtest = align_to_years(sem_years, hivtest, model_years)
     prep_on = align_to_years(sem_years, prep_on, model_years)
+    risk_behavior = align_to_years(sem_years, risk_behavior, model_years)
     tau = hazard_proxy(hivtest)
 
-    n_elig = unit.get_cdc(n_elig_var)
+    n_elig = np.asarray(unit.get_cdc(n_elig_var), dtype=float)
     if len(n_elig) != len(model_years):
         n_elig = align_to_years(unit.cdc_years, n_elig, model_years)
 
-    return tau, prep_on, n_elig
+    prevalence = np.asarray(unit.get_cdc(prevalence_var), dtype=float)
+    viral_suppression = np.asarray(unit.get_cdc(viral_suppression_var), dtype=float)
+    no_vs = prevalence - viral_suppression
+    if len(no_vs) != len(model_years):
+        no_vs = align_to_years_hold_last(unit.cdc_years, no_vs, model_years)
+
+    return tau, prep_on, n_elig, risk_behavior, no_vs

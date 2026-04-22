@@ -12,7 +12,7 @@ class RunConfig:
     execution_mode: Literal["run", "plot_only"] = "run"
 
     # SEM
-    sem_fit_mode: Literal["fit_and_save", "fit_no_save", "load"] = "fit_and_save"
+    sem_fit_mode: Literal["fit_and_save", "fit_no_save", "load"] = "load"
     run_predict: bool = True
     output_dir: Path = Path("output")
     sem_pickle_name: str = "output.pkl"
@@ -21,12 +21,12 @@ class RunConfig:
     joint: JointConfig = field(default_factory=JointConfig)
     joint_mode: Literal["none", "deterministic", "uncertainty"] = "uncertainty"
     scenario_mode: Literal["baseline", "intervention", "compare"] = "compare"
-    cdc_posterior_path: Path = Path("cdc_posteriors.nc")
+    cdc_posterior_path: Path = Path("cdc_posteriors_v2.nc")
     cdc_trans_path: Path = Path("trans_results.npz")
     sem_params_path: Path = Path("sem_mc_samples_v2.npz")
     n_uncertainty_samples: int = 1000
     seed: int = 123
-    show_progress: bool = True
+    show_progress: bool = False
     state_intervention_codes: list[str] = field(default_factory=lambda: ["reduce_ahs"])
     relationship_intervention_codes: list[str] = field(default_factory=list)
     intervention_duration_steps: int = 1
@@ -40,10 +40,10 @@ class RunConfig:
 
     # Visualization
     show_state_plots: bool = True
-    show_sem_j_violin_plots: bool = True
-    n_states_to_plot: int = 2
+    show_sem_j_violin_plots: bool = False
+    n_states_to_plot: int = 7
     states_to_plot: list[str] = field(
-        default_factory=lambda: ["CA", "TX"]
+        default_factory=lambda: ["TX", "NY", "CA", "FL", "GA", "IL", "PA"]
     )
 
     def validate(self) -> None:

@@ -22,7 +22,8 @@ class CDCPredictor:
         prep_off_count = inputs.N_elig - prep_on_count
         
         # Incidence and diagnosis rate
-        incidence = p.beta * prep_off_count
+        n_elig_safe = np.maximum(inputs.N_elig, 1e-12)
+        incidence = p.beta * ((prep_off_count / n_elig_safe) + (p.alpha * inputs.risk_behavior)) * inputs.no_vs
         delta = 1 - np.exp(-p.kdx * inputs.tau)
         
         # Initialize

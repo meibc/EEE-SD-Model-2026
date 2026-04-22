@@ -17,4 +17,6 @@ DEFAULT_CDC_NAMES = [
     "Estimated HIV incidence (MSM)",
     "HIV diagnoses",
     "PrEP",
+    "Estimated HIV prevalence (MSM)",
+    "HIV viral suppression",
 ]

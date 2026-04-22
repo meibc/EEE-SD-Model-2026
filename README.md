@@ -1,18 +1,18 @@
 # EEE-SD-Model-2026
 
-SEM + CDC joint modeling pipeline with deterministic and uncertainty simulation, interventions, export, and plotting.
+SEM + CDC joint modeling pipeline with deterministic and uncertainty simulation, intervention scenarios, export, and interactive plotting.
 
 ## Core Structure
 
-- `main.py`: entrypoint (`run_pipeline` wrapper).
-- `pipeline/pipeline.py`: top-level orchestration.
-- `pipeline/joint_simulation.py`: SEM -> CDC deterministic and uncertainty runners.
-- `pipeline/results.py`: shared result dataclasses.
-- `config/`: run/model/intervention/plotting/data configs.
-- `data/`: data loading and parameter loaders.
-- `models/sbm/`: SEM estimation + prediction.
-- `models/epi/`: EPI prediction.
-- `visualization/plotter.py`: interactive plotting.
+- `main.py`: entrypoint (`run_pipeline` wrapper)
+- `pipeline/pipeline.py`: top-level orchestration
+- `pipeline/joint_simulation.py`: deterministic + uncertainty SEM -> CDC runners
+- `pipeline/results.py`: shared result dataclasses (`RunOutput`, `SimulationOutputs`, etc.)
+- `config/`: run/model/intervention/plotting/data configs
+- `data/`: raw-data prep and parameter loaders
+- `models/sbm/`: SEM estimation + prediction
+- `models/epi/`: EPI prediction
+- `visualization/plotter.py`: interactive plotting
 
 ## Environment
 
@@ -31,24 +31,24 @@ pip install -r requirements.txt
 - `trans_results.npz`
 - `sem_mc_samples_v2.npz` (default in `RunConfig.sem_params_path`)
 
-## How To Run
+## Run
 
 ```bash
 python main.py
 ```
 
-Runtime behavior is controlled by [`config/run.py`](/Users/meibinchen/Documents/GitHub/EEE-SD-Model-2026/config/run.py).
+Runtime behavior is controlled by `config/run.py` (`RunConfig`).
 
-Key switches:
+Primary switches:
 
-- `execution_mode`: `"run"` or `"plot_only"`
-- `sem_fit_mode`: `"fit_and_save"`, `"fit_no_save"`, `"load"`
-- `joint_mode`: `"none"`, `"deterministic"`, `"uncertainty"`
-- `scenario_mode`: `"baseline"`, `"intervention"`, `"compare"`
+- `execution_mode`: `"run" | "plot_only"`
+- `sem_fit_mode`: `"fit_and_save" | "fit_no_save" | "load"`
+- `joint_mode`: `"none" | "deterministic" | "uncertainty"`
+- `scenario_mode`: `"baseline" | "intervention" | "compare"`
 
-Intervention codebooks are defined in [`config/interventions.py`](/Users/meibinchen/Documents/GitHub/EEE-SD-Model-2026/config/interventions.py).
+Intervention codebooks are in `config/interventions.py`.
 
-## Outputs
+## Output Artifacts
 
 Saved under `output/`:
 
@@ -57,23 +57,39 @@ Saved under `output/`:
 - `uncertainty_output.pkl` or `uncertainty_baseline.pkl`/`uncertainty_intervention.pkl`
 - `unified_outputs.csv`
 
-`run_pipeline(...)` also returns a structured container:
+## Returned Object Structure
 
-- `result["simulation"].deterministic.output/baseline/intervention`
-- `result["simulation"].uncertainty.output/baseline/intervention`
+`run_pipeline(...)` returns a dict with a structured simulation container:
 
-## Plotting
+- `result["simulation"].deterministic.output`
+- `result["simulation"].deterministic.baseline`
+- `result["simulation"].deterministic.intervention`
+- `result["simulation"].uncertainty.output`
+- `result["simulation"].uncertainty.baseline`
+- `result["simulation"].uncertainty.intervention`
 
-Configured in `RunConfig` and `config/plotting.py`:
+Legacy top-level keys are still included for convenience (`joint_output`, `uncertainty`, etc.).
+
+## Plotting Controls
+
+From `RunConfig`:
 
 - `show_state_plots`
 - `show_sem_j_violin_plots`
 - `states_to_plot`
 - `n_states_to_plot`
 
-Plots are shown interactively (not auto-saved).
+Plots are displayed interactively (not auto-saved).
+
+## Notebook/API Migration Notes
+
+- `config.base.BaseConfig` was replaced by `config.sem.SEMConfig`.
+- `engine.*` modules were renamed to `pipeline.*`.
+- Uncertainty outputs now use `UncertaintyOutput`:
+  - old: `u[state_id]`
+  - new: `u.results[state_id]`
 
 ## Notes
 
-- If `execution_mode="plot_only"`, existing pickle outputs are loaded; SEM fitting is not run.
-- If you update SEM constraints (for example the sign matrix), refit/regenerate SEM artifacts before comparing J plots.
+- If `execution_mode="plot_only"`, pipeline loads existing pickle outputs and does not refit SEM.
+- If SEM constraints change (for example sign matrix), regenerate SEM artifacts before comparing J distributions/trajectories.
