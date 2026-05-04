@@ -12,6 +12,7 @@ from .params_base import GeoIndexedParamsLoader
 class CDCParams:
     """CDC parameters for a single geography."""
     beta: float
+    alpha: float
     kdx: float
     U0: float
     kappa_prep: float
@@ -34,13 +35,14 @@ class CDCParamsLoader(GeoIndexedParamsLoader):
         idata = az.from_netcdf(self.nc_path)
         post = idata.posterior
         
-        # Get geo names from beta_inc_dim_0 coordinate
-        geo_coord = 'beta_inc_dim_0'
+        # Infer geo coordinate from beta_inc dimensions.
+        geo_coord = post['beta_inc'].dims[-1]
         geo_names = list(post.coords[geo_coord].values)
         n_geos = len(geo_names)
         
         # Extract: (chains, draws, geos) → (samples, geos)
         beta = post['beta_inc'].values.reshape(-1, n_geos)
+        alpha = post['alpha'].values.reshape(-1, n_geos)
         kdx = post['kappa_dx'].values.reshape(-1, n_geos)  # Note: kappa_dx in your file
         U0 = post['U0'].values.reshape(-1, n_geos)
         
@@ -53,6 +55,7 @@ class CDCParamsLoader(GeoIndexedParamsLoader):
         self._cache = {
             'geo_names': geo_names,
             'beta': beta,
+            'alpha': alpha,
             'kdx': kdx,
             'U0': U0,
             'kappa_prep': kappa_prep,
@@ -75,6 +78,7 @@ class CDCParamsLoader(GeoIndexedParamsLoader):
         
         return CDCParams(
             beta=float(data['beta'][:, idx].mean()),
+            alpha=float(data['alpha'][:, idx].mean()),
             kdx=float(data['kdx'][:, idx].mean()),
             U0=float(data['U0'][:, idx].mean()),
             kappa_prep=float(data['kappa_prep'].get(unit_id, 1.0)),
@@ -87,6 +91,7 @@ class CDCParamsLoader(GeoIndexedParamsLoader):
         
         return CDCParams(
             beta=float(data['beta'][sample_idx, geo_idx]),
+            alpha=float(data['alpha'][sample_idx, geo_idx]),
             kdx=float(data['kdx'][sample_idx, geo_idx]),
             U0=float(data['U0'][sample_idx, geo_idx]),
             kappa_prep=float(data['kappa_prep'].get(unit_id, 1.0)),

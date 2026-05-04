@@ -102,6 +102,11 @@ class JacobianEstimator:
             options={"maxiter": 500, "ftol": 1e-9, "gtol": 1e-6},
         )
 
+        if not result.success:
+            raise RuntimeError(
+                f"L-BFGS-B failed (status={result.status}): {result.message}"
+            )
+
         # rebuild J matrix from optimized free parameters
         JmI = np.zeros((m, m))
         JmI[M == 1] = result.x

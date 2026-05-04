@@ -1,112 +1,95 @@
 # EEE-SD-Model-2026
 
-SEM + CDC joint modeling pipeline with deterministic and uncertainty runs, optional interventions, and plotting.
+SEM + CDC joint modeling pipeline with deterministic and uncertainty simulation, intervention scenarios, export, and interactive plotting.
 
-## Project Layout
+## Core Structure
 
-- `main.py`: thin entrypoint that calls pipeline runner.
-- `pipeline/pipeline.py`: run orchestration and mode branching.
-- `config/`: model and optimization config dataclasses.
-- `data/`: data loaders, unit builders, SEM/CDC parameter loaders.
-- `models/sbm/`: SEM estimation and prediction.
-- `models/epi/`: CDC/EPI prediction.
-- `pipeline/joint_simulation.py`: SEM -> CDC deterministic + uncertainty connectors.
-- `visualization/plotter.py`: plotting helpers.
-- `output/`: saved run artifacts.
+- `main.py`: entrypoint (`run_pipeline` wrapper)
+- `pipeline/pipeline.py`: top-level orchestration
+- `pipeline/joint_simulation.py`: deterministic + uncertainty SEM -> CDC runners
+- `pipeline/results.py`: shared result dataclasses (`RunOutput`, `SimulationOutputs`, etc.)
+- `config/`: run/model/intervention/plotting/data configs
+- `data/`: raw-data prep and parameter loaders
+- `models/sbm/`: SEM estimation + prediction
+- `models/epi/`: EPI prediction
+- `visualization/plotter.py`: interactive plotting
 
-## Requirements
+## Environment
 
-- Python 3.9+ (you are currently using `.venv313`, which is fine).
-- Install dependencies:
+Use `.venv313`:
 
 ```bash
+source .venv313/bin/activate
+python -V
 pip install -r requirements.txt
 ```
 
-## Data Files Expected At Repo Root
+## Required Input Files (repo root)
 
 - `Factor Analysis Final.xlsx`
 - `cdc_posteriors.nc`
 - `trans_results.npz`
-- `sem_mc_samples_v2.npz` (or `sem_mc_results.npz` if you switch `sem_params_path`)
+- `sem_mc_samples_v2.npz` (default in `RunConfig.sem_params_path`)
 
 ## Run
-
-Default run:
 
 ```bash
 python main.py
 ```
 
-This uses `RunConfig` defaults defined in `config/run.py`.
+Runtime behavior is controlled by `config/run.py` (`RunConfig`).
 
-## Common Run Modes (via `RunConfig` in `config/run.py`)
+Primary switches:
 
-- Deterministic only:
-  - `execution_mode="run"`
-  - `joint_mode="deterministic"`
+- `execution_mode`: `"run" | "plot_only"`
+- `sem_fit_mode`: `"fit_and_save" | "fit_no_save" | "load"`
+- `joint_mode`: `"none" | "deterministic" | "uncertainty"`
+- `scenario_mode`: `"baseline" | "intervention" | "compare"`
 
-- Uncertainty only:
-  - `execution_mode="run"`
-  - `joint_mode="uncertainty"`
+Intervention codebooks are in `config/interventions.py`.
 
-- Baseline only:
-  - `scenario_mode="baseline"`
-
-- Intervention only:
-  - `scenario_mode="intervention"`
-  - set one or both:
-    - `state_intervention_codes`
-    - `relationship_intervention_codes`
-
-- Baseline vs intervention comparison:
-  - `scenario_mode="compare"`
-  - set one or both:
-    - `state_intervention_codes`
-    - `relationship_intervention_codes`
-
-- Plot-only (reuse saved outputs):
-  - `execution_mode="plot_only"`
-
-## Intervention Controls
-
-Configured in `RunConfig` (`config/run.py`):
-
-- `execution_mode: "run" | "plot_only"`
-- `sem_fit_mode: "fit_and_save" | "fit_no_save" | "load"`
-- `joint_mode: "none" | "deterministic" | "uncertainty"`
-- `scenario_mode: "baseline" | "intervention" | "compare"`
-- `state_intervention_codes: list[str]`
-- `relationship_intervention_codes: list[str]`
-- `intervention_duration_steps: int`
-
-Intervention definitions live in:
-
-- `models/shared/intervention.py`
-
-## Outputs
+## Output Artifacts
 
 Saved under `output/`:
 
-- `output.pkl` (SEM output object)
-- `joint_output.pkl` (single deterministic run)
-- `joint_baseline.pkl`, `joint_intervention.pkl` (deterministic comparison)
-- `uncertainty_output.pkl` (single uncertainty run)
-- `uncertainty_baseline.pkl`, `uncertainty_intervention.pkl` (uncertainty comparison)
-- `unified_outputs.csv` (if export enabled)
+- `output.pkl` (SEM output)
+- `joint_output.pkl` or `joint_baseline.pkl`/`joint_intervention.pkl`
+- `uncertainty_output.pkl` or `uncertainty_baseline.pkl`/`uncertainty_intervention.pkl`
+- `unified_outputs.csv`
 
-## Plotting
+## Returned Object Structure
 
-Controlled by:
+`run_pipeline(...)` returns a dict with a structured simulation container:
+
+- `result["simulation"].deterministic.output`
+- `result["simulation"].deterministic.baseline`
+- `result["simulation"].deterministic.intervention`
+- `result["simulation"].uncertainty.output`
+- `result["simulation"].uncertainty.baseline`
+- `result["simulation"].uncertainty.intervention`
+
+Legacy top-level keys are still included for convenience (`joint_output`, `uncertainty`, etc.).
+
+## Plotting Controls
+
+From `RunConfig`:
 
 - `show_state_plots`
 - `show_sem_j_violin_plots`
 - `states_to_plot`
 - `n_states_to_plot`
 
-Plots are shown interactively (not automatically saved).
+Plots are displayed interactively (not auto-saved).
+
+## Notebook/API Migration Notes
+
+- `config.base.BaseConfig` was replaced by `config.sem.SEMConfig`.
+- `engine.*` modules were renamed to `pipeline.*`.
+- Uncertainty outputs now use `UncertaintyOutput`:
+  - old: `u[state_id]`
+  - new: `u.results[state_id]`
 
 ## Notes
 
-- If you change SEM constraints (for example sign matrix), refit/regenerate SEM artifacts before expecting changed `J` plots.
-- If plots do not appear, check your matplotlib backend in your IDE/terminal.
+- If `execution_mode="plot_only"`, pipeline loads existing pickle outputs and does not refit SEM.
+- If SEM constraints change (for example sign matrix), regenerate SEM artifacts before comparing J distributions/trajectories.
