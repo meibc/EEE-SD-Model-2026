@@ -19,8 +19,8 @@ class RunConfig:
 
     # Joint / CDC
     joint: JointConfig = field(default_factory=JointConfig)
-    joint_mode: Literal["none", "deterministic", "uncertainty"] = "uncertainty"
-    scenario_mode: Literal["baseline", "intervention", "compare"] = "compare"
+    joint_mode: Literal["none", "deterministic", "uncertainty"] = "deterministic"
+    scenario_mode: Literal["baseline", "intervention", "compare"] = "baseline"
     cdc_posterior_path: Path = Path("cdc_posteriors.nc")
     cdc_trans_path: Path = Path("trans_results.npz")
     sem_params_path: Path = Path("sem_mc_samples_v2.npz")
