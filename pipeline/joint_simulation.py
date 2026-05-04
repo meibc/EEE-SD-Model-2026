@@ -10,7 +10,11 @@ from tqdm import tqdm
 from data.unit import Unit
 from data.params_cdc import CDCParamsLoader
 from data.params_sem import SEMParamsLoader
-from models.shared.alignment import build_cdc_inputs_from_sem, extend_to_end_year
+from models.shared.alignment import (
+    build_cdc_inputs_from_sem,
+    extend_to_end_year,
+    extend_years,
+)
 from models.shared.intervention import (
     build_relationship_interventions,
     build_state_interventions,
@@ -131,12 +135,13 @@ class JointRunner:
             sem_traj = self._build_sem_trajectory(unit_id)
         else:
             sem_traj = self.sem_output.predictions.results[unit_id].Ypred_trajectory
+        sem_years = extend_years(self._sem_years, sem_traj.shape[1])
         tau, prep_on, n_elig = build_cdc_inputs_from_sem(
             sem_traj=sem_traj,
             unit=self.units[unit_id],
             hivtest_idx=self._hivtest_idx,
             prep_idx=self._prep_idx,
-            sem_years=self._sem_years,
+            sem_years=sem_years,
             model_years=self.model_years,
             n_elig_var=self.n_elig_var,
         )
