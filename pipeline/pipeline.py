@@ -20,6 +20,7 @@ from pipeline.joint_simulation import run_joint, run_uncertainty
 from models.shared.alignment import build_model_years
 from visualization.plotter import (
     plot_deterministic_comparison,
+    plot_sem_loss_history,
     plot_state_outputs,
     plot_uncertainty_comparison,
     plot_state_uncertainty_outputs,
@@ -69,7 +70,7 @@ def run_pipeline(options: RunConfig | None = None) -> dict:
         )
         sem_loader = SEMParamsLoader(options.sem_params_path) if options.show_sem_j_violin_plots else None
 
-        if options.show_state_plots or options.show_sem_j_violin_plots:
+        if options.show_state_plots or options.show_sem_j_violin_plots or options.show_sem_loss_plots:
             _show_plots(
                 output,
                 simulation,
@@ -268,6 +269,13 @@ def run_pipeline(options: RunConfig | None = None) -> dict:
             max_states=options.n_states_to_plot,
         )
         print(f"Displayed SEM J violin plots for states: {plotted_j}")
+    elif options.show_sem_loss_plots:
+        plotted_loss = plot_sem_loss_history(
+            sem_output=output,
+            state_ids=options.states_to_plot,
+            max_states=options.n_states_to_plot,
+        )
+        print(f"Displayed SEM loss plots for states: {plotted_loss}")
 
     return {
         "sem_output": output,
@@ -338,3 +346,11 @@ def _show_plots(
             max_states=options.n_states_to_plot,
         )
         print(f"Displayed SEM J violin plots for states: {plotted_j}")
+
+    if options.show_sem_loss_plots:
+        plotted_loss = plot_sem_loss_history(
+            sem_output=output,
+            state_ids=options.states_to_plot,
+            max_states=options.n_states_to_plot,
+        )
+        print(f"Displayed SEM loss plots for states: {plotted_loss}")

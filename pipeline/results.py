@@ -24,6 +24,7 @@ class FitResult:
     J: np.ndarray
     Ybar: np.ndarray
     Xbar: np.ndarray
+    loss_diagnostics: list[dict] | None = None
 
 
 @dataclass

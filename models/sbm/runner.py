@@ -78,12 +78,14 @@ class SBRunner:
                 J_ref=J_ref,
                 wJ=wJ,
             )
+            fit_diag = self.estimator.last_fit_history
 
             results[unit.id] = FitResult(
                 unit_id=unit.id,
                 J=J_est,
                 Ybar=unit.values,
                 Xbar=Xbar,
+                loss_diagnostics=fit_diag,
             )
 
             us_J, div_Js = self._update_hierarchy(unit, J_est, us_J, div_Js)

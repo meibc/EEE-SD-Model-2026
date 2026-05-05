@@ -14,4 +14,5 @@ class ShrinkageConfig:
     state_shrink_cap: float = None  # cap on wJ_override (None to disable)
 
     wJ_state: float = 5.0  # base shrinkage for states → their 
+    # wJ_state: float = 0.50 
     wJ: float = 10.0   # shrinkage to US J (census divisions)

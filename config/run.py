@@ -12,7 +12,7 @@ class RunConfig:
     execution_mode: Literal["run", "plot_only"] = "run"
 
     # SEM
-    sem_fit_mode: Literal["fit_and_save", "fit_no_save", "load"] = "fit_and_save"
+    sem_fit_mode: Literal["fit_and_save", "fit_no_save", "load"] = "fit_no_save"
     run_predict: bool = True
     output_dir: Path = Path("output")
     sem_pickle_name: str = "output.pkl"
@@ -40,10 +40,11 @@ class RunConfig:
 
     # Visualization
     show_state_plots: bool = True
-    show_sem_j_violin_plots: bool = True
-    n_states_to_plot: int = 2
+    show_sem_j_violin_plots: bool = False
+    show_sem_loss_plots: bool = True
+    n_states_to_plot: int = 5
     states_to_plot: list[str] = field(
-        default_factory=lambda: ["CA", "TX"]
+        default_factory=lambda: ["CA", "TX", "NY", "FL", "LA"]
     )
 
     def validate(self) -> None:

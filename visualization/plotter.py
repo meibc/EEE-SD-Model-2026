@@ -722,3 +722,83 @@ def plot_sem_j_violin(
         plotted.append(state_id)
 
     return plotted
+
+
+def plot_sem_loss_history(
+    sem_output: RunOutput,
+    state_ids: list[str] | None = None,
+    max_states: int = 5,
+) -> list[str]:
+    """Plot SEM optimizer loss component diagnostics for selected states."""
+    fit_map = sem_output.fit.results
+    unit_map = {u.id: u for u in sem_output.inputs.units}
+
+    available_states = [
+        uid for uid in fit_map
+        if uid in unit_map and getattr(unit_map[uid], "kind", None) == "state"
+    ]
+    available_states = sorted(available_states)
+    if not available_states:
+        raise ValueError("No state-level SEM fit results available for loss plotting.")
+
+    if state_ids is None:
+        selected = available_states[:max_states]
+    else:
+        requested = list(dict.fromkeys(state_ids))
+        selected = [uid for uid in requested if uid in available_states][:max_states]
+        if not selected:
+            raise ValueError("None of the requested states are available in SEM fit results.")
+
+    components = ["LX_norm", "LR_norm", "LJ_norm", "L_stab_norm"]
+    labels = {
+        "LX_norm": "Drift (norm)",
+        "LR_norm": "Covariance (norm)",
+        "LJ_norm": "Shrinkage (norm)",
+        "L_stab_norm": "Stability (norm)",
+    }
+    plotted: list[str] = []
+
+    for state_id in selected:
+        fit_res = fit_map[state_id]
+        diag = fit_res.loss_diagnostics or []
+        if not diag:
+            continue
+
+        fig, axes = plt.subplots(1, 2, figsize=(13, 4.5))
+        fig.suptitle(f"{state_id}: SEM optimization loss diagnostics")
+        ax0, ax1 = axes
+
+        # Left: final total loss by rolling window.
+        xs = []
+        ys = []
+        for step in diag:
+            t_end = step.get("t_end")
+            final = step.get("diagnostics", {}).get("final_components", {})
+            if t_end is None or not final:
+                continue
+            xs.append(float(t_end))
+            ys.append(float(final.get("L_total", np.nan)))
+        if xs:
+            ax0.plot(xs, ys, marker="o", linewidth=1.8, color="tab:blue")
+        ax0.set_title("Final Total Loss by Rolling Window")
+        ax0.set_xlabel("Window End t")
+        ax0.set_ylabel("Loss")
+        ax0.grid(alpha=0.3)
+
+        # Right: iteration path for last fitted window.
+        last_hist = diag[-1].get("diagnostics", {}).get("history", [])
+        if last_hist:
+            for comp in components:
+                arr = [row.get(comp, np.nan) for row in last_hist]
+                ax1.plot(arr, linewidth=2.0, label=labels[comp])
+            ax1.legend(fontsize=8, framealpha=0.95)
+        ax1.set_title("Last Window Optimization Path")
+        ax1.set_xlabel("L-BFGS-B Iteration")
+        ax1.set_ylabel("Loss Component")
+        ax1.grid(alpha=0.3)
+
+        fig.tight_layout()
+        plt.show()
+        plotted.append(state_id)
+
+    return plotted
