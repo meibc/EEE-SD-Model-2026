@@ -17,7 +17,13 @@ from data.params_sem import SEMParamsLoader
 from pipeline.loaders import save, load, load_fit_results
 from pipeline.export import export_unified_table
 from pipeline.joint_simulation import run_joint, run_uncertainty
+from pipeline.intervention_compare import (
+    build_deterministic_year10_tables,
+    build_uncertainty_year10_tables,
+    save_year10_tables,
+)
 from models.shared.alignment import build_model_years
+from config.interventions import SCENARIO_CODEBOOK
 from visualization.plotter import (
     plot_deterministic_comparison,
     plot_sem_loss_history,
@@ -43,6 +49,8 @@ def run_pipeline(options: RunConfig | None = None) -> dict:
     uncertainty_pickle_path = options.output_dir / "uncertainty_output.pkl"
     uncertainty_baseline_pickle_path = options.output_dir / "uncertainty_baseline.pkl"
     uncertainty_intervention_pickle_path = options.output_dir / "uncertainty_intervention.pkl"
+    joint_interventions_pickle_path = options.output_dir / "joint_interventions.pkl"
+    uncertainty_interventions_pickle_path = options.output_dir / "uncertainty_interventions.pkl"
 
     if options.execution_mode == "plot_only":
         output = load(sem_pickle_path)
@@ -50,6 +58,11 @@ def run_pipeline(options: RunConfig | None = None) -> dict:
             output=load(joint_pickle_path) if joint_pickle_path.exists() else None,
             baseline=load(joint_baseline_pickle_path) if joint_baseline_pickle_path.exists() else None,
             intervention=load(joint_intervention_pickle_path) if joint_intervention_pickle_path.exists() else None,
+            interventions=(
+                load(joint_interventions_pickle_path)
+                if joint_interventions_pickle_path.exists()
+                else None
+            ),
         )
         uncertainty = UncertaintyScenarios(
             output=load(uncertainty_pickle_path) if uncertainty_pickle_path.exists() else None,
@@ -61,6 +74,11 @@ def run_pipeline(options: RunConfig | None = None) -> dict:
             intervention=(
                 load(uncertainty_intervention_pickle_path)
                 if uncertainty_intervention_pickle_path.exists()
+                else None
+            ),
+            interventions=(
+                load(uncertainty_interventions_pickle_path)
+                if uncertainty_interventions_pickle_path.exists()
                 else None
             ),
         )
@@ -85,8 +103,10 @@ def run_pipeline(options: RunConfig | None = None) -> dict:
             "uncertainty": simulation.uncertainty.output,
             "uncertainty_baseline": simulation.uncertainty.baseline,
             "uncertainty_intervention": simulation.uncertainty.intervention,
+            "uncertainty_interventions": simulation.uncertainty.interventions,
             "joint_baseline": simulation.deterministic.baseline,
             "joint_intervention": simulation.deterministic.intervention,
+            "joint_interventions": simulation.deterministic.interventions,
         }
 
     base = SEMConfig()
@@ -107,7 +127,12 @@ def run_pipeline(options: RunConfig | None = None) -> dict:
     units = Unit.to_dict(output.inputs.units)
     cdc_loader = CDCParamsLoader(options.cdc_posterior_path, options.cdc_trans_path)
     all_unit_ids = sorted(set(units.keys()) & set(cdc_loader.geo_names))
-    model_years = build_model_years(cdc_loader.years, options.target_end_year)
+    target_end_year = (
+        int(options.target_end_year)
+        if options.target_end_year is not None
+        else int(cdc_loader.years[-1]) + int(options.forecast_years_ahead)
+    )
+    model_years = build_model_years(cdc_loader.years, target_end_year)
 
     simulation = SimulationOutputs(
         deterministic=DeterministicScenarios(),
@@ -124,13 +149,12 @@ def run_pipeline(options: RunConfig | None = None) -> dict:
         rel_codes = options.relationship_intervention_codes
         run_compare = False
     else:
-        state_codes = options.state_intervention_codes
-        rel_codes = options.relationship_intervention_codes
+        state_codes = []
+        rel_codes = []
         run_compare = True
 
     if options.joint_mode == "deterministic":
-        has_interventions = bool(state_codes or rel_codes)
-        if run_compare and has_interventions:
+        if run_compare:
             simulation.deterministic.baseline = run_joint(
                 output,
                 cdc_loader,
@@ -139,30 +163,39 @@ def run_pipeline(options: RunConfig | None = None) -> dict:
                 model_years=model_years,
                 hivtest_var=options.joint.hivtest_var,
                 prep_var=options.joint.prep_var,
+                risk_var=options.joint.risk_var,
                 n_elig_var=options.joint.n_elig_var,
                 state_intervention_codes=[],
                 relationship_intervention_codes=[],
                 intervention_duration_steps=options.intervention_duration_steps,
             )
-            simulation.deterministic.intervention = run_joint(
-                output,
-                cdc_loader,
-                units,
-                unit_ids=all_unit_ids,
-                model_years=model_years,
-                hivtest_var=options.joint.hivtest_var,
-                prep_var=options.joint.prep_var,
-                n_elig_var=options.joint.n_elig_var,
-                state_intervention_codes=state_codes,
-                relationship_intervention_codes=rel_codes,
-                intervention_duration_steps=options.intervention_duration_steps,
-            )
+            scenario_outputs: dict[str, object] = {}
+            for scenario_code in options.intervention_scenario_codes:
+                spec = SCENARIO_CODEBOOK[scenario_code]
+                scenario_outputs[scenario_code] = run_joint(
+                    output,
+                    cdc_loader,
+                    units,
+                    unit_ids=all_unit_ids,
+                    model_years=model_years,
+                    hivtest_var=options.joint.hivtest_var,
+                    prep_var=options.joint.prep_var,
+                    risk_var=options.joint.risk_var,
+                    n_elig_var=options.joint.n_elig_var,
+                    state_intervention_codes=spec.get("state_codes", []),
+                    relationship_intervention_codes=spec.get("relationship_codes", []),
+                    intervention_duration_steps=options.intervention_duration_steps,
+                )
+            simulation.deterministic.interventions = scenario_outputs
+            first_key = options.intervention_scenario_codes[0]
+            simulation.deterministic.intervention = scenario_outputs[first_key]
+            simulation.deterministic.output = simulation.deterministic.intervention
             save(simulation.deterministic.baseline, joint_baseline_pickle_path)
             save(simulation.deterministic.intervention, joint_intervention_pickle_path)
-            simulation.deterministic.output = simulation.deterministic.intervention
+            save(simulation.deterministic.interventions, joint_interventions_pickle_path)
             print(
-                "Saved baseline and intervention deterministic outputs for "
-                f"{len(simulation.deterministic.output.results)} units"
+                "Saved baseline and multi-scenario deterministic outputs: "
+                f"{len(simulation.deterministic.interventions)} scenarios"
             )
         else:
             simulation.deterministic.output = run_joint(
@@ -173,6 +206,7 @@ def run_pipeline(options: RunConfig | None = None) -> dict:
                 model_years=model_years,
                 hivtest_var=options.joint.hivtest_var,
                 prep_var=options.joint.prep_var,
+                risk_var=options.joint.risk_var,
                 n_elig_var=options.joint.n_elig_var,
                 state_intervention_codes=state_codes,
                 relationship_intervention_codes=rel_codes,
@@ -195,29 +229,58 @@ def run_pipeline(options: RunConfig | None = None) -> dict:
                 model_years=model_years,
                 hivtest_var=options.joint.hivtest_var,
                 prep_var=options.joint.prep_var,
+                risk_var=options.joint.risk_var,
                 n_elig_var=options.joint.n_elig_var,
                 state_intervention_codes=[],
                 relationship_intervention_codes=[],
                 intervention_duration_steps=options.intervention_duration_steps,
             )
-            simulation.uncertainty.intervention = run_uncertainty(
-                sem_loader,
-                cdc_loader,
-                units,
-                unit_ids=all_unit_ids,
-                n_samples=options.n_uncertainty_samples,
-                seed=options.seed,
-                show_progress=options.show_progress,
-                model_years=model_years,
-                hivtest_var=options.joint.hivtest_var,
-                prep_var=options.joint.prep_var,
-                n_elig_var=options.joint.n_elig_var,
-                state_intervention_codes=state_codes,
-                relationship_intervention_codes=rel_codes,
-                intervention_duration_steps=options.intervention_duration_steps,
-            )
+            if options.intervention_scenario_codes:
+                scenario_unc_outputs: dict[str, object] = {}
+                for scenario_code in options.intervention_scenario_codes:
+                    spec = SCENARIO_CODEBOOK[scenario_code]
+                    scenario_unc_outputs[scenario_code] = run_uncertainty(
+                        sem_loader,
+                        cdc_loader,
+                        units,
+                        unit_ids=all_unit_ids,
+                        n_samples=options.n_uncertainty_samples,
+                        seed=options.seed,
+                        show_progress=options.show_progress,
+                        model_years=model_years,
+                        hivtest_var=options.joint.hivtest_var,
+                        prep_var=options.joint.prep_var,
+                        risk_var=options.joint.risk_var,
+                        n_elig_var=options.joint.n_elig_var,
+                        state_intervention_codes=spec.get("state_codes", []),
+                        relationship_intervention_codes=spec.get("relationship_codes", []),
+                        intervention_duration_steps=options.intervention_duration_steps,
+                    )
+                simulation.uncertainty.interventions = scenario_unc_outputs
+                first_key = options.intervention_scenario_codes[0]
+                simulation.uncertainty.intervention = scenario_unc_outputs[first_key]
+            else:
+                simulation.uncertainty.intervention = run_uncertainty(
+                    sem_loader,
+                    cdc_loader,
+                    units,
+                    unit_ids=all_unit_ids,
+                    n_samples=options.n_uncertainty_samples,
+                    seed=options.seed,
+                    show_progress=options.show_progress,
+                    model_years=model_years,
+                    hivtest_var=options.joint.hivtest_var,
+                    prep_var=options.joint.prep_var,
+                    risk_var=options.joint.risk_var,
+                    n_elig_var=options.joint.n_elig_var,
+                    state_intervention_codes=state_codes,
+                    relationship_intervention_codes=rel_codes,
+                    intervention_duration_steps=options.intervention_duration_steps,
+                )
             save(simulation.uncertainty.baseline, uncertainty_baseline_pickle_path)
             save(simulation.uncertainty.intervention, uncertainty_intervention_pickle_path)
+            if simulation.uncertainty.interventions is not None:
+                save(simulation.uncertainty.interventions, uncertainty_interventions_pickle_path)
             simulation.uncertainty.output = simulation.uncertainty.intervention
             print(
                 "Saved baseline and intervention uncertainty outputs for "
@@ -235,6 +298,7 @@ def run_pipeline(options: RunConfig | None = None) -> dict:
                 model_years=model_years,
                 hivtest_var=options.joint.hivtest_var,
                 prep_var=options.joint.prep_var,
+                risk_var=options.joint.risk_var,
                 n_elig_var=options.joint.n_elig_var,
                 state_intervention_codes=state_codes,
                 relationship_intervention_codes=rel_codes,
@@ -252,6 +316,34 @@ def run_pipeline(options: RunConfig | None = None) -> dict:
             uncertainty=simulation.uncertainty.output,
         )
         print(f"Exported unified table: {export_path} ({len(df)} rows)")
+
+    if options.export_intervention_year10_csv and run_compare:
+        if (
+            simulation.deterministic.baseline is not None
+            and simulation.deterministic.interventions is not None
+        ):
+            sem_df, epi_df = build_deterministic_year10_tables(
+                sem_output=output,
+                baseline=simulation.deterministic.baseline,
+                interventions=simulation.deterministic.interventions,
+                target_year=int(model_years[-1]),
+            )
+            sem_out = options.output_dir / options.intervention_year10_sem_csv
+            epi_out = options.output_dir / options.intervention_year10_epi_csv
+            save_year10_tables(sem_df, epi_df, sem_out, epi_out)
+            print(f"Exported deterministic year-10 intervention tables: {sem_out}, {epi_out}")
+
+        if simulation.uncertainty.baseline is not None and simulation.uncertainty.interventions is not None:
+            sem_df_u, epi_df_u = build_uncertainty_year10_tables(
+                sem_output=output,
+                baseline=simulation.uncertainty.baseline,
+                interventions=simulation.uncertainty.interventions,
+                target_year=int(model_years[-1]),
+            )
+            sem_out_u = options.output_dir / f"uncertainty_{options.intervention_year10_sem_csv}"
+            epi_out_u = options.output_dir / f"uncertainty_{options.intervention_year10_epi_csv}"
+            save_year10_tables(sem_df_u, epi_df_u, sem_out_u, epi_out_u)
+            print(f"Exported uncertainty median year-10 intervention tables: {sem_out_u}, {epi_out_u}")
 
     if options.show_state_plots:
         _show_plots(
@@ -284,8 +376,10 @@ def run_pipeline(options: RunConfig | None = None) -> dict:
         "uncertainty": simulation.uncertainty.output,
         "uncertainty_baseline": simulation.uncertainty.baseline,
         "uncertainty_intervention": simulation.uncertainty.intervention,
+        "uncertainty_interventions": simulation.uncertainty.interventions,
         "joint_baseline": simulation.deterministic.baseline,
         "joint_intervention": simulation.deterministic.intervention,
+        "joint_interventions": simulation.deterministic.interventions,
     }
 
 
@@ -306,15 +400,18 @@ def _show_plots(
         )
         print(f"Displayed baseline vs intervention plots for states: {plotted}")
     elif simulation.uncertainty.output is not None:
-        plotted = plot_state_uncertainty_outputs(
-            sem_output=output,
-            uncertainty=simulation.uncertainty.output,
-            state_ids=options.states_to_plot,
-            max_states=options.n_states_to_plot,
-            hivtest_var=options.joint.hivtest_var,
-            prep_var=options.joint.prep_var,
-        )
-        print(f"Displayed uncertainty plots for states: {plotted}")
+        try:
+            plotted = plot_state_uncertainty_outputs(
+                sem_output=output,
+                uncertainty=simulation.uncertainty.output,
+                state_ids=options.states_to_plot,
+                max_states=options.n_states_to_plot,
+                hivtest_var=options.joint.hivtest_var,
+                prep_var=options.joint.prep_var,
+            )
+            print(f"Displayed uncertainty plots for states: {plotted}")
+        except ValueError as exc:
+            print(f"Skipping uncertainty state plots: {exc}")
     elif simulation.deterministic.baseline is not None and simulation.deterministic.intervention is not None:
         plotted = plot_deterministic_comparison(
             sem_output=output,

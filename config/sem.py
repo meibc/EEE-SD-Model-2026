@@ -7,7 +7,7 @@ class SEMConfig:
     """SEM model configuration."""
 
     # Data
-    data_path: Path = Path("Factor Analysis Final.xlsx")
+    data_path: Path = Path("Factor Analysis v3.xlsx")
 
     # Variables
     v_names: list[str] = field(default_factory=lambda: [

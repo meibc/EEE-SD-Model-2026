@@ -15,6 +15,7 @@ class CDCParams:
     kdx: float
     U0: float
     kappa_prep: float
+    alpha: float 
 
 
 class CDCParamsLoader(GeoIndexedParamsLoader):
@@ -41,8 +42,11 @@ class CDCParamsLoader(GeoIndexedParamsLoader):
         
         # Extract: (chains, draws, geos) → (samples, geos)
         beta = post['beta_inc'].values.reshape(-1, n_geos)
-        kdx = post['kappa_dx'].values.reshape(-1, n_geos)  # Note: kappa_dx in your file
+        kdx = post['kappa_dx'].values.reshape(-1, n_geos)
         U0 = post['U0'].values.reshape(-1, n_geos)
+        
+        # Alpha is global (not per-geography)
+        alpha = post['alpha'].values.reshape(-1)  # ADD THIS
         
         # Load kappa_prep from trans_npz
         trans = np.load(self.trans_npz_path, allow_pickle=True)
@@ -55,6 +59,7 @@ class CDCParamsLoader(GeoIndexedParamsLoader):
             'beta': beta,
             'kdx': kdx,
             'U0': U0,
+            'alpha': alpha,  # ADD THIS
             'kappa_prep': kappa_prep,
             'years': years,
         }
@@ -78,6 +83,7 @@ class CDCParamsLoader(GeoIndexedParamsLoader):
             kdx=float(data['kdx'][:, idx].mean()),
             U0=float(data['U0'][:, idx].mean()),
             kappa_prep=float(data['kappa_prep'].get(unit_id, 1.0)),
+            alpha=float(data['alpha'].mean()),  # ADD THIS (global)
         )
     
     def load_sample(self, sample_idx: int, unit_id: str) -> CDCParams:
@@ -90,4 +96,5 @@ class CDCParamsLoader(GeoIndexedParamsLoader):
             kdx=float(data['kdx'][sample_idx, geo_idx]),
             U0=float(data['U0'][sample_idx, geo_idx]),
             kappa_prep=float(data['kappa_prep'].get(unit_id, 1.0)),
+            alpha=float(data['alpha'][sample_idx]),  # ADD THIS (global)
         )

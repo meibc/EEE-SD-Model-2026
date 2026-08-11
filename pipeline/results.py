@@ -61,11 +61,11 @@ class RunOutput:
 
 @dataclass
 class CDCInputs:
-    """Inputs to CDC model (constructed by connector)."""
-    years: np.ndarray       # (T,)
-    tau: np.ndarray         # (T,) from SEM
-    prep_on: np.ndarray     # (T,) from SEM  
-    N_elig: np.ndarray      # (T,) from CDC data
+    years: np.ndarray
+    tau: np.ndarray
+    prep_on: np.ndarray
+    N_elig: np.ndarray
+    risk_behavior: np.ndarray
 
 
 @dataclass
@@ -144,6 +144,7 @@ class DeterministicScenarios:
     output: JointOutput | None = None
     baseline: JointOutput | None = None
     intervention: JointOutput | None = None
+    interventions: dict[str, JointOutput] | None = None
 
 
 @dataclass
@@ -152,6 +153,7 @@ class UncertaintyScenarios:
     output: UncertaintyOutput | None = None
     baseline: UncertaintyOutput | None = None
     intervention: UncertaintyOutput | None = None
+    interventions: dict[str, UncertaintyOutput] | None = None
 
 
 @dataclass

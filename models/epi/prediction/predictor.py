@@ -17,12 +17,22 @@ class CDCPredictor:
         p = self.params
         T = len(inputs.years)
         
-        # PrEP populations
-        prep_on_count = p.kappa_prep * inputs.prep_on * inputs.N_elig
-        prep_off_count = inputs.N_elig - prep_on_count
+        # PrEP populations (bounded)
+        effective_prep_cov = np.minimum(p.kappa_prep * inputs.prep_on, 0.99)
+        prep_on_count = effective_prep_cov * inputs.N_elig
+        prep_off_count = np.maximum(0, inputs.N_elig - prep_on_count)
         
-        # Incidence and diagnosis rate
-        incidence = p.beta * prep_off_count
+        # Risk behavior ratio
+        rb = np.asarray(inputs.risk_behavior, dtype=float)
+        # Guard against invalid values from alignment/extrapolation.
+        rb = np.clip(rb, 1e-6, None)
+        rb_baseline = rb[0]
+        rb_ratio = rb / rb_baseline
+        # Optional cap to limit extreme tail inflation in Monte Carlo.
+        rb_ratio = np.clip(rb_ratio, 1e-3, 50.0)
+        
+        # Incidence with risk behavior
+        incidence = p.beta * prep_off_count * np.power(rb_ratio, p.alpha)
         delta = 1 - np.exp(-p.kdx * inputs.tau)
         
         # Initialize

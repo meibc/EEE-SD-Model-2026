@@ -2,9 +2,10 @@
 
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import Literal
+from typing import Literal, Optional
 
 from config.joint import JointConfig
+from config.interventions import SCENARIO_CODEBOOK
 
 
 @dataclass
@@ -12,7 +13,7 @@ class RunConfig:
     execution_mode: Literal["run", "plot_only"] = "run"
 
     # SEM
-    sem_fit_mode: Literal["fit_and_save", "fit_no_save", "load"] = "fit_no_save"
+    sem_fit_mode: Literal["fit_and_save", "fit_no_save", "load"] = "fit_and_save"
     run_predict: bool = True
     output_dir: Path = Path("output")
     sem_pickle_name: str = "output.pkl"
@@ -21,30 +22,42 @@ class RunConfig:
     joint: JointConfig = field(default_factory=JointConfig)
     joint_mode: Literal["none", "deterministic", "uncertainty"] = "deterministic"
     scenario_mode: Literal["baseline", "intervention", "compare"] = "baseline"
-    cdc_posterior_path: Path = Path("cdc_posteriors.nc")
+
+    # file paths
+    cdc_posterior_path: Path = Path("cdc_posteriors_v3.nc")
     cdc_trans_path: Path = Path("trans_results.npz")
-    sem_params_path: Path = Path("sem_mc_samples_v2.npz")
+    sem_params_path: Path = Path("sem_mc_samples_v3.npz")
+
     n_uncertainty_samples: int = 1000
     seed: int = 123
     show_progress: bool = True
     state_intervention_codes: list[str] = field(default_factory=lambda: ["reduce_ahs"])
     relationship_intervention_codes: list[str] = field(default_factory=list)
+    intervention_scenario_codes: list[str] = field(
+        default_factory=lambda: list(SCENARIO_CODEBOOK.keys())
+    )
     intervention_duration_steps: int = 1
 
     # Forecasting
-    target_end_year: int = 2036
+    target_end_year: Optional[int] = None
+    forecast_years_ahead: int = 10
+
+    # Intervention comparison export
+    export_intervention_year10_csv: bool = False
+    intervention_year10_sem_csv: str = "uncertainty_intervention_year10_sem.csv"
+    intervention_year10_epi_csv: str = "uncertainty_intervention_year10_epi.csv"
 
     # Export
-    export_unified_csv: bool = True
+    export_unified_csv: bool = False
     unified_csv_name: str = "unified_outputs.csv"
 
     # Visualization
     show_state_plots: bool = True
     show_sem_j_violin_plots: bool = False
-    show_sem_loss_plots: bool = True
+    show_sem_loss_plots: bool = False
     n_states_to_plot: int = 5
     states_to_plot: list[str] = field(
-        default_factory=lambda: ["CA", "TX", "NY", "FL", "LA"]
+        default_factory=lambda: ["CA", "NY", "TX", "FL", "GA"]
     )
 
     def validate(self) -> None:
@@ -60,7 +73,13 @@ class RunConfig:
             raise ValueError("joint_mode='none' is only useful with execution_mode='plot_only'.")
         if self.scenario_mode in {"intervention", "compare"}:
             if not (self.state_intervention_codes or self.relationship_intervention_codes):
-                raise ValueError(
-                    "scenario_mode requires at least one intervention code "
-                    "(state_intervention_codes or relationship_intervention_codes)."
-                )
+                if self.scenario_mode != "compare":
+                    raise ValueError(
+                        "scenario_mode requires at least one intervention code "
+                        "(state_intervention_codes or relationship_intervention_codes)."
+                    )
+        if self.forecast_years_ahead < 1:
+            raise ValueError("forecast_years_ahead must be >= 1.")
+        invalid_scenarios = [c for c in self.intervention_scenario_codes if c not in SCENARIO_CODEBOOK]
+        if invalid_scenarios:
+            raise ValueError(f"Unknown intervention_scenario_codes: {invalid_scenarios}")

@@ -96,20 +96,23 @@ def build_cdc_inputs_from_sem(
     unit,
     hivtest_idx: int,
     prep_idx: int,
+    risk_idx: int,
     sem_years: np.ndarray,
     model_years: np.ndarray,
     n_elig_var: str,
-) -> tuple[np.ndarray, np.ndarray, np.ndarray]:
-    """Build aligned CDC input series (tau, prep_on, N_elig) from SEM trajectory."""
+) -> tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray]:
+    """Build aligned CDC input series (tau, prep_on, N_elig, risk_behavior) from SEM trajectory."""
     hivtest = sem_traj[hivtest_idx, :]
     prep_on = sem_traj[prep_idx, :]
+    risk_behavior = sem_traj[risk_idx, :]
 
     hivtest = align_to_years(sem_years, hivtest, model_years)
     prep_on = align_to_years(sem_years, prep_on, model_years)
+    risk_behavior = align_to_years(sem_years, risk_behavior, model_years)
     tau = hazard_proxy(hivtest)
 
     n_elig = unit.get_cdc(n_elig_var)
     if len(n_elig) != len(model_years):
         n_elig = align_to_years(unit.cdc_years, n_elig, model_years)
 
-    return tau, prep_on, n_elig
+    return tau, prep_on, n_elig, risk_behavior
