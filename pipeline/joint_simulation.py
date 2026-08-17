@@ -3,13 +3,12 @@ from __future__ import annotations
 """Joint SEM → CDC pipeline."""
 
 from pathlib import Path
+from typing import Any
 import pickle
 import numpy as np
 from tqdm import tqdm
 
 from data.unit import Unit
-from data.params_cdc import CDCParamsLoader
-from data.params_sem import SEMParamsLoader
 from models.shared.alignment import build_cdc_inputs_from_sem, extend_years, extend_to_end_year
 from models.shared.intervention import (
     build_relationship_interventions,
@@ -42,7 +41,7 @@ class JointRunner:
     def __init__(
         self,
         sem_output: RunOutput,
-        cdc_params_loader: CDCParamsLoader,
+        cdc_params_loader: Any,
         units: dict[str, Unit],
         model_years: np.ndarray | None = None,
         state_intervention_codes: list[str] | None = None,
@@ -87,9 +86,12 @@ class JointRunner:
         J_fit = np.asarray(fit.J, dtype=float)
         J = J_fit[:, :, -1] if J_fit.ndim == 3 else J_fit
 
-        y0 = np.asarray(unit.amis_values[:, 0], dtype=float)
-        x0 = self.transforms.logit(y0)
-        u = np.zeros(J.shape[0], dtype=float)
+        x0 = np.asarray(fit.Xbar[:, 0], dtype=float)
+        y0 = np.asarray(fit.Ybar[:, 0], dtype=float)
+        ref_logits = self.transforms.logit(y0) - x0
+        ref_probs = self.transforms.inverse_logit(ref_logits)
+        predictor = Predictor(reference_probs=ref_probs)
+        u = np.zeros(J.shape[0], dtype=float) if fit.drift is None else np.asarray(fit.drift, dtype=float)
 
         if (
             self.sem_output.predictions is not None
@@ -99,28 +101,24 @@ class JointRunner:
         else:
             n_steps = len(self._sem_years)
 
+        baseline_probs, _ = predictor.predict_trajectory(J, x0, u, n_steps)
+
         state_iv = build_state_interventions(
-            unit,
-            self._sem_years,
-            self._v_names,
+            unit, self._sem_years, self._v_names,
             codes=self.state_intervention_codes,
             duration_steps=self.intervention_duration_steps,
         )
         rel_iv = build_relationship_interventions(
-            unit,
-            self._sem_years,
-            self._v_names,
+            unit, self._sem_years, self._v_names,
             codes=self.relationship_intervention_codes,
             duration_steps=self.intervention_duration_steps,
         )
 
-        ypred, _ = self.predictor.predict_trajectory(
-            J,
-            x0,
-            u,
-            n_steps,
+        ypred, _ = predictor.predict_trajectory(
+            J, x0, u, n_steps,
             state_interventions=state_iv,
             rel_interventions=rel_iv,
+            baseline_probs=baseline_probs,
         )
         return ypred
     
@@ -135,7 +133,7 @@ class JointRunner:
         else:
             sem_traj = self.sem_output.predictions.results[unit_id].Ypred_trajectory
         sem_years = extend_years(self._sem_years, sem_traj.shape[1])
-        tau, prep_on, n_elig, risk_behavior = build_cdc_inputs_from_sem(
+        tau, prep_on, n_elig, risk_behavior, no_vs = build_cdc_inputs_from_sem(
             sem_traj=sem_traj,
             unit=self.units[unit_id],
             hivtest_idx=self._hivtest_idx,
@@ -158,6 +156,7 @@ class JointRunner:
             prep_on=prep_on,
             N_elig=n_elig,
             risk_behavior=risk_behavior,
+            no_vs=no_vs,
         )
         
         cdc_params = self.cdc_loader.load_point_estimates(unit_id)
@@ -209,8 +208,8 @@ class UncertaintyRunner:
     
     def __init__(
         self,
-        sem_loader: SEMParamsLoader,
-        cdc_params_loader: CDCParamsLoader,
+        sem_loader: Any,
+        cdc_params_loader: Any,
         units: dict[str, Unit],
         model_years: np.ndarray | None = None,
         state_intervention_codes: list[str] | None = None,
@@ -255,40 +254,35 @@ class UncertaintyRunner:
     def _build_sem_trajectory(self, unit_id: str, sem_idx: int) -> np.ndarray:
         sem_params = self.sem_loader.load_sample(sem_idx, unit_id)
         J = np.asarray(sem_params.J, dtype=float)
-
         unit = self.units[unit_id]
 
         y0 = np.asarray(unit.amis_values[:, 0], dtype=float)
-        x0 = self.transforms.logit(y0)
+        reference_probs = sem_params.reference_probs
+        predictor = Predictor(reference_probs=reference_probs)
+        ref_logits = predictor.reference_logits if predictor.reference_logits is not None else np.zeros(y0.size, dtype=float)
+        x0 = self.transforms.logit(y0) - ref_logits
 
-        u = np.zeros(J.shape[0], dtype=float)
+        u = np.zeros(J.shape[0], dtype=float) if sem_params.drift is None else np.asarray(sem_params.drift, dtype=float)
         n_steps = len(self._sem_years)
+        baseline_probs, _ = predictor.predict_trajectory(J, x0, u, n_steps)
 
         state_iv = build_state_interventions(
-            unit,
-            self._sem_years,
-            self._v_names,
+            unit, self._sem_years, self._v_names,
             codes=self.state_intervention_codes,
             duration_steps=self.intervention_duration_steps,
         )
-
         rel_iv = build_relationship_interventions(
-            unit,
-            self._sem_years,
-            self._v_names,
+            unit, self._sem_years, self._v_names,
             codes=self.relationship_intervention_codes,
             duration_steps=self.intervention_duration_steps,
         )
 
-        ypred, _ = self.predictor.predict_trajectory(
-            J,
-            x0,
-            u,
-            n_steps,
+        ypred, _ = predictor.predict_trajectory(
+            J, x0, u, n_steps,
             state_interventions=state_iv,
             rel_interventions=rel_iv,
+            baseline_probs=baseline_probs,
         )
-
         return ypred
     
     def predict_sample(
@@ -300,7 +294,7 @@ class UncertaintyRunner:
         """Single MC sample."""
         sem_traj = self._build_sem_trajectory(unit_id, sem_idx)
         sem_years = extend_years(self._sem_years, sem_traj.shape[1])
-        tau, prep_on, n_elig, risk_behavior = build_cdc_inputs_from_sem(
+        tau, prep_on, n_elig, risk_behavior, no_vs = build_cdc_inputs_from_sem(
             sem_traj=sem_traj,
             unit=self.units[unit_id],
             hivtest_idx=self._hivtest_idx,
@@ -316,6 +310,7 @@ class UncertaintyRunner:
             prep_on=prep_on,
             N_elig=n_elig,
             risk_behavior=risk_behavior,
+            no_vs=no_vs,
         )
         
         cdc_params = self.cdc_loader.load_sample(cdc_idx, unit_id)
@@ -393,7 +388,7 @@ class UncertaintyRunner:
 
 def run_joint(
     sem_output: RunOutput,
-    cdc_params_loader: CDCParamsLoader,
+    cdc_params_loader: Any,
     units: dict[str, Unit],
     unit_ids: list[str] | None = None,
     **kwargs,
@@ -404,8 +399,8 @@ def run_joint(
 
 
 def run_uncertainty(
-    sem_loader: SEMParamsLoader,
-    cdc_params_loader: CDCParamsLoader,
+    sem_loader: Any,
+    cdc_params_loader: Any,
     units: dict[str, Unit],
     unit_ids: list[str] | None = None,
     n_samples: int = 1000,

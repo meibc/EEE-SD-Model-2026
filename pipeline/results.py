@@ -24,6 +24,7 @@ class FitResult:
     J: np.ndarray
     Ybar: np.ndarray
     Xbar: np.ndarray
+    drift: np.ndarray | None = None
     loss_diagnostics: list[dict] | None = None
 
 
@@ -38,10 +39,10 @@ class FitResults:
 @dataclass
 class PredictionResult:
     unit_id: str
-    Ypred_rolling: np.ndarray      # (m, T+1) - one-step-ahead, Y space
-    Xpred_rolling: np.ndarray      # (m, T+1) - one-step-ahead, X space
-    Ypred_trajectory: np.ndarray   # (m, T+n_forecast) - recursive sim, Y space
-    Xpred_trajectory: np.ndarray   # (m, T+n_forecast) - recursive sim, X space
+    Ypred_rolling: np.ndarray
+    Xpred_rolling: np.ndarray
+    Ypred_trajectory: np.ndarray
+    Xpred_trajectory: np.ndarray
 
 
 @dataclass
@@ -59,6 +60,7 @@ class RunOutput:
     fit: FitResults
     predictions: PredictionResults | None
 
+
 @dataclass
 class CDCInputs:
     years: np.ndarray
@@ -66,6 +68,7 @@ class CDCInputs:
     prep_on: np.ndarray
     N_elig: np.ndarray
     risk_behavior: np.ndarray
+    no_vs: np.ndarray
 
 
 @dataclass
@@ -73,10 +76,10 @@ class CDCOutput:
     """Output from CDC model."""
     unit_id: str
     years: np.ndarray
-    prep_on_count: np.ndarray   # (T,) people on PrEP
-    incidence: np.ndarray       # (T,) new infections
-    diagnosed: np.ndarray       # (T,) newly diagnosed (flow)
-    undiagnosed: np.ndarray     # (T,) undiagnosed pool (stock)
+    prep_on_count: np.ndarray
+    incidence: np.ndarray
+    diagnosed: np.ndarray
+    undiagnosed: np.ndarray
 
 
 @dataclass
@@ -112,20 +115,15 @@ class UncertaintyResult:
     unit_id: str
     samples: list[UncertaintySample]
     years: np.ndarray
-    
+
     @property
     def n_samples(self) -> int:
         return len(self.samples)
-    
+
     def get_stack(self, var: str) -> np.ndarray:
-        """Stack CDC output: (S, T)"""
         return np.array([getattr(s.cdc_output, var) for s in self.samples])
-    
-    def get_quantiles(
-        self, 
-        var: str, 
-        q: tuple[float, ...] = (0.025, 0.5, 0.975),
-    ) -> dict[float, np.ndarray]:
+
+    def get_quantiles(self, var: str, q: tuple[float, ...] = (0.025, 0.5, 0.975)) -> dict[float, np.ndarray]:
         arr = self.get_stack(var)
         return {qi: np.quantile(arr, qi, axis=0) for qi in q}
 
@@ -161,4 +159,3 @@ class SimulationOutputs:
     """Top-level simulation containers."""
     deterministic: DeterministicScenarios
     uncertainty: UncertaintyScenarios
-    

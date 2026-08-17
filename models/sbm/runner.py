@@ -1,6 +1,5 @@
 import numpy as np
 
-from data.unit import Unit
 from models.sbm.estimation.jacobian import JacobianEstimator
 from models.sbm.estimation.shrinkage import ShrinkageCalculator
 from models.sbm.estimation.transforms import FeatureTransformer
@@ -30,26 +29,22 @@ class SBRunner:
         self.opt = opt_config
         self.shrink = shrink_config
 
+        self.reference_probs = self.base.reference_probs()
+        self.structural_prior_sign, self.structural_prior_mean, self.structural_prior_tau = self.base.structural_prior_arrays()
+        self.drift_enabled, self.drift_prior_mean, self.drift_prior_tau = self.base.drift_prior_arrays()
+
         self.estimator = JacobianEstimator(opt_config)
         self.shrink_calc = ShrinkageCalculator(shrink_config)
-        self.transformer = FeatureTransformer()
+        s elf.transformer = FeatureTransformer(reference_probs=self.reference_probs)
         self.data_prep = DataPrep(base_config)
-        self.predictor = Predictor()
+        self.predictor = Predictor(reference_probs=self.reference_probs)
 
     def run(
         self,
         fit: bool = True,
         predict: bool = False,
-        fit_results: FitResults = None,  # Pass in loaded results
+        fit_results: FitResults = None,
     ) -> RunOutput:
-        """
-        Run SB model.
-        
-        Args:
-            fit: If True, fit J matrices. If False, must provide fit_results.
-            predict: If True, run predictions after fitting.
-            fit_results: Pre-loaded fit results (required if fit=False).
-        """
         data = self.data_prep.prepare_inputs()
 
         if fit:
@@ -58,13 +53,12 @@ class SBRunner:
             raise ValueError("Must fit=True or provide fit_results")
 
         pred_results = self._predict_all(fit_results, data) if predict else None
-
         return RunOutput(fit=fit_results, predictions=pred_results, inputs=data)
 
     def _fit_all(self, data: PreparedData) -> FitResults:
         results = {}
         us_J, div_Js = None, {}
-        u = np.zeros(data.M.shape[0])  # No exogenous input for now
+        u = np.zeros(data.M.shape[0])
 
         for unit in data.units:
             Xbar, SigmaX = self.transformer.transform(unit.values, data.SigmaY)
@@ -77,32 +71,36 @@ class SBRunner:
                 u=u,
                 J_ref=J_ref,
                 wJ=wJ,
+                structural_prior_mean=self.structural_prior_mean,
+                structural_prior_tau=self.structural_prior_tau,
+                drift_enabled=self.drift_enabled,
+                drift_prior_mean=self.drift_prior_mean,
+                drift_prior_tau=self.drift_prior_tau,
             )
             fit_diag = self.estimator.last_fit_history
+            drift_seq = self.estimator.last_drift_sequence
+            drift_final = drift_seq[:, -1].copy() if drift_seq is not None else np.zeros(data.M.shape[0])
 
             results[unit.id] = FitResult(
                 unit_id=unit.id,
                 J=J_est,
                 Ybar=unit.values,
                 Xbar=Xbar,
+                drift=drift_final,
                 loss_diagnostics=fit_diag,
             )
-
             us_J, div_Js = self._update_hierarchy(unit, J_est, us_J, div_Js)
 
         return FitResults(results=results, ts=data.ts, v_names=data.v_names)
-    
+
     def _predict_all(self, fit_results: FitResults, data: PreparedData) -> PredictionResults:
         results = {}
-        u = np.zeros(data.M.shape[0])
         n_forecast = getattr(self.base, "n_forecast", 5)
         T = len(data.ts)
 
         for unit_id, fit in fit_results.results.items():
-            # Rolling one-step (in-sample): uses observed X at t-1
+            u = np.zeros(fit.J.shape[0]) if fit.drift is None else np.asarray(fit.drift, dtype=float)
             Ypred_rolling, Xpred_rolling = self.predictor.predict_rolling(fit.J, fit.Xbar, u)
-            
-            # Trajectory simulation from X0 using final J
             J_final = fit.J[:, :, -1]
             X0 = fit.Xbar[:, 0]
             n_total = T + n_forecast
@@ -119,12 +117,9 @@ class SBRunner:
         return PredictionResults(results=results, ts=data.ts, v_names=data.v_names)
 
     def _update_hierarchy(self, unit, J_est, us_J, div_Js):
-        # J_est is (m, m, T) — store last timestep for shrinkage
         J_final = J_est[:, :, -1]
-
         if unit.id in ("USA", "US"):
             us_J = J_final
         elif unit.kind == "division":
             div_Js[unit.census_div] = J_final
-        
         return us_J, div_Js

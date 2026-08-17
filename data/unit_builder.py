@@ -24,6 +24,15 @@ class UnitDataBuilder:
     def build_nation(self, ts_amis, v_names, ts_cdc=None) -> Unit:
         amis_values = self._extract_amis("USA", ts_amis, v_names)
         cdc_values, cdc_years, cdc_names = self._get_cdc("USA", ts_cdc)
+        cdc_summed = self._build_nation_summed_cdc(ts_cdc)
+        if cdc_summed is not None:
+            if cdc_values is None:
+                cdc_values = cdc_summed
+                cdc_years = np.asarray(ts_cdc)
+                cdc_names = self.cdc_names
+            else:
+                missing = ~np.isfinite(cdc_values)
+                cdc_values = np.where(missing, cdc_summed, cdc_values)
         
         return Unit(
             id="USA",
@@ -187,5 +196,29 @@ class UnitDataBuilder:
         
         stacked = np.stack(state_arrays, axis=0)  # (n_states, m, T)
         return np.nansum(stacked, axis=0)          # (m, T)
+
+    def _build_nation_summed_cdc(self, ts) -> np.ndarray | None:
+        """Sum CDC counts across all state rows.
+
+        The Factor Analysis v5 CDC sheet has national rows for some indicators
+        but not all connector count variables, e.g. PrEP Eligible. For national
+        scenario runs, fill missing national CDC connector values from state
+        sums rather than propagating NaNs.
+        """
+        if self.tbl_cdc is None or ts is None:
+            return None
+
+        states = self.tbl_states["state_calc"].astype(str).tolist()
+        state_arrays = []
+        for state in states:
+            arr = self._extract_cdc(state, ts)
+            if arr is not None:
+                state_arrays.append(arr)
+
+        if not state_arrays:
+            return None
+
+        stacked = np.stack(state_arrays, axis=0)
+        return np.nansum(stacked, axis=0)
 
   

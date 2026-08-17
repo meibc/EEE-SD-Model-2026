@@ -1,112 +1,45 @@
 # EEE-SD-Model-2026
 
-SEM + CDC joint modeling pipeline with deterministic and uncertainty runs, optional interventions, and plotting.
+Staged SEM + epidemiologic scenario workflow for the centered-logit drift SEM model and dashboard-ready standardized input export.
 
-## Project Layout
+## Current staged workflow
 
-- `main.py`: thin entrypoint that calls pipeline runner.
-- `pipeline/pipeline.py`: run orchestration and mode branching.
-- `config/`: model and optimization config dataclasses.
-- `data/`: data loaders, unit builders, SEM/CDC parameter loaders.
-- `models/sbm/`: SEM estimation and prediction.
-- `models/epi/`: CDC/EPI prediction.
-- `pipeline/joint_simulation.py`: SEM -> CDC deterministic + uncertainty connectors.
-- `visualization/plotter.py`: plotting helpers.
-- `output/`: saved run artifacts.
-
-## Requirements
-
-- Python 3.9+ (you are currently using `.venv313`, which is fine).
-- Install dependencies:
+Run stages explicitly. Stage 02 and Stage 05 are long/optional and should only be rerun when their inputs or model assumptions change.
 
 ```bash
-pip install -r requirements.txt
+python scripts/01_generate_sem_input_draws.py
+python scripts/02_fit_sem_draws.py
+python scripts/03_export_dashboard_standardized_v8.py
+python scripts/04_run_sem_scenarios.py
+python scripts/05_fit_hierarchical_epi_model.py
 ```
 
-## Data Files Expected At Repo Root
-
-- `Factor Analysis Final.xlsx`
-- `cdc_posteriors.nc`
-- `trans_results.npz`
-- `sem_mc_samples_v2.npz` (or `sem_mc_results.npz` if you switch `sem_params_path`)
-
-## Run
-
-Default run:
+Recommended routine use after `output/standardized_input_v8.npz` already exists:
 
 ```bash
-python main.py
+python scripts/04_run_sem_scenarios.py
 ```
 
-This uses `RunConfig` defaults defined in `config/run.py`.
+## Stage responsibilities
 
-## Common Run Modes (via `RunConfig` in `config/run.py`)
+- `01_generate_sem_input_draws.py`: builds SEM Monte Carlo input draws.
+- `02_fit_sem_draws.py`: fits SEM `J` and drift draws. This is optional/cached once `output/sem_fits_centered_drift_v5.npz` exists.
+- `03_export_dashboard_standardized_v8.py`: merges the Stage 02 SEM fit into a dashboard-ready standardized NPZ.
+- `04_run_sem_scenarios.py`: runs scenarios from `output/standardized_input_v8.npz`; does not refit SEM.
+- `05_fit_hierarchical_epi_model.py`: optional long-running PyMC hierarchical epidemiologic calibration. Do not run casually.
 
-- Deterministic only:
-  - `execution_mode="run"`
-  - `joint_mode="deterministic"`
+## Key artifacts
 
-- Uncertainty only:
-  - `execution_mode="run"`
-  - `joint_mode="uncertainty"`
+- `output/sem_fits_centered_drift_v5.npz`: internal Stage 02 SEM fit artifact.
+- `output/standardized_input_v8.npz`: canonical dashboard/runtime artifact containing CDC parameters plus SEM `J`, drift, and reference probabilities.
+- `output/sem_scenarios_centered_drift_v5/`: scenario endpoint summaries.
 
-- Baseline only:
-  - `scenario_mode="baseline"`
+## Configuration
 
-- Intervention only:
-  - `scenario_mode="intervention"`
-  - set one or both:
-    - `state_intervention_codes`
-    - `relationship_intervention_codes`
+- `config/sem_variable_config_v3.csv`: SEM variable reference probabilities and drift priors.
+- `config/sem_structural_priors_v3.csv`: SEM structural sign constraints and soft prior settings.
+- `config/interventions.py`: scenario/intervention codebook.
 
-- Baseline vs intervention comparison:
-  - `scenario_mode="compare"`
-  - set one or both:
-    - `state_intervention_codes`
-    - `relationship_intervention_codes`
+## Runtime loaders
 
-- Plot-only (reuse saved outputs):
-  - `execution_mode="plot_only"`
-
-## Intervention Controls
-
-Configured in `RunConfig` (`config/run.py`):
-
-- `execution_mode: "run" | "plot_only"`
-- `sem_fit_mode: "fit_and_save" | "fit_no_save" | "load"`
-- `joint_mode: "none" | "deterministic" | "uncertainty"`
-- `scenario_mode: "baseline" | "intervention" | "compare"`
-- `state_intervention_codes: list[str]`
-- `relationship_intervention_codes: list[str]`
-- `intervention_duration_steps: int`
-
-Intervention definitions live in:
-
-- `models/shared/intervention.py`
-
-## Outputs
-
-Saved under `output/`:
-
-- `output.pkl` (SEM output object)
-- `joint_output.pkl` (single deterministic run)
-- `joint_baseline.pkl`, `joint_intervention.pkl` (deterministic comparison)
-- `uncertainty_output.pkl` (single uncertainty run)
-- `uncertainty_baseline.pkl`, `uncertainty_intervention.pkl` (uncertainty comparison)
-- `unified_outputs.csv` (if export enabled)
-
-## Plotting
-
-Controlled by:
-
-- `show_state_plots`
-- `show_sem_j_violin_plots`
-- `states_to_plot`
-- `n_states_to_plot`
-
-Plots are shown interactively (not automatically saved).
-
-## Notes
-
-- If you change SEM constraints (for example sign matrix), refit/regenerate SEM artifacts before expecting changed `J` plots.
-- If plots do not appear, check your matplotlib backend in your IDE/terminal.
+The active scenario workflow reads SEM and CDC parameters from `standardized_input_v8.npz` via `input/standardized_runtime.py`. The old monolithic pipeline and legacy CDC/SEM parameter loaders have been retired.

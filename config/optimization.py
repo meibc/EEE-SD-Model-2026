@@ -23,3 +23,6 @@ class OptimConfig:
     normalize_r_by_counts: bool = False
     normalize_components_by_baseline: bool = False
     norm_eps: float = 1e-8
+
+    # Bound optimized selected drift terms in centered-logit units per SEM step.
+    drift_bounds: float = 1.5

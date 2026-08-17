@@ -1,11 +1,10 @@
+from __future__ import annotations
+
 # models/shared/alignment.py
 """Year alignment utilities."""
 
 import numpy as np
 from scipy.interpolate import interp1d
-
-from models.shared.transforms import hazard_proxy
-
 
 def align_to_years(
     years_src: np.ndarray,
@@ -100,8 +99,14 @@ def build_cdc_inputs_from_sem(
     sem_years: np.ndarray,
     model_years: np.ndarray,
     n_elig_var: str,
-) -> tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray]:
-    """Build aligned CDC input series (tau, prep_on, N_elig, risk_behavior) from SEM trajectory."""
+    prevalence_var: str = "Estimated HIV prevalence (MSM)",
+    viral_suppression_var: str = "HIV viral suppression",
+) -> tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray, np.ndarray]:
+    """Build aligned CDC inputs from SEM trajectory and raw CDC stocks.
+
+    The returned field is still named tau for compatibility, but v7 uses direct
+    hivtest12 / p_test rather than the old hazard-transformed proxy.
+    """
     hivtest = sem_traj[hivtest_idx, :]
     prep_on = sem_traj[prep_idx, :]
     risk_behavior = sem_traj[risk_idx, :]
@@ -109,10 +114,16 @@ def build_cdc_inputs_from_sem(
     hivtest = align_to_years(sem_years, hivtest, model_years)
     prep_on = align_to_years(sem_years, prep_on, model_years)
     risk_behavior = align_to_years(sem_years, risk_behavior, model_years)
-    tau = hazard_proxy(hivtest)
+    tau = np.clip(hivtest, 1e-6, 1 - 1e-6)
 
-    n_elig = unit.get_cdc(n_elig_var)
+    n_elig = np.asarray(unit.get_cdc(n_elig_var), dtype=float)
     if len(n_elig) != len(model_years):
         n_elig = align_to_years(unit.cdc_years, n_elig, model_years)
 
-    return tau, prep_on, n_elig, risk_behavior
+    prevalence = np.asarray(unit.get_cdc(prevalence_var), dtype=float)
+    viral_suppression = np.asarray(unit.get_cdc(viral_suppression_var), dtype=float)
+    no_vs = np.maximum(0.0, prevalence - viral_suppression)
+    if len(no_vs) != len(model_years):
+        no_vs = align_to_years(unit.cdc_years, no_vs, model_years)
+
+    return tau, prep_on, n_elig, risk_behavior, no_vs

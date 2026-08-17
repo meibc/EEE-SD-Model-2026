@@ -1,0 +1,9 @@
+variable,reference_prob,reference_type,drift_enabled,drift_prior_mean,drift_prior_tau,reference_note,drift_note
+hivtest12,0.4,low_empirical_reference,0,0.0,,Low observed HIV testing reference; most observed values are above this.,No primary exogenous drift.
+out_gid,0.5,low_empirical_reference,0,0.0,,Low observed disclosure/outness reference; most observed values are above this.,No primary exogenous drift; intended to be explained endogenously.
+prep_used,0.1,low_empirical_reference,1,0.468,0.35,Low PrEP use reference; avoids near-floor 0.05 while making most observed PrEP above reference.,Selected drift; centered-logit mean interval delta observed 2018-2024.
+risk_behavior,0.1,low_empirical_reference,1,0.258,0.35,Low observed risk behavior reference; keeps risk as exposure/need above a low baseline.,Selected drift; centered-logit mean interval delta observed 2018-2024.
+seehcp,0.7,low_empirical_reference,0,0.0,,Low observed healthcare engagement reference; most observed values are above this.,No primary exogenous drift.
+stigma_ahs,0.1,low_reference,0,0.0,,Low/minimal anticipated healthcare stigma reference; values above this are excess AHS.,No primary exogenous drift; intended to be explained endogenously.
+stigma_family,0.1,low_reference,0,0.0,,Low/minimal family stigma reference; values above this are excess family stigma.,No primary exogenous drift.
+stigma_gss,0.1,low_reference,0,0.0,,Low/minimal general social stigma reference; values above this are excess GSS.,No primary exogenous drift; candidate for sensitivity model.

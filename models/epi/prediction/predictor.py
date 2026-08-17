@@ -3,7 +3,7 @@
 
 import numpy as np
 from pipeline.results import CDCInputs, CDCOutput
-from data.params_cdc import CDCParams
+from models.epi.params import CDCParams
 
 
 class CDCPredictor:
@@ -17,23 +17,20 @@ class CDCPredictor:
         p = self.params
         T = len(inputs.years)
         
-        # PrEP populations (bounded)
-        effective_prep_cov = np.minimum(p.kappa_prep * inputs.prep_on, 0.99)
-        prep_on_count = effective_prep_cov * inputs.N_elig
-        prep_off_count = np.maximum(0, inputs.N_elig - prep_on_count)
-        
-        # Risk behavior ratio
-        rb = np.asarray(inputs.risk_behavior, dtype=float)
-        # Guard against invalid values from alignment/extrapolation.
-        rb = np.clip(rb, 1e-6, None)
-        rb_baseline = rb[0]
-        rb_ratio = rb / rb_baseline
-        # Optional cap to limit extreme tail inflation in Monte Carlo.
-        rb_ratio = np.clip(rb_ratio, 1e-3, 50.0)
-        
-        # Incidence with risk behavior
-        incidence = p.beta * prep_off_count * np.power(rb_ratio, p.alpha)
-        delta = 1 - np.exp(-p.kdx * inputs.tau)
+        # Standardized v7 incidence equation.
+        # Inc_t = beta_s * no_vs_{s,t} * (1 - kappa_prep_s * prep_t)
+        #         * (risk_t / risk0_s) ** alpha
+        prep_on_count = p.kappa_prep * inputs.prep_on * inputs.N_elig
+        prep_off_prop = np.clip(1.0 - inputs.prep_on, 1e-6, 1.0)
+
+        rb = np.clip(np.asarray(inputs.risk_behavior, dtype=float), 1e-6, None)
+        rb_ratio = np.clip(rb / max(float(p.risk0), 0.05), 0.5, 3.0)
+
+        incidence = p.beta * inputs.no_vs * prep_off_prop * np.power(rb_ratio, p.alpha)
+
+        post_indicator = (np.asarray(inputs.years, dtype=int) >= 2021).astype(float)
+        diagnosis_multiplier = 1.0 + post_indicator * (float(p.post_multiplier) - 1.0)
+        delta = 1 - np.exp(-p.kdx * inputs.tau * diagnosis_multiplier)
         
         # Initialize
         undiagnosed = np.zeros(T)
