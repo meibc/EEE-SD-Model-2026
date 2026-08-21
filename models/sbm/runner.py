@@ -35,7 +35,7 @@ class SBRunner:
 
         self.estimator = JacobianEstimator(opt_config)
         self.shrink_calc = ShrinkageCalculator(shrink_config)
-        s elf.transformer = FeatureTransformer(reference_probs=self.reference_probs)
+        self.transformer = FeatureTransformer(reference_probs=self.reference_probs)
         self.data_prep = DataPrep(base_config)
         self.predictor = Predictor(reference_probs=self.reference_probs)
 

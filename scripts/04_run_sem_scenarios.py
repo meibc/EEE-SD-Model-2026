@@ -23,8 +23,8 @@ def main() -> None:
     parser.add_argument(
         "--intervention-duration-steps",
         type=int,
-        default=5,
-        help="Number of 2-year SEM steps over which interventions ramp to full strength; 5 = 10 years.",
+        default=3,
+        help="Number of 2-year SEM steps over which interventions ramp to full strength; 3 = 6 years.",
     )
     parser.add_argument("--scenario", dest="scenarios", action="append", choices=sorted(SCENARIO_CODEBOOK), help="Scenario code to run; repeatable. Default runs all.")
     parser.add_argument("--show-progress", action="store_true")

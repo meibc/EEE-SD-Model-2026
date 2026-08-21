@@ -9,6 +9,28 @@ from config.optimization import OptimConfig
 from .loss import joint_loss, rebuild_from_theta
 from .constraints import get_bounds
 
+class CachedLossFunction:
+    """Cache loss/gradient evaluations at the same optimizer point."""
+
+    def __init__(self, loss_fn):
+        self._loss_fn = loss_fn
+        self._cache_key: bytes | None = None
+        self._cache_value = None
+
+    def __call__(self, theta: np.ndarray):
+        key = np.asarray(theta, dtype=float).tobytes()
+        if key != self._cache_key:
+            self._cache_key = key
+            self._cache_value = self._loss_fn(theta)
+        return self._cache_value
+
+    def loss(self, theta: np.ndarray) -> float:
+        return self(theta)[0]
+
+    def grad(self, theta: np.ndarray) -> np.ndarray:
+        return self(theta)[1]
+
+
 
 class JacobianEstimator:
     """Estimates J matrices and optional selected drift vector c."""
@@ -120,6 +142,9 @@ class JacobianEstimator:
             theta0, Xbar, SigmaX, Sigma_eta,
             self.opt.wR, self.opt.wX, u, M,
             J_ref, wJ_use,
+            w_stab=self.opt.w_stab,
+            eps=self.opt.stability_eps,
+            stability_fd_eps=self.opt.stability_fd_eps,
             x_weights=x_weights,
             normalize_x_by_counts=self.opt.normalize_x_by_counts,
             normalize_r_by_counts=self.opt.normalize_r_by_counts,
@@ -150,6 +175,9 @@ class JacobianEstimator:
                 theta_free, Xbar, SigmaX, Sigma_eta,
                 self.opt.wR, self.opt.wX, u, M,
                 J_ref, wJ_use,
+                w_stab=self.opt.w_stab,
+                eps=self.opt.stability_eps,
+                stability_fd_eps=self.opt.stability_fd_eps,
                 x_weights=x_weights,
                 normalize_x_by_counts=self.opt.normalize_x_by_counts,
                 normalize_r_by_counts=self.opt.normalize_r_by_counts,
@@ -164,7 +192,7 @@ class JacobianEstimator:
             )
 
         def callback(xk):
-            Lk, _, ck = loss_fn(xk)
+            Lk, _, ck = cached_loss(xk)
             row = dict(ck)
             row["iter"] = float(len(history))
             row["L_total_callback"] = float(Lk)
@@ -175,18 +203,24 @@ class JacobianEstimator:
         drift_bound = float(getattr(self.opt, "drift_bounds", 1.5))
         bounds.extend([(-drift_bound, drift_bound)] * int(drift_enabled_use.sum()))
 
+        cached_loss = CachedLossFunction(loss_fn)
         result = minimize(
-            lambda x: loss_fn(x)[0],
+            cached_loss.loss,
             theta0,
             method="L-BFGS-B",
-            jac=lambda x: loss_fn(x)[1],
+            jac=cached_loss.grad,
             bounds=bounds,
             callback=callback,
-            options={"maxiter": 500, "ftol": 1e-9, "gtol": 1e-6, "maxls": 50},
+            options={
+                "maxiter": self.opt.maxiter,
+                "ftol": self.opt.ftol,
+                "gtol": self.opt.gtol,
+                "maxls": self.opt.maxls,
+            },
         )
 
         J_est, c_est = rebuild_from_theta(result.x, M, u, drift_enabled_use)
-        final_loss, _, final_components = loss_fn(result.x)
+        final_loss, _, final_components = cached_loss(result.x)
         diagnostics = {
             "success": bool(result.success),
             "status": int(result.status),

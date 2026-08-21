@@ -16,6 +16,7 @@ def joint_loss(
     wJ: float = 0.0,
     w_stab: float = 10.0,
     eps: float = 1e-3,
+    stability_fd_eps: float = 1e-7,
     x_weights: np.ndarray | None = None,
     normalize_x_by_counts: bool = True,
     normalize_r_by_counts: bool = True,
@@ -44,7 +45,7 @@ def joint_loss(
     LJ, gradJ = _shrinkage_loss(J, J_ref)
     L_prior_J, grad_prior_J = _structural_prior_loss(J, structural_prior_mean, structural_prior_tau, M)
     L_prior_c, grad_prior_c = _drift_prior_loss(c_free, drift_enabled, drift_prior_mean, drift_prior_tau)
-    L_stab, grad_stab = _stability_penalty(J, w_stab, eps)
+    L_stab, grad_stab = _stability_penalty(J, w_stab, eps, stability_fd_eps)
 
     scales = component_scales or {}
     sX = float(scales.get("LX", 1.0))
@@ -219,11 +220,81 @@ def _drift_prior_loss(
     return loss, grad
 
 
-def _stability_penalty(J: np.ndarray, w_stab: float, eps: float) -> tuple[float, np.ndarray]:
-    eigvals = np.linalg.eigvals(J)
-    rho = np.max(np.real(eigvals))
-    if rho > 1 - eps:
-        penalty = w_stab * (rho - (1 - eps)) ** 2
-        grad = 2 * w_stab * (rho - (1 - eps)) * np.eye(J.shape[0])
-        return float(penalty), grad
-    return 0.0, np.zeros_like(J)
+def _stability_penalty(
+    J: np.ndarray,
+    w_stab: float,
+    eps: float,
+    fd_eps: float = 1e-7,
+) -> tuple[float, np.ndarray]:
+    """Penalize discrete-time instability using the spectral radius.
+
+    The stability criterion for the SEM transition matrix is max(abs(lambda)) < 1.
+    The gradient uses the analytic left/right eigenvector derivative for the
+    dominant eigenvalue, with finite-difference fallback when the dominant mode
+    is nearly tied or poorly conditioned.
+    """
+    eigvals, right_vecs = np.linalg.eig(J)
+    abs_vals = np.abs(eigvals)
+    dom_idx = int(np.argmax(abs_vals))
+    rho = float(abs_vals[dom_idx])
+    threshold = 1.0 - float(eps)
+    if rho <= threshold:
+        return 0.0, np.zeros_like(J)
+
+    excess = rho - threshold
+    penalty = float(w_stab) * excess**2
+    d_rho = _spectral_radius_gradient_analytic(J, eigvals, right_vecs, dom_idx, fd_eps)
+    grad = 2.0 * float(w_stab) * excess * d_rho
+    return penalty, grad
+
+
+def _spectral_radius_gradient_analytic(
+    J: np.ndarray,
+    eigvals: np.ndarray,
+    right_vecs: np.ndarray,
+    dom_idx: int,
+    fd_eps: float = 1e-7,
+) -> np.ndarray:
+    """Gradient of max(abs(lambda)) with fallback for degenerate spectra."""
+    lam = eigvals[dom_idx]
+    rho = float(abs(lam))
+    if rho <= 0:
+        return _spectral_radius_gradient_fd(J, fd_eps)
+
+    abs_vals = np.abs(eigvals)
+    if abs_vals.size > 1:
+        ordered = np.sort(abs_vals)
+        gap = float(ordered[-1] - ordered[-2])
+        # Near ties make the spectral-radius subgradient non-unique.
+        if gap < 1e-6:
+            return _spectral_radius_gradient_fd(J, fd_eps)
+
+    left_vals, left_vecs = np.linalg.eig(J.T)
+    left_idx = int(np.argmin(np.abs(left_vals - lam)))
+    v = right_vecs[:, dom_idx]
+    w = left_vecs[:, left_idx]
+    denom = np.vdot(w, v)  # conjugate(w) dot v
+    if abs(denom) < 1e-10 or not np.isfinite(denom):
+        return _spectral_radius_gradient_fd(J, fd_eps)
+
+    # For real perturbations dJ, d lambda = conjugate(w)^T dJ v / conjugate(w)^T v.
+    # d |lambda| = Re(conjugate(lambda) / |lambda| * d lambda).
+    grad_lam = np.outer(np.conjugate(w), v) / denom
+    grad_rho = np.real((np.conjugate(lam) / rho) * grad_lam)
+    if not np.all(np.isfinite(grad_rho)):
+        return _spectral_radius_gradient_fd(J, fd_eps)
+    return grad_rho.astype(float, copy=False)
+
+
+def _spectral_radius_gradient_fd(J: np.ndarray, fd_eps: float = 1e-7) -> np.ndarray:
+    """Finite-difference fallback for spectral-radius gradient."""
+    rho = float(np.max(np.abs(np.linalg.eigvals(J))))
+    grad = np.zeros_like(J, dtype=float)
+    h = float(fd_eps) if fd_eps > 0 else 1e-7
+    for i in range(J.shape[0]):
+        for j in range(J.shape[1]):
+            J_perturb = J.copy()
+            J_perturb[i, j] += h
+            rho_perturb = float(np.max(np.abs(np.linalg.eigvals(J_perturb))))
+            grad[i, j] = (rho_perturb - rho) / h
+    return grad

@@ -30,7 +30,7 @@ class SEMScenarioRunConfig:
     n_samples: int = 500
     seed: int = 123
     target_end_year: int = 2036
-    intervention_duration_steps: int = 5
+    intervention_duration_steps: int = 3
     show_progress: bool = False
     save_outputs_pickle: bool = False
 

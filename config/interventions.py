@@ -57,6 +57,27 @@ REL_CODEBOOK = {
         "effect": "multiplicative",
         "label": "Strengthen healthcare -> HIV testing linkage by 50%",
     },
+    "weaken_ahs_to_hivtest": {
+        "from": "stigma_ahs",
+        "to": "hivtest12",
+        "delta": 0.5,
+        "effect": "attenuate",
+        "label": "Weaken AHS -> HIV testing pathway by 50%",
+    },
+    "strengthen_seehcp_to_lower_ahs": {
+        "from": "seehcp",
+        "to": "stigma_ahs",
+        "delta": 0.5,
+        "effect": "multiplicative",
+        "label": "Strengthen healthcare -> lower AHS pathway by 50%",
+    },
+    "weaken_outness_to_ahs_feedback": {
+        "from": "out_gid",
+        "to": "stigma_ahs",
+        "delta": 0.5,
+        "effect": "attenuate",
+        "label": "Weaken outness -> AHS stigma feedback by 50%",
+    },
 }
 
 SCENARIO_CODEBOOK = {
@@ -108,5 +129,20 @@ SCENARIO_CODEBOOK = {
             "strengthen_outness_to_hivtest",
         ],
         "label": "Disclosure-enabled prevention package",
+    },
+    "weaken_ahs_to_hivtest_50pct": {
+        "state_codes": [],
+        "relationship_codes": ["weaken_ahs_to_hivtest"],
+        "label": "Weaken AHS -> HIV testing pathway by 50%",
+    },
+    "strengthen_seehcp_to_lower_ahs_50pct": {
+        "state_codes": [],
+        "relationship_codes": ["strengthen_seehcp_to_lower_ahs"],
+        "label": "Strengthen healthcare -> lower AHS pathway by 50%",
+    },
+    "weaken_outness_to_ahs_feedback_50pct": {
+        "state_codes": [],
+        "relationship_codes": ["weaken_outness_to_ahs_feedback"],
+        "label": "Weaken outness -> AHS stigma feedback by 50%",
     },
 }

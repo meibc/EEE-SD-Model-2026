@@ -26,3 +26,14 @@ class OptimConfig:
 
     # Bound optimized selected drift terms in centered-logit units per SEM step.
     drift_bounds: float = 1.5
+
+    # Stability penalty for the discrete-time SEM transition matrix.
+    w_stab: float = 10.0
+    stability_eps: float = 1e-3
+    stability_fd_eps: float = 1e-7
+
+    # L-BFGS-B optimizer settings.
+    maxiter: int = 500
+    ftol: float = 1e-9
+    gtol: float = 1e-6
+    maxls: int = 50
