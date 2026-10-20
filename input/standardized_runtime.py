@@ -39,6 +39,11 @@ class StandardizedBundle:
         return np.asarray(self._load()["sem_obs_years"], dtype=int)
 
     @property
+    def sem_obs(self) -> np.ndarray:
+        """Observed probability-scale SEM trajectories by geography."""
+        return np.asarray(self._load()["sem_obs"], dtype=float)
+
+    @property
     def sem_pred_years(self) -> np.ndarray:
         return np.asarray(self._load()["sem_pred_years"], dtype=int)
 
@@ -49,6 +54,11 @@ class StandardizedBundle:
     @property
     def cdc_raw_names(self) -> list[str]:
         return list(np.asarray(self._load()["cdc_raw_names"]).astype(str).tolist())
+
+    @property
+    def cdc_raw(self) -> np.ndarray:
+        """CDC inputs aligned to the model-year grid."""
+        return np.asarray(self._load()["cdc_raw"], dtype=float)
 
     @property
     def cdc_native_years(self) -> np.ndarray:

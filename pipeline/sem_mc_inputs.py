@@ -43,6 +43,8 @@ class SEMInputDrawConfig:
     seed: int = 123
     value_source: str = "factor_analysis"
     eps: float = 1e-6
+    smooth_draws: bool = False
+    smooth_strength: float = 0.5
 
 
 def require_columns(df: pd.DataFrame, required: set[str], label: str) -> None:
@@ -91,6 +93,37 @@ def build_beta_input_table(summary_path: Path, data_path: Path, value_source: st
     df["beta"] = (1.0 - df["p_use"]) * df["n_eff"] + 1.0
     return df
 
+
+
+def smooth_probability_draw(X: np.ndarray, strength: float, eps: float) -> np.ndarray:
+    """Lightly smooth sampled probability trajectories after Beta sampling.
+
+    This preserves the observed point estimates used to define the Beta draws;
+    only the sampled trajectory realization is smoothed. The operation is a
+    convex blend between the sampled trajectory and a simple local temporal
+    average, so strength=0 returns the original draw and strength=1 returns the
+    fully smoothed local average. With four two-year time points, this avoids
+    adding heavier smoothing dependencies or fitting a separate trend model.
+    """
+    strength = float(strength)
+    if strength <= 0:
+        return np.clip(np.asarray(X, dtype=float), eps, 1 - eps)
+    if strength > 1:
+        raise ValueError("smooth_strength must be between 0 and 1")
+
+    X = np.asarray(X, dtype=float)
+    smooth = X.copy()
+    T = X.shape[1]
+    if T <= 1:
+        return np.clip(X, eps, 1 - eps)
+
+    smooth[:, 0, :] = 0.75 * X[:, 0, :] + 0.25 * X[:, 1, :]
+    smooth[:, T - 1, :] = 0.75 * X[:, T - 1, :] + 0.25 * X[:, T - 2, :]
+    for t in range(1, T - 1):
+        smooth[:, t, :] = 0.25 * X[:, t - 1, :] + 0.50 * X[:, t, :] + 0.25 * X[:, t + 1, :]
+
+    blended = (1.0 - strength) * X + strength * smooth
+    return np.clip(blended, eps, 1 - eps)
 
 def fill_divisions_and_missing_states(
     X: np.ndarray,
@@ -203,6 +236,8 @@ def generate_sem_input_draws(config: SEMInputDrawConfig) -> Path:
             draw = rng.beta(row.alpha, row.beta)
             X[row.v_idx, row.t_idx, row.g_idx] = np.clip(draw, config.eps, 1 - config.eps)
         X = fill_divisions_and_missing_states(X, unit_order, v_names, tbl_states, config.eps)
+        if config.smooth_draws:
+            X = smooth_probability_draw(X, config.smooth_strength, config.eps)
         Xbars_samples[sample_idx] = X
 
     config.output_path.parent.mkdir(parents=True, exist_ok=True)
@@ -215,6 +250,8 @@ def generate_sem_input_draws(config: SEMInputDrawConfig) -> Path:
         seed=np.array(config.seed),
         S=np.array(config.n_draws),
         value_source=np.array(config.value_source),
+        smooth_draws=np.array(config.smooth_draws),
+        smooth_strength=np.array(config.smooth_strength),
         summary_path=str(config.summary_path),
         data_path=str(config.data_path),
         artifact_type=np.array("sem_input_draws"),
@@ -223,12 +260,12 @@ def generate_sem_input_draws(config: SEMInputDrawConfig) -> Path:
     audit = pd.DataFrame({
         "metric": [
             "n_draws", "n_variables", "n_years", "n_units", "rows_used",
-            "min_value", "max_value", "finite",
+            "min_value", "max_value", "finite", "smooth_draws", "smooth_strength",
         ],
         "value": [
             config.n_draws, m, T, G, len(beta_df),
             float(np.nanmin(Xbars_samples)), float(np.nanmax(Xbars_samples)),
-            bool(np.isfinite(Xbars_samples).all()),
+            bool(np.isfinite(Xbars_samples).all()), config.smooth_draws, config.smooth_strength,
         ],
     })
     audit.to_csv(config.output_path.with_suffix(".audit.csv"), index=False)

@@ -33,3 +33,30 @@ output/
 # *.pkl
 # *.npz
 # *.nc
+
+# Local generated files
+__pycache__/
+*.py[cod]
+.DS_Store
+.Rhistory
+.RData
+.Rproj.user/
+logs/
+*.log
+.venv*/
+node_modules/
+~$*
+/*.npz
+/*.nc
+
+# Research artifacts remain local; source/configuration stays reviewable.
+/work/
+/outputs/
+*.npz
+*.nc
+*.pkl
+*.csv.gz
+*.rds
+*.RData
+*.inspect.ndjson
+/plots/

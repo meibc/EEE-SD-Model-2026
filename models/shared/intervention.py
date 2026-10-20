@@ -70,7 +70,17 @@ class StateIntervention:
 class RelationshipIntervention:
     """Time-varying intervention on one J matrix entry."""
 
-    def __init__(self, i: int, j: int, start_t: int, end_t: int, delta: float, mode: str = "linear", effect: str = "additive"):
+    def __init__(
+        self,
+        i: int,
+        j: int,
+        start_t: int,
+        end_t: int,
+        delta: float,
+        mode: str = "linear",
+        effect: str = "additive",
+        target=None,
+    ):
         self.i = i
         self.j = j
         self.start_t = start_t
@@ -78,6 +88,7 @@ class RelationshipIntervention:
         self.delta = float(delta)
         self.mode = mode
         self.effect = effect
+        self.target = None if target is None else float(target)
 
     def _scale(self, t):
         if t < self.start_t:
@@ -92,6 +103,16 @@ class RelationshipIntervention:
         if self.effect == "attenuate":
             attenuation = np.clip(self.delta * scale, 0.0, 1.0)
             J_new[self.i, self.j] = J_base[self.i, self.j] * (1 - attenuation)
+        elif self.effect == "attenuate_positive":
+            attenuation = np.clip(self.delta * scale, 0.0, 1.0)
+            current = J_base[self.i, self.j]
+            J_new[self.i, self.j] = current * (1 - attenuation) if current > 0 else current
+        elif self.effect == "positive_to_target":
+            if self.target is None:
+                raise ValueError("positive_to_target requires target")
+            move = np.clip(self.delta * scale, 0.0, 1.0)
+            current = J_base[self.i, self.j]
+            J_new[self.i, self.j] = (1 - move) * current + move * self.target if current > 0 else current
         elif self.effect == "multiplicative":
             J_new[self.i, self.j] = J_base[self.i, self.j] * (1 + self.delta * scale)
         elif self.effect == "additive":
@@ -153,6 +174,7 @@ def build_relationship_interventions(unit, sem_years, v_names, codes, duration_s
                 delta=spec["delta"],
                 mode=spec.get("mode", "linear"),
                 effect=spec.get("effect", "additive"),
+                target=spec.get("target"),
             )
         )
     return interventions

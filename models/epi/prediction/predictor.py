@@ -7,7 +7,7 @@ from models.epi.params import CDCParams
 
 
 class CDCPredictor:
-    """Deterministic CDC epi model."""
+    """Discrete-time dynamic HIV incidence and diagnosis model."""
     
     def __init__(self, params: CDCParams):
         self.params = params

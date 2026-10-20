@@ -16,6 +16,7 @@ import numpy as np
 import pandas as pd
 
 from input.standardized_runtime import StandardizedBundle
+from models.shared.alignment import align_to_years
 
 
 STATE_ABBRS = [
@@ -49,7 +50,7 @@ class HierarchicalEpiFitConfig:
 
     standardized_input_path: Path = Path("/Users/meibinchen/Documents/GitHub/EEE-Model-Dashboard-Integration/standardized_input_v7.npz")
     data_path: Path = Path("/Users/meibinchen/Documents/GitHub/EEE/Factor Analysis v5.xlsx")
-    output_dir: Path = Path("output/hierarchical_epi_fit_v6")
+    output_dir: Path = Path("output/hierarchical_epi_fit_v7d")
     output_nc_path: Path | None = None
     model_scope: str = "all_states"
     run_mode: str = "quick"
@@ -57,17 +58,16 @@ class HierarchicalEpiFitConfig:
     states: list[str] = field(default_factory=lambda: ["CA", "TX", "NY", "MA", "MS"])
     pre_years: tuple[int, ...] = (2017, 2018, 2019)
     post_years: tuple[int, ...] = (2021, 2022)
-    p_test_2020_overrides: dict[str, float] = field(default_factory=lambda: {"TX": 0.48})
     random_seed: int = 42
     quick_draws: int = 100
     quick_tune: int = 300
     quick_chains: int = 2
     quick_cores: int = 2
-    full_draws: int = 1000
+    full_draws: int = 500
     full_tune: int = 1000
     full_chains: int = 4
     full_cores: int = 4
-    target_accept: float = 0.95
+    target_accept: float = 0.99
 
 
 @dataclass(frozen=True)
@@ -94,7 +94,6 @@ class HierarchicalEpiInputs:
     exposure: np.ndarray
     prevalence0: np.ndarray
     state_freedom: np.ndarray
-    alpha_freedom: np.ndarray
 
 
 def _logit(p: np.ndarray | float) -> np.ndarray | float:
@@ -158,23 +157,30 @@ def build_hierarchical_epi_inputs(config: HierarchicalEpiFitConfig) -> Hierarchi
     sem_obs = np.asarray(bundle.sem_obs, dtype=float)
 
     geo_index = np.array([geo_ids.index(g) for g in geos], dtype=int)
-    sem_year_index = np.array([list(np.asarray(bundle.sem_obs_years, dtype=int)).index(int(y)) for y in model_years], dtype=int)
-
-    prep_on_prop = np.clip(sem_obs[geo_index[:, None], prep_idx, sem_year_index], 1e-6, 1 - 1e-6)
+    sem_source_years = np.asarray(bundle.sem_obs_years, dtype=int)
+    prep_on_prop = np.clip(
+        align_to_years(sem_source_years, sem_obs[geo_index, prep_idx, :], model_years),
+        1e-6,
+        1 - 1e-6,
+    )
     prep_off_prop = np.clip(1.0 - prep_on_prop, 1e-6, 1.0)
-    risk = np.clip(sem_obs[geo_index[:, None], risk_idx, sem_year_index], 1e-6, 1 - 1e-6)
-    p_test = np.clip(sem_obs[geo_index[:, None], test_idx, sem_year_index], 1e-6, 1 - 1e-6)
-
-    for geo, value in config.p_test_2020_overrides.items():
-        if geo in geos and 2020 in model_years:
-            p_test[geos.index(geo), np.where(model_years == 2020)[0][0]] = value
+    risk = np.clip(
+        align_to_years(sem_source_years, sem_obs[geo_index, risk_idx, :], model_years),
+        1e-6,
+        1 - 1e-6,
+    )
+    p_test = np.clip(
+        align_to_years(sem_source_years, sem_obs[geo_index, test_idx, :], model_years),
+        1e-6,
+        1 - 1e-6,
+    )
 
     raw = np.asarray(bundle.cdc_raw, dtype=float)
     cdc_year_index = np.array([list(years_all).index(int(y)) for y in model_years], dtype=int)
     prev_i = _cdc_raw_index(bundle, "Estimated HIV prevalence (MSM)")
     vs_i = _cdc_raw_index(bundle, "HIV viral suppression")
-    dx_i = _cdc_raw_index(bundle, "Diagnoses")
-    inc_i = _cdc_raw_index(bundle, "Incidence")
+    dx_i = _cdc_raw_index(bundle, "HIV diagnoses")
+    inc_i = _cdc_raw_index(bundle, "Estimated HIV incidence (MSM)")
 
     hiv_prevalence = raw[geo_index[:, None], prev_i, cdc_year_index]
     viral_suppression = raw[geo_index[:, None], vs_i, cdc_year_index]
@@ -208,8 +214,12 @@ def build_hierarchical_epi_inputs(config: HierarchicalEpiFitConfig) -> Hierarchi
         "pre_years": ",".join(map(str, config.pre_years)),
         "post_years": ",".join(map(str, config.post_years)),
     })
-    if not np.isfinite(period_targets[["dx_pre_obs", "dx_post_obs", "inc_pre_obs", "inc_post_obs"]].to_numpy()).all():
-        raise ValueError("One or more period targets are missing; inspect period_targets")
+    # Diagnosis period means enter the likelihood and must be complete.
+    # Incidence period means are audit summaries only; states without CDC
+    # incidence estimates may remain missing because the annual likelihood
+    # already selects the available state-year observations below.
+    if not np.isfinite(period_targets[["dx_pre_obs", "dx_post_obs"]].to_numpy()).all():
+        raise ValueError("One or more diagnosis period targets are missing; inspect period_targets")
 
     inc_annual_mask = np.isfinite(inc_obs) & (model_years != 2020)[None, :]
     inc_g_idx, inc_t_idx = np.where(inc_annual_mask)
@@ -225,7 +235,6 @@ def build_hierarchical_epi_inputs(config: HierarchicalEpiFitConfig) -> Hierarchi
     pop = np.array([STATE_POPS.get(g, 1e6) for g in geos], dtype=float)
     pop_weight = np.minimum(np.sqrt(pop / pop.max()), 1.0)
     state_freedom = 0.2 + 0.8 * pop_weight
-    alpha_freedom = np.minimum(0.3 + 0.4 * pop_weight, 0.7)
 
     return HierarchicalEpiInputs(
         geos=geos,
@@ -250,7 +259,6 @@ def build_hierarchical_epi_inputs(config: HierarchicalEpiFitConfig) -> Hierarchi
         exposure=exposure,
         prevalence0=prevalence0,
         state_freedom=state_freedom,
-        alpha_freedom=alpha_freedom,
     )
 
 
@@ -297,22 +305,18 @@ def fit_hierarchical_epi_model(config: HierarchicalEpiFitConfig):
 
     init_vals = {
         "mu_beta_div": np.full(n_div, -3.2),
-        "mu_log_alpha": np.log(0.45),
+        "mu_alpha_logit": _logit(0.06 / 0.30),
         "sigma_beta": 0.5,
-        "sigma_log_alpha": 0.15,
         "z_beta": np.zeros(G),
-        "z_alpha": np.zeros(G),
         "phi_inc": 23.0,
         "mu_log_kappa_div": np.full(n_div, np.log(0.5)),
         "sigma_log_kappa": 0.25,
         "z_kappa": np.zeros(G),
         "mu_logit_rho": _logit(0.18),
-        "sigma_logit_rho": 0.15,
         "z_rho": np.zeros(G),
         "mu_log_post": np.log(1.4),
         "sigma_log_post": 0.10,
         "z_post": np.zeros(G),
-        "sigma_dx_period": 0.10,
     }
 
     coords = {
@@ -328,7 +332,6 @@ def fit_hierarchical_epi_model(config: HierarchicalEpiFitConfig):
         sigma_beta = pm.HalfNormal("sigma_beta", 0.5)
         z_beta = pm.Normal("z_beta", 0, 1, dims="state")
         state_freedom = pt.as_tensor_variable(inputs.state_freedom)
-        alpha_freedom = pt.as_tensor_variable(inputs.alpha_freedom)
         log_beta_inc = pm.Deterministic(
             "log_beta_inc",
             mu_beta_div[inputs.div_id] + sigma_beta * state_freedom * z_beta,
@@ -336,13 +339,19 @@ def fit_hierarchical_epi_model(config: HierarchicalEpiFitConfig):
         )
         beta_inc = pm.Deterministic("beta_inc", pt.exp(log_beta_inc), dims="state")
 
-        mu_log_alpha = pm.Normal("mu_log_alpha", mu=np.log(0.5), sigma=0.3)
-        sigma_log_alpha = pm.HalfNormal("sigma_log_alpha", 0.25)
-        z_alpha = pm.Normal("z_alpha", 0, 1, dims="state")
+        # Production v7d uses one bounded risk-behavior elasticity shared by
+        # all states. State-specific alpha variation was not identifiable in
+        # the all-state pilot and is therefore not retained in the final model.
+        alpha_upper = 0.30
+        alpha_center_scaled = 0.06 / alpha_upper
+        mu_alpha_logit = pm.Normal(
+            "mu_alpha_logit", mu=_logit(alpha_center_scaled), sigma=0.35
+        )
+        alpha_global = pm.Deterministic(
+            "alpha_global", alpha_upper * pm.math.sigmoid(mu_alpha_logit)
+        )
         alpha = pm.Deterministic(
-            "alpha",
-            pt.clip(pt.exp(mu_log_alpha + sigma_log_alpha * alpha_freedom * z_alpha), 0.05, 3.0),
-            dims="state",
+            "alpha", pt.ones(G) * alpha_global, dims="state"
         )
 
         mu_log_kappa_div = pm.Normal("mu_log_kappa_div", mu=np.log(0.5), sigma=0.5, dims="division")
@@ -356,9 +365,13 @@ def fit_hierarchical_epi_model(config: HierarchicalEpiFitConfig):
         kappa = pm.Deterministic("kappa", pt.exp(log_kappa), dims="state")
 
         mu_logit_rho = pm.Normal("mu_logit_rho", mu=_logit(0.18), sigma=0.35)
-        sigma_logit_rho = pm.HalfNormal("sigma_logit_rho", 0.25)
         z_rho = pm.Normal("z_rho", 0, 1, dims="state")
-        rho = pm.Deterministic("rho", pm.math.sigmoid(mu_logit_rho + sigma_logit_rho * z_rho), dims="state")
+        # Fix the state-deviation scale because rho, kappa, and U0 were not
+        # separately identifiable with a free hierarchy scale.
+        rho_logit_sd = 0.15
+        rho = pm.Deterministic(
+            "rho", pm.math.sigmoid(mu_logit_rho + rho_logit_sd * z_rho), dims="state"
+        )
         U0 = pm.Deterministic("U0", rho * inputs.prevalence0, dims="state")
 
         mu_log_post = pm.Normal("mu_log_post", mu=np.log(1.4), sigma=0.30)
@@ -396,7 +409,9 @@ def fit_hierarchical_epi_model(config: HierarchicalEpiFitConfig):
         inc_pre_mu = pm.Deterministic("inc_pre_mu", pt.mean(Inc[:, inputs.pre_idx], axis=1), dims="state")
         inc_post_mu = pm.Deterministic("inc_post_mu", pt.mean(Inc[:, inputs.post_idx], axis=1), dims="state")
 
-        sigma_dx_period = pm.HalfNormal("sigma_dx_period", 0.15)
+        # The freely estimated diagnosis-period error collapsed toward zero in
+        # pilot fits. The production model uses a fixed 10% log-scale tolerance.
+        sigma_dx_period = 0.10
         phi_inc = pm.HalfNormal("phi_inc", 15.0)
         if config.fit_diagnosis:
             pm.LogNormal("dx_pre_lik", mu=pt.log(dx_pre_mu), sigma=sigma_dx_period, observed=inputs.period_targets["dx_pre_obs"].to_numpy(), dims="state")
@@ -415,17 +430,21 @@ def fit_hierarchical_epi_model(config: HierarchicalEpiFitConfig):
 
     idata.attrs["geos"] = ",".join(inputs.geos)
     idata.attrs["years"] = ",".join(map(str, inputs.model_years.tolist()))
-    idata.attrs["source"] = "pipeline.hierarchical_epi_fit v6 port from transition_bayes_demo_v6.ipynb"
+    idata.attrs["source"] = "pipeline.hierarchical_epi_fit; production v7d specification"
+    idata.attrs["chains"] = int(sample_settings(config)["chains"])
+    idata.attrs["retained_draws_per_chain"] = int(sample_settings(config)["draws"])
+    idata.attrs["tuning_steps_per_chain"] = int(sample_settings(config)["tune"])
+    idata.attrs["texas_2020_testing_override"] = "none"
 
     output_nc = config.output_nc_path
     if output_nc is None:
-        output_nc = config.output_dir / f"hierarchical_epi_fit_v6_{config.model_scope}_{config.run_mode}.nc"
+        output_nc = config.output_dir / f"hierarchical_epi_fit_v7d_{config.model_scope}_{config.run_mode}.nc"
     output_nc.parent.mkdir(parents=True, exist_ok=True)
     idata.to_netcdf(output_nc)
 
-    inputs.period_targets.to_csv(config.output_dir / f"hierarchical_epi_fit_v6_{config.model_scope}_period_targets.csv", index=False)
+    inputs.period_targets.to_csv(config.output_dir / f"hierarchical_epi_fit_v7d_{config.model_scope}_period_targets.csv", index=False)
     summarize_hierarchical_epi_fit(idata, inputs).to_csv(
-        config.output_dir / f"hierarchical_epi_fit_v6_{config.model_scope}_{config.run_mode}_period_fit_summary.csv",
+        config.output_dir / f"hierarchical_epi_fit_v7d_{config.model_scope}_{config.run_mode}_period_fit_summary.csv",
         index=False,
     )
     print(f"Sampling completed in {elapsed / 60:.2f} minutes")

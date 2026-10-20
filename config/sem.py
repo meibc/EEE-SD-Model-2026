@@ -30,6 +30,10 @@ class SEMConfig:
     # relationship, using J[target, source] orientation.
     structural_prior_path: Path = Path("config/sem_structural_priors_v3.csv")
 
+    # Selected diagonal persistence priors. These regularize own-variable
+    # persistence separately from directional structural pathways.
+    diagonal_prior_path: Path = Path("config/sem_diagonal_priors_v3.csv")
+
     # Simulation
     n_steps: int = 6
     n_forecast: int = 5
@@ -77,6 +81,18 @@ class SEMConfig:
                 mean[i, j] = float(pm)
             if pd.notna(pt) and str(pt).strip() != "":
                 tau[i, j] = float(pt)
+
+        if self.diagonal_prior_path.exists():
+            diag_df = pd.read_csv(self.diagonal_prior_path)
+            for row in diag_df.to_dict(orient="records"):
+                var = str(row["variable"])
+                k = idx[var]
+                pm = row.get("prior_mean", np.nan)
+                pt = row.get("prior_tau", np.nan)
+                if pd.notna(pm) and str(pm).strip() != "":
+                    mean[k, k] = float(pm)
+                if pd.notna(pt) and str(pt).strip() != "":
+                    tau[k, k] = float(pt)
         return sign, mean, tau
 
     def drift_prior_arrays(self) -> tuple[np.ndarray, np.ndarray, np.ndarray]:

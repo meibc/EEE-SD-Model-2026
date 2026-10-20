@@ -1,45 +1,61 @@
 # EEE-SD-Model-2026
 
-Staged SEM + epidemiologic scenario workflow for the centered-logit drift SEM model and dashboard-ready standardized input export.
+Canonical research repository for the EEE stigma–prevention model and paper.
+Data preparation lives in `AMIS-Variable-Trends` and upstream `EEE` files.
+Dashboard integration lives in `EEE-Model-Dashboard-Integration`.
 
-## Current staged workflow
+## Current accepted workflow
 
-Run stages explicitly. Stage 02 and Stage 05 are long/optional and should only be rerun when their inputs or model assumptions change.
+The primary state analysis uses joint respondent bootstrapping with fixed final
+raking weights, 500 refits, empirical fifth-percentile references across eight
+constructs, and HIV-testing frequency (`min(test2yrs, 4) / 4`). The retained
+v7d epidemiological posterior is reused; routine scenario runs do not recalibrate it.
+
+Primary scenarios: AHS reduction, upstream social/family stigma reduction, and
+all three stigma levels reduced. Reductions are 50% relative to baseline, ramped
+over three two-year steps. The combined scenario contains no pathway attenuation.
+
+## Run from this repository
 
 ```bash
-python scripts/01_generate_sem_input_draws.py
-python scripts/02_fit_sem_draws.py
-python scripts/03_export_dashboard_standardized_v8.py
-python scripts/04_run_sem_scenarios.py
-python scripts/05_fit_hierarchical_epi_model.py
+python -m pip install -r requirements.txt
+python scripts/export_current_research.py
+python scripts/04_run_sem_scenarios.py --save-draw-level-endpoints
 ```
 
-Recommended routine use after `output/standardized_input_v8.npz` already exists:
+The exporter uses the completed 500-refit empirical-reference fit and retained
+CDC posterior bundle already on disk. It validates state/variable/year alignment
+and exports **only the 17 refitted primary states**. It deliberately does not
+apply new references to states whose parameters were fitted under older references.
 
-```bash
-python scripts/04_run_sem_scenarios.py
-```
+Required cached inputs:
 
-## Stage responsibilities
+- `output/standardized_input_v9.npz`: retained epidemiological parameters and observations.
+- `output/empirical_p05_reference_sensitivity_n500/fits/empirical_p05_references.npz`: current fitted state matrices, drift, and reference vector.
 
-- `01_generate_sem_input_draws.py`: builds SEM Monte Carlo input draws.
-- `02_fit_sem_draws.py`: fits SEM `J` and drift draws. This is optional/cached once `output/sem_fits_centered_drift_v5.npz` exists.
-- `03_export_dashboard_standardized_v8.py`: merges the Stage 02 SEM fit into a dashboard-ready standardized NPZ.
-- `04_run_sem_scenarios.py`: runs scenarios from `output/standardized_input_v8.npz`; does not refit SEM.
-- `05_fit_hierarchical_epi_model.py`: optional long-running PyMC hierarchical epidemiologic calibration. Do not run casually.
+Output: `output/current/standardized_research.npz`, with a checksum manifest.
+Scenario results go to `output/current/scenarios/`. Generated artifacts are local
+and ignored by Git. They must be supplied separately when cloning the repository.
 
-## Key artifacts
+## Source layout
 
-- `output/sem_fits_centered_drift_v5.npz`: internal Stage 02 SEM fit artifact.
-- `output/standardized_input_v8.npz`: canonical dashboard/runtime artifact containing CDC parameters plus SEM `J`, drift, and reference probabilities.
-- `output/sem_scenarios_centered_drift_v5/`: scenario endpoint summaries.
+- `config/`, `core/`, `data/`, `input/`, `models/`, `pipeline/`: model implementation.
+- `scripts/amis_joint_respondent_bootstrap_v1.Rmd`: respondent bootstrap preparation.
+- `scripts/16_build_joint_bootstrap_sem_inputs.py`: assembly of model input draws.
+- `scripts/12_final_v9_information_source_ablation.py`: state fitting and sensitivity implementation.
+- `scripts/17_build_population_joint_bootstrap.R`, `18_fit_population_joint_bootstrap.py`: demographic analyses.
+- `paper_figure_scripts/`: paper figure preparation and rendering.
+- `scripts/05_fit_hierarchical_epi_model.py`: optional long-running calibration; dependencies in `requirements-calibration.txt`.
 
-## Configuration
+## Consolidation status
 
-- `config/sem_variable_config_v3.csv`: SEM variable reference probabilities and drift priors.
-- `config/sem_structural_priors_v3.csv`: SEM structural sign constraints and soft prior settings.
-- `config/interventions.py`: scenario/intervention codebook.
+Current analysis scripts and local results were transferred from `EEE-SD-Model`.
+Its output directories point here so existing chats can still find their results.
+`docs/consolidation_manifest.json` records transfers; ignored `work/` holds rollback
+copies of overwritten generated figures. Neither repository history was rewritten.
 
-## Runtime loaders
-
-The active scenario workflow reads SEM and CDC parameters from `standardized_input_v8.npz` via `input/standardized_runtime.py`. The old monolithic pipeline and legacy CDC/SEM parameter loaders have been retired.
+The numerical runtime is consolidated. The complete from-source submission run is
+still being assembled: some upstream data paths are machine-specific, older
+analysis/figure defaults need updating, and the all-state dashboard artifact needs
+its own consistency check. Existing figures are not automatically relabeled as
+current; regenerate them from the current scenarios before submission.

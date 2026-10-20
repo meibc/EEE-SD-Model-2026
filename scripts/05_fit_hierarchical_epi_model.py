@@ -25,7 +25,7 @@ def main() -> None:
     )
     parser.add_argument("--standardized-input-path", type=Path, default=Path("/Users/meibinchen/Documents/GitHub/EEE-Model-Dashboard-Integration/standardized_input_v7.npz"))
     parser.add_argument("--data-path", type=Path, default=Path("/Users/meibinchen/Documents/GitHub/EEE/Factor Analysis v5.xlsx"))
-    parser.add_argument("--output-dir", type=Path, default=Path("output/hierarchical_epi_fit_v6"))
+    parser.add_argument("--output-dir", type=Path, default=Path("output/hierarchical_epi_fit_v7d"))
     parser.add_argument("--output-nc-path", type=Path, default=None)
     parser.add_argument("--model-scope", choices=["all_states", "selected_states"], default="all_states")
     parser.add_argument("--states", nargs="+", default=["CA", "TX", "NY", "MA", "MS"])
@@ -34,9 +34,9 @@ def main() -> None:
     parser.add_argument("--random-seed", type=int, default=42)
     parser.add_argument("--quick-draws", type=int, default=100)
     parser.add_argument("--quick-tune", type=int, default=300)
-    parser.add_argument("--full-draws", type=int, default=1000)
+    parser.add_argument("--full-draws", type=int, default=500)
     parser.add_argument("--full-tune", type=int, default=1000)
-    parser.add_argument("--target-accept", type=float, default=0.95)
+    parser.add_argument("--target-accept", type=float, default=0.99)
     args = parser.parse_args()
 
     output_path = fit_hierarchical_epi_model(

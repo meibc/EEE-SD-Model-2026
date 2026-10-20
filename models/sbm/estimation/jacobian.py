@@ -54,6 +54,7 @@ class JacobianEstimator:
         drift_enabled: np.ndarray | None = None,
         drift_prior_mean: np.ndarray | None = None,
         drift_prior_tau: np.ndarray | None = None,
+        J_init: np.ndarray | None = None,
     ) -> np.ndarray:
         """Estimate rolling J matrix sequence; fitted drift is in last_drift_sequence."""
         m, T = Xbar.shape
@@ -81,6 +82,7 @@ class JacobianEstimator:
                     drift_enabled,
                     drift_prior_mean,
                     drift_prior_tau,
+                    J_init,
                 )
             except Exception as e:
                 print(f"Optimization failed: {e}")
@@ -116,12 +118,19 @@ class JacobianEstimator:
         drift_enabled: np.ndarray | None,
         drift_prior_mean: np.ndarray | None,
         drift_prior_tau: np.ndarray | None,
+        J_init: np.ndarray | None,
     ) -> tuple[np.ndarray, np.ndarray, dict]:
         m = M.shape[0]
         Sigma_eta = (self.opt.sigma_eta_scale ** 2) * np.diag(np.diag(SigmaX))
 
         if JmI0 is None:
-            JmI0 = self._initialize_JmI0(m, sign_mask)
+            if J_init is None:
+                JmI0 = self._initialize_JmI0(m, sign_mask)
+            else:
+                J_init_use = np.asarray(J_init, dtype=float)
+                if J_init_use.shape != (m, m):
+                    raise ValueError(f"J_init must have shape {(m, m)}; got {J_init_use.shape}")
+                JmI0 = (J_init_use - np.eye(m)) * (M == 1)
 
         JmI_vec0 = JmI0[M == 1]
         drift_enabled_use = np.zeros(m, dtype=bool) if drift_enabled is None else np.asarray(drift_enabled, dtype=bool)
