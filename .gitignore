@@ -39,6 +39,7 @@ __pycache__/
 *.py[cod]
 .DS_Store
 .Rhistory
+Rplots.pdf
 .RData
 .Rproj.user/
 logs/
@@ -60,3 +61,10 @@ node_modules/
 *.RData
 *.inspect.ndjson
 /plots/
+
+# Regenerated pipeline outputs (contain respondent-level AMIS data)
+results/
+
+
+# Restricted AMIS respondent data (place combined_amis_nocovid.csv here; never commit)
+/inputs/restricted/

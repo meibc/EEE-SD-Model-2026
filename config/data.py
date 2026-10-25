@@ -11,10 +11,3 @@ STATE_TO_DIVISION = {
     "AZ": 8, "CO": 8, "ID": 8, "MT": 8, "NV": 8, "NM": 8, "UT": 8, "WY": 8,
     "AK": 9, "CA": 9, "HI": 9, "OR": 9, "WA": 9,
 }
-
-DEFAULT_CDC_NAMES = [
-    "PrEP Eligible",
-    "Estimated HIV incidence (MSM)",
-    "HIV diagnoses",
-    "PrEP",
-]

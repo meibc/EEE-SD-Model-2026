@@ -1,5 +1,5 @@
 variable,prior_mean,prior_tau,evidence_tier,evidence_note
-prep_used,0.75,0.2,stability_regularization,PrEP use is persistent but externally influenced; weak diagonal prior prevents unconstrained self-amplification while retaining PrEP-only drift.
+prep_used,0.85,0.2,stability_regularization,PrEP use is persistent but externally influenced; weak diagonal prior prevents unconstrained self-amplification while retaining PrEP-only drift.
 seehcp,0.95,0.2,stability_regularization,Healthcare engagement should be persistent absent evidence of decline; weak diagonal prior prevents unexplained reversion while retaining no-drift specification.
 stigma_gss,0.85,0.2,stability_regularization,General social stigma is upstream and persistent; weak diagonal prior discourages indefinite self-amplification in long-horizon projections.
 stigma_family,0.85,0.2,stability_regularization,Family stigma is upstream and persistent; weak diagonal prior discourages indefinite self-amplification in long-horizon projections.

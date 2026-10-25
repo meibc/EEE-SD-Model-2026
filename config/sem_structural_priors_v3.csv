@@ -1,19 +1,20 @@
 source,target,sign,prior_mean,prior_tau,evidence_tier,evidence_note
 stigma_gss,stigma_family,1,0.15,0.3,strong,gss to family stigma strong
 out_gid,stigma_ahs,1,0.04,0.7,weak,outness to ahs strong / bidirectional CLD pathway
-seehcp,stigma_ahs,-1,-0.04,0.7,weak,healthcare engagement to lower ahs somewhat supported
+seehcp,stigma_ahs,both,0.0,0.7,weak,healthcare contact to ahs; either sign: contact can expose men to stigma (population-level positive association) or reassure; estimated without a sign constraint
 stigma_family,stigma_ahs,1,0.15,0.3,strong,family stigma to ahs strong
 stigma_gss,stigma_ahs,1,0.15,0.3,strong,gss to ahs strong
 stigma_ahs,seehcp,-1,-0.04,0.7,weak,ahs to seehcp not strong; weak prior only
-prep_used,risk_behavior,1,0.15,0.3,strong,prep to risk strong
-hivtest12,prep_used,1,0.15,0.3,strong,testing to prep strong
-out_gid,prep_used,1,0.15,0.3,strong,outness to prep okay/moderate
-risk_behavior,prep_used,1,0.15,0.3,strong,risk to prep high
+prep_used,risk_behavior,1,0.05,0.3,moderate,prep to risk strong; mean lowered from 0.15 (2026-10-23) so the PrEP/risk/testing/disclosure loops are not self-amplifying (cluster spectral radius 1.05 -> 0.93)
+hivtest12,prep_used,1,0.05,0.3,moderate,testing to prep strong; mean lowered from 0.15 (2026-10-23) so the PrEP/risk/testing/disclosure loops are not self-amplifying (cluster spectral radius 1.05 -> 0.93)
+out_gid,prep_used,1,0.05,0.3,moderate,outness to prep okay/moderate; mean lowered from 0.15 (2026-10-23) so the PrEP/risk/testing/disclosure loops are not self-amplifying (cluster spectral radius 1.05 -> 0.93)
+risk_behavior,prep_used,1,0.05,0.3,moderate,risk to prep high; mean lowered from 0.15 (2026-10-23) so the PrEP/risk/testing/disclosure loops are not self-amplifying (cluster spectral radius 1.05 -> 0.93)
 stigma_ahs,prep_used,-1,-0.04,0.7,weak,ahs to prep supported by state delta and SEM nonzero evidence
-risk_behavior,out_gid,1,0.15,0.3,strong,risk to outness sufficiently supported
+risk_behavior,out_gid,1,0.05,0.3,moderate,risk to outness sufficiently supported; mean lowered from 0.15 (2026-10-23) so the PrEP/risk/testing/disclosure loops are not self-amplifying (cluster spectral radius 1.05 -> 0.93)
 stigma_ahs,out_gid,-1,-0.15,0.3,strong,ahs to outness supported but dynamic/state evidence less convergent
-out_gid,hivtest12,1,0.15,0.3,strong,outness to hiv testing somewhat supported
-prep_used,hivtest12,1,0.15,0.3,strong,prep to hiv testing allowed by current matrix; moderate prior
-risk_behavior,hivtest12,1,0.15,0.3,strong,risk to hiv testing strong
-seehcp,hivtest12,1,0.15,0.3,strong,seehcp to hiv testing somewhat supported
+out_gid,hivtest12,1,0.05,0.3,moderate,outness to hiv testing somewhat supported; mean lowered from 0.15 (2026-10-23) so the PrEP/risk/testing/disclosure loops are not self-amplifying (cluster spectral radius 1.05 -> 0.93)
+prep_used,hivtest12,1,0.05,0.3,moderate,prep to hiv testing allowed by current matrix; moderate prior; mean lowered from 0.15 (2026-10-23) so the PrEP/risk/testing/disclosure loops are not self-amplifying (cluster spectral radius 1.05 -> 0.93)
+risk_behavior,hivtest12,1,0.05,0.3,moderate,risk to hiv testing strong; mean lowered from 0.15 (2026-10-23) so the PrEP/risk/testing/disclosure loops are not self-amplifying (cluster spectral radius 1.05 -> 0.93)
+seehcp,hivtest12,1,0.05,0.3,moderate,seehcp to hiv testing somewhat supported; mean lowered from 0.15 (2026-10-23) so the PrEP/risk/testing/disclosure loops are not self-amplifying (cluster spectral radius 1.05 -> 0.93)
 stigma_ahs,hivtest12,-1,-0.04,0.7,weak,ahs to hiv testing added in v2; user identified omitted structural pathway; individual-level evidence to be filled
+prep_used,stigma_ahs,both,0.0,0.7,weak,prep use to ahs; prep is a form of healthcare contact that requires disclosure (feedback); either sign; no sign constraint

@@ -1,11 +1,31 @@
 from __future__ import annotations
 
-"""Hierarchical Bayesian calibration for CDC incidence/diagnosis parameters.
+"""Hierarchical Bayesian calibration of the epidemiological model, and its bundle.
 
-This module ports the core logic from
-`sem_sd_1225_refactor/notebooks/transition_bayes_demo_v6.ipynb` into a reusable
-pipeline stage. It intentionally does not run during scenario generation or
-standardized dashboard export; callers must invoke Stage 04 explicitly.
+For every state with AMIS and CDC data, fits
+
+    Inc_{s,t}   = beta_s * no_vs_{s,t} * (1 - PrEP_{s,t}) * (risk_{s,t} / risk0_s)^alpha
+    U_{s,t+1}   = U_{s,t} + Inc_{s,t} - Dx_{s,t},     Dx_{s,t} = delta_{s,t} * U_{s,t}
+    delta_{s,t} = 1 - exp(-kappa_s * test_{s,t} * m_{s,t}),  m = post_multiplier_s from 2021
+
+with beta and kappa hierarchical by Census division, one bounded alpha shared by all
+states, and U0 = rho_s * estimated prevalence in the first year. The likelihood is
+CDC estimated incidence (negative binomial, annual, 2020 excluded) and MSM
+diagnoses (lognormal on period means).
+
+Inputs (all built in this repository):
+  AMIS PrEP use, risk behaviour and HIV testing   state point estimates (workbook
+      trends, scripts/01); state-periods without an estimate take the division
+      value, as in scripts/04. Each period sits at its end year and is interpolated
+      to single years.
+  CDC MSM stocks                                   results/00_cdc/cdc_stocks.csv
+The fit window runs from 2017 to the last year in which most states have CDC
+diagnoses, estimated prevalence and viral suppression; states with a gap in the
+window are excluded, and every diagnosis period inside the window enters the
+likelihood.
+
+``write_epi_bundle`` converts the posterior into the arrays the scenarios read
+(input.standardized_runtime).
 """
 
 from dataclasses import dataclass, field
@@ -15,9 +35,22 @@ import time
 import numpy as np
 import pandas as pd
 
-from input.standardized_runtime import StandardizedBundle
+from config.data import STATE_TO_DIVISION
 from models.shared.alignment import align_to_years
 
+ROOT = Path(__file__).resolve().parents[1]
+RESULTS = ROOT / "results"
+
+FIRST_YEAR = 2017
+POST_YEAR = 2021        # diagnosis multiplier applies from this year
+BUNDLE_END_YEAR = 2036
+SCHEMA_VERSION = 2
+AMIS_MEASURES = ("prep_used", "risk_behavior", "hivtest12")
+FIT_CDC_NAMES = ("HIV diagnoses", "Estimated HIV prevalence (MSM)", "HIV viral suppression")
+BUNDLE_CDC_NAMES = ("PrEP Eligible", "Estimated HIV prevalence (MSM)", "HIV viral suppression",
+                    "Estimated HIV incidence (MSM)", "HIV diagnoses", "PrEP")
+POSTERIOR_TO_BUNDLE = {"beta_inc": "cdc_beta", "alpha": "cdc_alpha", "kappa": "cdc_kdx",
+                       "U0": "cdc_U0", "post_multiplier": "cdc_post_multiplier"}
 
 STATE_ABBRS = [
     "AL", "AK", "AZ", "AR", "CA", "CO", "CT", "DE", "FL", "GA",
@@ -27,6 +60,8 @@ STATE_ABBRS = [
     "SD", "TN", "TX", "UT", "VT", "VA", "WA", "WV", "WI", "WY",
 ]
 
+# 2020 Census resident population; scales how far each state's beta may move
+# from its division mean (larger states move more freely).
 STATE_POPS = {
     "CA": 39538223, "TX": 29145505, "FL": 21538187, "NY": 20201249,
     "PA": 13002700, "IL": 12812508, "OH": 11799448, "GA": 10711908,
@@ -40,7 +75,7 @@ STATE_POPS = {
     "NE": 1961504, "ID": 1839106, "WV": 1793716, "HI": 1455271,
     "NH": 1377529, "ME": 1362359, "MT": 1084225, "RI": 1097379,
     "DE": 989948, "SD": 886667, "ND": 779094, "AK": 733391,
-    "VT": 643077, "WY": 576851, "DC": 689545, "USA": 331449281,
+    "VT": 643077, "WY": 576851,
 }
 
 
@@ -48,16 +83,15 @@ STATE_POPS = {
 class HierarchicalEpiFitConfig:
     """Configuration for the long-running hierarchical epi calibration."""
 
-    standardized_input_path: Path = Path("/Users/meibinchen/Documents/GitHub/EEE-Model-Dashboard-Integration/standardized_input_v7.npz")
-    data_path: Path = Path("/Users/meibinchen/Documents/GitHub/EEE/Factor Analysis v5.xlsx")
-    output_dir: Path = Path("output/hierarchical_epi_fit_v7d")
-    output_nc_path: Path | None = None
+    workbook_path: Path = RESULTS / "01_weights/state_model_inputs.xlsx"
+    input_draws_path: Path = RESULTS / "02_inputs/state_input_draws.npz"
+    cdc_stocks_path: Path = RESULTS / "00_cdc/cdc_stocks.csv"
+    output_dir: Path = RESULTS / "02_inputs/epi_fit"
     model_scope: str = "all_states"
     run_mode: str = "quick"
     fit_diagnosis: bool = True
     states: list[str] = field(default_factory=lambda: ["CA", "TX", "NY", "MA", "MS"])
-    pre_years: tuple[int, ...] = (2017, 2018, 2019)
-    post_years: tuple[int, ...] = (2021, 2022)
+    diagnosis_periods: tuple[tuple[int, ...], ...] = ((2017, 2018, 2019), (2021, 2022), (2023, 2024))
     random_seed: int = 42
     quick_draws: int = 100
     quick_tune: int = 300
@@ -83,12 +117,13 @@ class HierarchicalEpiInputs:
     hiv_prevalence: np.ndarray
     dx_obs: np.ndarray
     inc_obs: np.ndarray
-    pre_idx: np.ndarray
-    post_idx: np.ndarray
+    period_labels: list[str]
+    period_idx: list[np.ndarray]
     period_targets: pd.DataFrame
     inc_g_idx: np.ndarray
     inc_t_idx: np.ndarray
     inc_obs_vec: np.ndarray
+    risk_baseline: np.ndarray
     risk_ratio: np.ndarray
     log_risk_ratio: np.ndarray
     exposure: np.ndarray
@@ -101,125 +136,85 @@ def _logit(p: np.ndarray | float) -> np.ndarray | float:
     return np.log(p / (1.0 - p))
 
 
-def _as_str_list(arr) -> list[str]:
-    return [str(x) for x in list(arr)]
+def load_cdc_stocks(path: Path, geos: list[str], names, years) -> np.ndarray:
+    """State x indicator x year MSM stocks (NaN where CDC has no value)."""
+    stocks = pd.read_csv(path)
+    stocks = stocks[stocks["Population"].eq("MSM") & stocks["Indicator"].isin(names)]
+    wide = stocks.pivot_table(index=["St_Abbr", "Indicator"], columns="Year", values="Cases")
+    wide = wide.reindex(index=pd.MultiIndex.from_product([geos, list(names)]), columns=list(years))
+    return wide.to_numpy(dtype=float).reshape(len(geos), len(names), len(years))
 
 
-def _load_division_ids(data_path: Path, geos: list[str]) -> tuple[np.ndarray, list[int]]:
-    div_map: dict[str, int] = {}
-    if data_path.exists():
-        states_df = pd.read_excel(data_path, sheet_name="states")
-        div_map = dict(zip(states_df["state_calc"].astype(str), states_df["Census_div"].astype(int)))
-    raw_div = np.array([div_map.get(g, 0) for g in geos], dtype=int)
-    unique_div = sorted(np.unique(raw_div).tolist())
-    div_recode = {d: i for i, d in enumerate(unique_div)}
-    div_id = np.array([div_recode[d] for d in raw_div], dtype=int)
-    return div_id, unique_div
+def load_amis_estimates(workbook_path: Path, input_draws_path: Path, geos: list[str]) -> tuple[np.ndarray, np.ndarray]:
+    """State x measure x period AMIS estimates (AMIS_MEASURES order) and period end years.
 
-
-def _cdc_raw_index(bundle: StandardizedBundle, name: str) -> int:
-    names = _as_str_list(bundle.cdc_raw_names)
-    if name not in names:
-        raise ValueError(f"CDC raw variable missing from standardized input: {name}")
-    return names.index(name)
+    Workbook point estimates where the state-period has one; otherwise the
+    median of the state's input draws, which scripts/04 fills from its division.
+    """
+    with np.load(input_draws_path, allow_pickle=True) as d:
+        v_names = d["v_names"].astype(str).tolist()
+        years = np.asarray(d["ts"], dtype=int)
+        units = d["unit_order"].astype(str).tolist()
+        filled = np.median(np.asarray(d["Xbars_samples"], dtype=float)[..., [units.index(g) for g in geos]], axis=0)
+    trends = pd.read_excel(workbook_path, sheet_name="trends")
+    wide = trends.pivot_table(index=["Geography", "Indicator"], columns="Year", values="Value")
+    out = np.empty((len(geos), len(AMIS_MEASURES), len(years)))
+    for gi, g in enumerate(geos):
+        for j, v in enumerate(AMIS_MEASURES):
+            point = wide.loc[(g, v)].reindex(years).to_numpy() if (g, v) in wide.index else np.full(len(years), np.nan)
+            out[gi, j] = np.where(np.isfinite(point), point, filled[v_names.index(v), :, gi])
+    return out, years
 
 
 def build_hierarchical_epi_inputs(config: HierarchicalEpiFitConfig) -> HierarchicalEpiInputs:
-    """Build PyMC-ready arrays from the standardized v7 input artifact.
+    """Build PyMC-ready arrays from the AMIS estimates and CDC stocks."""
 
-    This replaces the v6 notebook dependency on `EEE_SD_v4.transition.mc.npz`.
-    The current implementation uses observed SEM trajectories for the calibration
-    period. Scenario-specific epidemiologic uncertainty is handled downstream by
-    Stage 03 using the fitted posterior parameters.
-    """
-
-    bundle = StandardizedBundle(config.standardized_input_path)
-    geo_ids = _as_str_list(bundle.geo_ids)
-    if config.model_scope == "all_states":
-        geos = [g for g in STATE_ABBRS if g in geo_ids]
-    elif config.model_scope == "selected_states":
-        geos = [g for g in config.states if g in geo_ids]
-    else:
+    with np.load(config.input_draws_path, allow_pickle=True) as d:
+        amis_units = set(d["unit_order"].astype(str))
+    candidates = STATE_ABBRS if config.model_scope == "all_states" else config.states
+    if config.model_scope not in ("all_states", "selected_states"):
         raise ValueError("model_scope must be 'all_states' or 'selected_states'")
-    if not geos:
-        raise ValueError("No geographies selected for hierarchical epi fit")
+    candidates = [g for g in candidates if g in amis_units]
 
-    years_all = np.asarray(bundle.model_years, dtype=int)
-    model_year_mask = years_all <= 2022
-    model_years = years_all[model_year_mask]
-    pre_idx = np.array([np.where(model_years == y)[0][0] for y in config.pre_years], dtype=int)
-    post_idx = np.array([np.where(model_years == y)[0][0] for y in config.post_years], dtype=int)
+    # Fit window: 2017 to the last year in which most states have diagnoses,
+    # estimated prevalence and viral suppression; states with any gap in the
+    # window are excluded.
+    stock_years = np.arange(FIRST_YEAR, int(pd.read_csv(config.cdc_stocks_path)["Year"].max()) + 1)
+    fit_cdc = load_cdc_stocks(config.cdc_stocks_path, candidates, FIT_CDC_NAMES, stock_years)
+    available = (np.isfinite(fit_cdc) & (fit_cdc > 0)).all(axis=1)          # state x year
+    n_years = int(np.flatnonzero(available.mean(axis=0) > 0.5).max()) + 1
+    keep = available[:, :n_years].all(axis=1)
+    geos = [g for g, k in zip(candidates, keep) if k]
+    excluded = [g for g, k in zip(candidates, keep) if not k]
+    if excluded:
+        print(f"Excluded from the epi fit (incomplete CDC data {stock_years[0]}-{stock_years[n_years - 1]}): {excluded}")
+    if not geos or n_years < 2:
+        raise ValueError("No states with complete CDC data; inspect cdc_stocks.csv")
+    fit_cdc = fit_cdc[keep]
+    model_years = stock_years[:n_years]
+    periods = [p for p in config.diagnosis_periods if max(p) <= model_years[-1]]
+    if not periods:
+        raise ValueError("No diagnosis period lies inside the fit window")
+    period_labels = [f"{min(p)}-{max(p)}" for p in periods]
+    period_idx = [np.searchsorted(model_years, p) for p in periods]
 
-    sem_names = _as_str_list(bundle.sem_v_names)
-    prep_idx = sem_names.index("prep_used")
-    risk_idx = sem_names.index("risk_behavior")
-    test_idx = sem_names.index("hivtest12")
-    sem_obs = np.asarray(bundle.sem_obs, dtype=float)
-
-    geo_index = np.array([geo_ids.index(g) for g in geos], dtype=int)
-    sem_source_years = np.asarray(bundle.sem_obs_years, dtype=int)
-    prep_on_prop = np.clip(
-        align_to_years(sem_source_years, sem_obs[geo_index, prep_idx, :], model_years),
-        1e-6,
-        1 - 1e-6,
+    amis, amis_years = load_amis_estimates(config.workbook_path, config.input_draws_path, geos)
+    prep_on_prop, risk, p_test = (
+        np.clip(align_to_years(amis_years, amis[:, j, :], model_years), 1e-6, 1 - 1e-6) for j in range(3)
     )
     prep_off_prop = np.clip(1.0 - prep_on_prop, 1e-6, 1.0)
-    risk = np.clip(
-        align_to_years(sem_source_years, sem_obs[geo_index, risk_idx, :], model_years),
-        1e-6,
-        1 - 1e-6,
-    )
-    p_test = np.clip(
-        align_to_years(sem_source_years, sem_obs[geo_index, test_idx, :], model_years),
-        1e-6,
-        1 - 1e-6,
-    )
 
-    raw = np.asarray(bundle.cdc_raw, dtype=float)
-    cdc_year_index = np.array([list(years_all).index(int(y)) for y in model_years], dtype=int)
-    prev_i = _cdc_raw_index(bundle, "Estimated HIV prevalence (MSM)")
-    vs_i = _cdc_raw_index(bundle, "HIV viral suppression")
-    dx_i = _cdc_raw_index(bundle, "HIV diagnoses")
-    inc_i = _cdc_raw_index(bundle, "Estimated HIV incidence (MSM)")
-
-    hiv_prevalence = raw[geo_index[:, None], prev_i, cdc_year_index]
-    viral_suppression = raw[geo_index[:, None], vs_i, cdc_year_index]
+    dx_obs, hiv_prevalence, viral_suppression = (fit_cdc[:, i, :n_years] for i in range(3))
     no_vs = np.clip(hiv_prevalence - viral_suppression, 1e-6, None)
-    dx_obs = raw[geo_index[:, None], dx_i, cdc_year_index]
-    inc_obs = raw[geo_index[:, None], inc_i, cdc_year_index]
-    dx_obs = np.where(dx_obs > 0, dx_obs, np.nan)
+    inc_obs = load_cdc_stocks(config.cdc_stocks_path, geos, ["Estimated HIV incidence (MSM)"], model_years)[:, 0]
     inc_obs = np.where(inc_obs > 0, inc_obs, np.nan)
 
-    for name, arr in {
-        "no_vs": no_vs,
-        "prep_off_prop": prep_off_prop,
-        "risk": risk,
-        "p_test": p_test,
-        "hiv_prevalence": hiv_prevalence,
-    }.items():
-        if not np.isfinite(arr).all():
-            bad = np.argwhere(~np.isfinite(arr))[:10]
-            raise ValueError(f"{name} contains non-finite values; first locations={bad.tolist()}")
-
-    dx_pre_obs = np.nanmean(dx_obs[:, pre_idx], axis=1)
-    dx_post_obs = np.nanmean(dx_obs[:, post_idx], axis=1)
-    inc_pre_obs = np.nanmean(inc_obs[:, pre_idx], axis=1)
-    inc_post_obs = np.nanmean(inc_obs[:, post_idx], axis=1)
-    period_targets = pd.DataFrame({
-        "state": geos,
-        "dx_pre_obs": dx_pre_obs,
-        "dx_post_obs": dx_post_obs,
-        "inc_pre_obs": inc_pre_obs,
-        "inc_post_obs": inc_post_obs,
-        "pre_years": ",".join(map(str, config.pre_years)),
-        "post_years": ",".join(map(str, config.post_years)),
-    })
-    # Diagnosis period means enter the likelihood and must be complete.
-    # Incidence period means are audit summaries only; states without CDC
-    # incidence estimates may remain missing because the annual likelihood
-    # already selects the available state-year observations below.
-    if not np.isfinite(period_targets[["dx_pre_obs", "dx_post_obs"]].to_numpy()).all():
-        raise ValueError("One or more diagnosis period targets are missing; inspect period_targets")
+    period_targets = pd.DataFrame([
+        {"state": g, "period": label, "years": ",".join(map(str, p)),
+         "dx_obs": dx_obs[gi, idx].mean(),
+         "inc_obs": np.nanmean(inc_obs[gi, idx]) if np.isfinite(inc_obs[gi, idx]).any() else np.nan}
+        for gi, g in enumerate(geos) for label, p, idx in zip(period_labels, periods, period_idx)
+    ])
 
     inc_annual_mask = np.isfinite(inc_obs) & (model_years != 2020)[None, :]
     inc_g_idx, inc_t_idx = np.where(inc_annual_mask)
@@ -231,10 +226,11 @@ def build_hierarchical_epi_inputs(config: HierarchicalEpiFitConfig) -> Hierarchi
     exposure = no_vs * prep_off_prop
     prevalence0 = hiv_prevalence[:, 0]
 
-    div_id, unique_div = _load_division_ids(config.data_path, geos)
-    pop = np.array([STATE_POPS.get(g, 1e6) for g in geos], dtype=float)
-    pop_weight = np.minimum(np.sqrt(pop / pop.max()), 1.0)
-    state_freedom = 0.2 + 0.8 * pop_weight
+    raw_div = np.array([STATE_TO_DIVISION[g] for g in geos], dtype=int)
+    unique_div = sorted(np.unique(raw_div).tolist())
+    div_id = np.searchsorted(unique_div, raw_div)
+    pop = np.array([STATE_POPS[g] for g in geos], dtype=float)
+    state_freedom = 0.2 + 0.8 * np.minimum(np.sqrt(pop / pop.max()), 1.0)
 
     return HierarchicalEpiInputs(
         geos=geos,
@@ -248,12 +244,13 @@ def build_hierarchical_epi_inputs(config: HierarchicalEpiFitConfig) -> Hierarchi
         hiv_prevalence=hiv_prevalence,
         dx_obs=dx_obs,
         inc_obs=inc_obs,
-        pre_idx=pre_idx,
-        post_idx=post_idx,
+        period_labels=period_labels,
+        period_idx=period_idx,
         period_targets=period_targets,
         inc_g_idx=inc_g_idx,
         inc_t_idx=inc_t_idx,
         inc_obs_vec=inc_obs_vec,
+        risk_baseline=risk_baseline,
         risk_ratio=risk_ratio,
         log_risk_ratio=log_risk_ratio,
         exposure=exposure,
@@ -282,17 +279,15 @@ def sample_settings(config: HierarchicalEpiFitConfig) -> dict:
     raise ValueError("run_mode must be 'quick' or 'full'")
 
 
-def fit_hierarchical_epi_model(config: HierarchicalEpiFitConfig):
-    """Run the long PyMC hierarchical fit and write posterior outputs.
+def fit_hierarchical_epi_model(config: HierarchicalEpiFitConfig) -> Path:
+    """Run the PyMC fit; write the posterior, period targets, fit summary and bundle.
 
-    This function intentionally imports PyMC lazily so ordinary pipeline imports
-    do not initialize PyTensor/PyMC. Do not call this from dashboard export.
+    PyMC is imported lazily so ordinary pipeline imports do not initialize PyTensor.
     """
 
     import os
     os.environ.setdefault("PYTENSOR_FLAGS", "cxx=")
 
-    import arviz as az
     import pymc as pm
     import pytensor.tensor as pt
 
@@ -323,11 +318,10 @@ def fit_hierarchical_epi_model(config: HierarchicalEpiFitConfig):
         "state": inputs.geos,
         "year": inputs.model_years,
         "division": [str(d) for d in inputs.unique_div],
-        "pre_year": list(config.pre_years),
-        "post_year": list(config.post_years),
+        "period": inputs.period_labels,
     }
 
-    with pm.Model(coords=coords) as model:
+    with pm.Model(coords=coords):
         mu_beta_div = pm.Normal("mu_beta_div", mu=-3.2, sigma=1.0, dims="division")
         sigma_beta = pm.HalfNormal("sigma_beta", 0.5)
         z_beta = pm.Normal("z_beta", 0, 1, dims="state")
@@ -339,9 +333,8 @@ def fit_hierarchical_epi_model(config: HierarchicalEpiFitConfig):
         )
         beta_inc = pm.Deterministic("beta_inc", pt.exp(log_beta_inc), dims="state")
 
-        # Production v7d uses one bounded risk-behavior elasticity shared by
-        # all states. State-specific alpha variation was not identifiable in
-        # the all-state pilot and is therefore not retained in the final model.
+        # One bounded risk-behavior elasticity shared by all states. State-specific
+        # alpha variation was not identifiable in the all-state pilot.
         alpha_upper = 0.30
         alpha_center_scaled = 0.06 / alpha_upper
         mu_alpha_logit = pm.Normal(
@@ -386,7 +379,7 @@ def fit_hierarchical_epi_model(config: HierarchicalEpiFitConfig):
         )
         Inc = pm.Deterministic("Inc", pt.exp(pt.clip(log_inc, -20, 14)), dims=("state", "year"))
 
-        post_indicator = (inputs.model_years >= 2021).astype(float)
+        post_indicator = (inputs.model_years >= POST_YEAR).astype(float)
         diagnosis_multiplier = 1.0 + post_indicator[None, :] * (post_multiplier[:, None] - 1.0)
         delta = pm.Deterministic(
             "diagnosis_probability",
@@ -401,21 +394,27 @@ def fit_hierarchical_epi_model(config: HierarchicalEpiFitConfig):
             Dx_next = pt.minimum(pt.maximum(delta[:, ti] * U_next, 0.0), U_next)
             U_list.append(U_next)
             Dx_list.append(Dx_next)
-        U = pm.Deterministic("U", pt.stack(U_list, axis=1), dims=("state", "year"))
+        pm.Deterministic("U", pt.stack(U_list, axis=1), dims=("state", "year"))
         Dx = pm.Deterministic("Dx", pt.stack(Dx_list, axis=1), dims=("state", "year"))
 
-        dx_pre_mu = pm.Deterministic("dx_pre_mu", pt.mean(Dx[:, inputs.pre_idx], axis=1), dims="state")
-        dx_post_mu = pm.Deterministic("dx_post_mu", pt.mean(Dx[:, inputs.post_idx], axis=1), dims="state")
-        inc_pre_mu = pm.Deterministic("inc_pre_mu", pt.mean(Inc[:, inputs.pre_idx], axis=1), dims="state")
-        inc_post_mu = pm.Deterministic("inc_post_mu", pt.mean(Inc[:, inputs.post_idx], axis=1), dims="state")
+        dx_period_mu = pm.Deterministic(
+            "dx_period_mu", pt.stack([pt.mean(Dx[:, idx], axis=1) for idx in inputs.period_idx], axis=1),
+            dims=("state", "period"),
+        )
+        pm.Deterministic(
+            "inc_period_mu", pt.stack([pt.mean(Inc[:, idx], axis=1) for idx in inputs.period_idx], axis=1),
+            dims=("state", "period"),
+        )
 
         # The freely estimated diagnosis-period error collapsed toward zero in
         # pilot fits. The production model uses a fixed 10% log-scale tolerance.
         sigma_dx_period = 0.10
         phi_inc = pm.HalfNormal("phi_inc", 15.0)
         if config.fit_diagnosis:
-            pm.LogNormal("dx_pre_lik", mu=pt.log(dx_pre_mu), sigma=sigma_dx_period, observed=inputs.period_targets["dx_pre_obs"].to_numpy(), dims="state")
-            pm.LogNormal("dx_post_lik", mu=pt.log(dx_post_mu), sigma=sigma_dx_period, observed=inputs.period_targets["dx_post_obs"].to_numpy(), dims="state")
+            dx_period_obs = inputs.period_targets.pivot(index="state", columns="period", values="dx_obs")
+            pm.LogNormal("dx_period_lik", mu=pt.log(dx_period_mu), sigma=sigma_dx_period,
+                         observed=dx_period_obs.loc[inputs.geos, inputs.period_labels].to_numpy(),
+                         dims=("state", "period"))
         pm.NegativeBinomial("inc_lik", mu=Inc[inputs.inc_g_idx, inputs.inc_t_idx], alpha=phi_inc, observed=inputs.inc_obs_vec)
 
         start = time.time()
@@ -430,58 +429,83 @@ def fit_hierarchical_epi_model(config: HierarchicalEpiFitConfig):
 
     idata.attrs["geos"] = ",".join(inputs.geos)
     idata.attrs["years"] = ",".join(map(str, inputs.model_years.tolist()))
-    idata.attrs["source"] = "pipeline.hierarchical_epi_fit; production v7d specification"
+    idata.attrs["diagnosis_periods"] = ",".join(inputs.period_labels)
+    idata.attrs["source"] = "pipeline.hierarchical_epi_fit"
     idata.attrs["chains"] = int(sample_settings(config)["chains"])
     idata.attrs["retained_draws_per_chain"] = int(sample_settings(config)["draws"])
     idata.attrs["tuning_steps_per_chain"] = int(sample_settings(config)["tune"])
-    idata.attrs["texas_2020_testing_override"] = "none"
+    idata.attrs["sampling_minutes"] = elapsed / 60
 
-    output_nc = config.output_nc_path
-    if output_nc is None:
-        output_nc = config.output_dir / f"hierarchical_epi_fit_v7d_{config.model_scope}_{config.run_mode}.nc"
-    output_nc.parent.mkdir(parents=True, exist_ok=True)
+    output_nc = config.output_dir / "posterior.nc"
     idata.to_netcdf(output_nc)
-
-    inputs.period_targets.to_csv(config.output_dir / f"hierarchical_epi_fit_v7d_{config.model_scope}_period_targets.csv", index=False)
-    summarize_hierarchical_epi_fit(idata, inputs).to_csv(
-        config.output_dir / f"hierarchical_epi_fit_v7d_{config.model_scope}_{config.run_mode}_period_fit_summary.csv",
-        index=False,
-    )
+    inputs.period_targets.to_csv(config.output_dir / "period_targets.csv", index=False)
+    summarize_hierarchical_epi_fit(idata, inputs).to_csv(config.output_dir / "period_fit_summary.csv", index=False)
+    write_epi_bundle(idata.posterior, inputs, config.cdc_stocks_path, config.output_dir / "epi_bundle.npz")
     print(f"Sampling completed in {elapsed / 60:.2f} minutes")
-    print(f"Saved posterior: {output_nc}")
+    print(f"Saved posterior and bundle in {config.output_dir}")
     return output_nc
 
 
+def write_epi_bundle(posterior, inputs: HierarchicalEpiInputs, cdc_stocks_path: Path, output_path: Path) -> None:
+    """Posterior draws and CDC stocks in the bundle layout read by the scenarios.
+
+    Parameter draws are flattened chain by chain (draws x states). CDC stocks cover
+    the fit window (cdc_raw_native; PrEP stocks carried forward past their last
+    year) and are held at its last year through BUNDLE_END_YEAR (cdc_raw). risk0 is the risk baseline used in the fit;
+    kappa_prep is 1 (PrEP prevents infection in proportion to coverage).
+    """
+    geos = inputs.geos
+    if [str(s) for s in posterior["state"].values] != geos:
+        raise ValueError("Posterior states do not match the fit inputs")
+    native_years = np.asarray(inputs.model_years, dtype=int)
+    model_years = np.arange(FIRST_YEAR, BUNDLE_END_YEAR + 1)
+    native = load_cdc_stocks(cdc_stocks_path, geos, BUNDLE_CDC_NAMES, native_years)
+    # PrEP stocks can end before the surveillance years; carry their last year forward.
+    for name in ("PrEP Eligible", "PrEP"):
+        k = BUNDLE_CDC_NAMES.index(name)
+        native[:, k] = pd.DataFrame(native[:, k]).ffill(axis=1).to_numpy()
+    held = np.repeat(native[:, :, -1:], len(model_years) - len(native_years), axis=2)
+    arrays = {
+        "schema_version": np.array([SCHEMA_VERSION]),
+        "geo_ids": np.array(geos),
+        "model_years": model_years,
+        "cdc_native_years": native_years,
+        "cdc_raw_names": np.array(BUNDLE_CDC_NAMES),
+        "cdc_raw": np.concatenate([native, held], axis=2),
+        "cdc_raw_native": native,
+        "cdc_kappa_prep": np.ones(len(geos)),
+        "cdc_risk0": inputs.risk_baseline,
+    }
+    for name, key in POSTERIOR_TO_BUNDLE.items():
+        arrays[key] = posterior[name].stack(sample=("chain", "draw")).transpose("sample", "state").values
+    output_path.parent.mkdir(parents=True, exist_ok=True)
+    np.savez_compressed(output_path, **arrays)
+
+
 def _posterior_q(posterior, name: str) -> np.ndarray:
-    arr = posterior[name].stack(sample=("chain", "draw")).transpose("state", "sample").values
-    return np.quantile(arr, [0.05, 0.50, 0.95], axis=1).T
+    arr = posterior[name].stack(sample=("chain", "draw")).transpose("state", "period", "sample").values
+    return np.quantile(arr, [0.05, 0.50, 0.95], axis=-1)
 
 
 def summarize_hierarchical_epi_fit(idata, inputs: HierarchicalEpiInputs) -> pd.DataFrame:
-    """Summarize period-average posterior fit for audit tables."""
+    """Period-average posterior fit against the observed targets, for audit tables."""
 
-    posterior = idata.posterior
+    targets = inputs.period_targets.set_index(["state", "period"])
     rows = []
-    targets = inputs.period_targets
-    for period, obs_col, mu_name in [
-        ("pre", "dx_pre_obs", "dx_pre_mu"),
-        ("post", "dx_post_obs", "dx_post_mu"),
-        ("pre", "inc_pre_obs", "inc_pre_mu"),
-        ("post", "inc_post_obs", "inc_post_mu"),
-    ]:
-        outcome = "diagnoses" if mu_name.startswith("dx") else "incidence"
-        obs_values = targets[obs_col].to_numpy()
-        q = _posterior_q(posterior, mu_name)
+    for outcome, obs_col, mu_name in [("diagnoses", "dx_obs", "dx_period_mu"), ("incidence", "inc_obs", "inc_period_mu")]:
+        q = _posterior_q(idata.posterior, mu_name)
         for gi, state in enumerate(inputs.geos):
-            rows.append({
-                "state": state,
-                "outcome": outcome,
-                "period": period,
-                "observed": obs_values[gi],
-                "posterior_p05": q[gi, 0],
-                "posterior_median": q[gi, 1],
-                "posterior_p95": q[gi, 2],
-                "relative_error_median": q[gi, 1] / obs_values[gi] - 1.0,
-                "covered_90pct": q[gi, 0] <= obs_values[gi] <= q[gi, 2],
-            })
+            for pi, period in enumerate(inputs.period_labels):
+                obs = targets.loc[(state, period), obs_col]
+                rows.append({
+                    "state": state,
+                    "outcome": outcome,
+                    "period": period,
+                    "observed": obs,
+                    "posterior_p05": q[0, gi, pi],
+                    "posterior_median": q[1, gi, pi],
+                    "posterior_p95": q[2, gi, pi],
+                    "relative_error_median": q[1, gi, pi] / obs - 1.0,
+                    "covered_90pct": q[0, gi, pi] <= obs <= q[2, gi, pi],
+                })
     return pd.DataFrame(rows)

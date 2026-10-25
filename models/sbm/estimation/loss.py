@@ -2,6 +2,8 @@ from __future__ import annotations
 
 import numpy as np
 
+from models.sbm.calibration import shift_response_grad
+
 
 def joint_loss(
     theta_free: np.ndarray,
@@ -17,22 +19,24 @@ def joint_loss(
     w_stab: float = 10.0,
     eps: float = 1e-3,
     stability_fd_eps: float = 1e-7,
-    x_weights: np.ndarray | None = None,
-    normalize_x_by_counts: bool = True,
-    normalize_r_by_counts: bool = True,
-    component_scales: dict[str, float] | None = None,
-    norm_eps: float = 1e-8,
     return_components: bool = False,
     structural_prior_mean: np.ndarray | None = None,
     structural_prior_tau: np.ndarray | None = None,
     drift_enabled: np.ndarray | None = None,
     drift_prior_mean: np.ndarray | None = None,
     drift_prior_tau: np.ndarray | None = None,
+    total_effect: dict | None = None,
 ) -> tuple[float, np.ndarray] | tuple[float, np.ndarray, dict[str, float]]:
-    """Combined loss: covariance + trend-with-drift + shrinkage + priors + stability.
+    """Combined loss and its gradient:
 
-    The parameter vector is [free J-I entries, enabled drift entries]. If no
-    drift entries are enabled, this reduces to the previous fixed-u model.
+        L = wR * LR + wX * LX + wJ * LJ + L_prior_J + L_prior_c + L_stab + L_total_effect
+
+    LR: stationary-covariance misfit; LX: trajectory-with-drift misfit; LJ:
+    shrinkage toward J_ref; L_prior_J / L_prior_c: structural and drift priors;
+    L_stab: spectral-radius penalty; L_total_effect: evidence target on the total
+    response of one measure to another (``total_effect``: source, target, horizon,
+    value, tau; models/sbm/calibration.py). The parameter vector is [free J-I
+    entries, enabled drift entries].
     """
     n_j = int(np.sum(M))
     j_free = np.asarray(theta_free[:n_j], dtype=float)
@@ -40,79 +44,32 @@ def joint_loss(
     J = _rebuild_J(j_free, M)
     c = _rebuild_drift(c_free, np.asarray(u, dtype=float), drift_enabled)
 
-    LR, gradR = _covariance_loss(J, Sigma, Sigma_eta, normalize_r_by_counts)
-    LX, gradX, gradc = _mean_drift_loss(J, Xbar, c, x_weights, normalize_x_by_counts)
+    LR, gradR = _covariance_loss(J, Sigma, Sigma_eta)
+    LX, gradX, gradc = _mean_drift_loss(J, Xbar, c)
     LJ, gradJ = _shrinkage_loss(J, J_ref)
     L_prior_J, grad_prior_J = _structural_prior_loss(J, structural_prior_mean, structural_prior_tau, M)
     L_prior_c, grad_prior_c = _drift_prior_loss(c_free, drift_enabled, drift_prior_mean, drift_prior_tau)
     L_stab, grad_stab = _stability_penalty(J, w_stab, eps, stability_fd_eps)
+    L_total, grad_total = _total_effect_loss(J, total_effect)
 
-    scales = component_scales or {}
-    sX = float(scales.get("LX", 1.0))
-    sR = float(scales.get("LR", 1.0))
-    sJ = float(scales.get("LJ", 1.0))
-    sPJ = float(scales.get("L_prior_J", 1.0))
-    sPC = float(scales.get("L_prior_c", 1.0))
-    sS = float(scales.get("L_stab", 1.0))
-
-    LXn = LX / (sX + norm_eps)
-    LRn = LR / (sR + norm_eps)
-    LJn = LJ / (sJ + norm_eps)
-    LPJn = L_prior_J / (sPJ + norm_eps)
-    LPCn = L_prior_c / (sPC + norm_eps)
-    L_stab_n = L_stab / (sS + norm_eps)
-
-    L = wR * LRn + wX * LXn + wJ * LJn + LPJn + LPCn + L_stab_n
-    grad_full = (
-        wR * gradR / (sR + norm_eps)
-        + wX * gradX / (sX + norm_eps)
-        + wJ * gradJ / (sJ + norm_eps)
-        + grad_prior_J / (sPJ + norm_eps)
-        + grad_stab / (sS + norm_eps)
-    )
-    grad_j_free = grad_full[M == 1]
+    L = wR * LR + wX * LX + wJ * LJ + L_prior_J + L_prior_c + L_stab + L_total
+    grad_full = wR * gradR + wX * gradX + wJ * gradJ + grad_prior_J + grad_stab + grad_total
+    grad_free = grad_full[M == 1]
     if c_free.size:
         enabled = np.asarray(drift_enabled, dtype=bool)
-        grad_c_free = wX * gradc[enabled] / (sX + norm_eps) + grad_prior_c / (sPC + norm_eps)
-        grad_free = np.concatenate([grad_j_free, grad_c_free])
-    else:
-        grad_free = grad_j_free
+        grad_free = np.concatenate([grad_free, wX * gradc[enabled] + grad_prior_c])
 
     if not return_components:
         return L, grad_free
-
-    components = {
-        "LX": float(LX),
-        "LR": float(LR),
-        "LJ": float(LJ),
-        "L_prior_J": float(L_prior_J),
-        "L_prior_c": float(L_prior_c),
-        "L_stab": float(L_stab),
-        "LX_norm": float(LXn),
-        "LR_norm": float(LRn),
-        "LJ_norm": float(LJn),
-        "L_prior_J_norm": float(LPJn),
-        "L_prior_c_norm": float(LPCn),
-        "L_stab_norm": float(L_stab_n),
-        "LX_weighted": float(wX * LXn),
-        "LR_weighted": float(wR * LRn),
-        "LJ_weighted": float(wJ * LJn),
-        "L_prior_J_weighted": float(LPJn),
-        "L_prior_c_weighted": float(LPCn),
-        "L_stab_weighted": float(L_stab_n),
-        "L_total": float(L),
-    }
+    components = {"LX": float(LX), "LR": float(LR), "LJ": float(LJ), "L_prior_J": float(L_prior_J),
+                  "L_prior_c": float(L_prior_c), "L_stab": float(L_stab), "L_total_effect": float(L_total),
+                  "L_total": float(L)}
     return L, grad_free, components
 
 
-def split_theta(theta_free: np.ndarray, M: np.ndarray, drift_enabled: np.ndarray | None = None) -> tuple[np.ndarray, np.ndarray]:
-    n_j = int(np.sum(M))
-    return np.asarray(theta_free[:n_j], dtype=float), np.asarray(theta_free[n_j:], dtype=float)
-
-
 def rebuild_from_theta(theta_free: np.ndarray, M: np.ndarray, u: np.ndarray, drift_enabled: np.ndarray | None = None) -> tuple[np.ndarray, np.ndarray]:
-    j_free, c_free = split_theta(theta_free, M, drift_enabled)
-    return _rebuild_J(j_free, M), _rebuild_drift(c_free, u, drift_enabled)
+    n_j = int(np.sum(M))
+    return _rebuild_J(theta_free[:n_j], M), _rebuild_drift(np.asarray(theta_free[n_j:], dtype=float), u, drift_enabled)
 
 
 def _rebuild_J(JmI_vec_free: np.ndarray, M: np.ndarray) -> np.ndarray:
@@ -133,41 +90,21 @@ def _rebuild_drift(c_free: np.ndarray, u: np.ndarray, drift_enabled: np.ndarray 
     return c
 
 
-def _covariance_loss(J, Sigma, Sigma_eta, normalize_by_counts: bool = True) -> tuple[float, np.ndarray]:
-    Sigma_eta_diag = np.diag(np.diag(Sigma_eta))
-    ER = -Sigma + J @ Sigma @ J.T + Sigma_eta_diag
-    m = J.shape[0]
-    scale = (m * m) if normalize_by_counts else 1.0
-    gradR = (4.0 / scale) * ER @ J @ Sigma
-    LR = (1.0 / scale) * np.sum(ER ** 2)
-    return LR, gradR
+def _covariance_loss(J, Sigma, Sigma_eta) -> tuple[float, np.ndarray]:
+    ER = -Sigma + J @ Sigma @ J.T + np.diag(np.diag(Sigma_eta))
+    return float(np.sum(ER ** 2)), 4.0 * ER @ J @ Sigma
 
 
-def _mean_drift_loss(
-    J,
-    Xbar,
-    c,
-    x_weights: np.ndarray | None = None,
-    normalize_by_counts: bool = True,
-) -> tuple[float, np.ndarray, np.ndarray]:
+def _mean_drift_loss(J, Xbar, c) -> tuple[float, np.ndarray, np.ndarray]:
     m, T = Xbar.shape
     LX = 0.0
     gradX = np.zeros((m, m), dtype=float)
     gradc = np.zeros(m, dtype=float)
-    wvec = np.ones(m, dtype=float) if x_weights is None else np.asarray(x_weights, dtype=float).ravel()
-    if wvec.size != m:
-        raise ValueError(f"x_weights length mismatch: got {wvec.size}, expected {m}")
-    W = wvec[:, None]
-    n_steps = max(T - 1, 1)
-    scale = (n_steps * m) if normalize_by_counts else 1.0
-
     for t in range(1, T):
         EX = Xbar[:, t] - J @ Xbar[:, t - 1] - c
-        WEX = wvec * EX
-        LX += (1.0 / scale) * float(EX.T @ WEX)
-        gradX -= (2.0 / scale) * (W * EX[:, None]) @ Xbar[:, t - 1][None, :]
-        gradc -= (2.0 / scale) * WEX
-
+        LX += float(EX @ EX)
+        gradX -= 2.0 * np.outer(EX, Xbar[:, t - 1])
+        gradc -= 2.0 * EX
     return LX, gradX, gradc
 
 
@@ -218,6 +155,15 @@ def _drift_prior_loss(
     loss = float(np.sum(residual ** 2))
     grad[valid] = 2.0 * residual / tau[valid]
     return loss, grad
+
+
+def _total_effect_loss(J: np.ndarray, spec: dict | None) -> tuple[float, np.ndarray]:
+    """((response - value) / tau)^2 for the model's total response, with its analytic gradient."""
+    if spec is None:
+        return 0.0, np.zeros_like(J)
+    r, dr = shift_response_grad(J, spec["source"], spec["target"], spec["horizon"])
+    z = (r - spec["value"]) / spec["tau"]
+    return float(z ** 2), 2.0 * z / spec["tau"] * dr
 
 
 def _stability_penalty(

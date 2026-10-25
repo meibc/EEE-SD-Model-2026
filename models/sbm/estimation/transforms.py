@@ -6,18 +6,23 @@ class FeatureTransformer:
     """Probability-space to centered-logit-space transformer.
 
     Forward transform:
-        X = logit(Y) - logit(reference_probability)
+        X = logit(Y) - reference_logit
 
-    With reference_probability=0.5 this reduces to the old raw logit. The
-    covariance Jacobian is unchanged by centering because subtracting a constant
-    does not change derivatives.
+    The reference is either given as probabilities or directly as logits; the
+    state-anchored model uses each unit's own mean logit over the observed periods
+    (``state_anchor``). The covariance Jacobian is unchanged by centering because
+    subtracting a constant does not change derivatives.
     """
 
-    def __init__(self, reference_probs=None, eps=1e-2):
+    def __init__(self, reference_probs=None, eps=1e-2, reference_logits=None):
         self.transforms = Transforms()
         self.eps = eps
         self.reference_probs = None if reference_probs is None else np.asarray(reference_probs, dtype=float)
-        if self.reference_probs is not None:
+        if reference_logits is not None:
+            self.reference_logits = np.asarray(reference_logits, dtype=float)
+            if self.reference_logits.ndim != 1:
+                raise ValueError("reference_logits must be 1D")
+        elif self.reference_probs is not None:
             if self.reference_probs.ndim != 1:
                 raise ValueError("reference_probs must be 1D")
             if not np.all((self.reference_probs > 0) & (self.reference_probs < 1)):
@@ -25,6 +30,12 @@ class FeatureTransformer:
             self.reference_logits = self.transforms.logit(self.reference_probs, self.eps)
         else:
             self.reference_logits = None
+
+    @staticmethod
+    def state_anchor(Ybar, eps=1e-2):
+        """A unit's anchor: the mean logit of each measure over its observed periods (m,)."""
+        Y = np.clip(np.asarray(Ybar, dtype=float), eps, 1 - eps)
+        return Transforms.logit(Y, eps).mean(axis=1)
 
     def _ref_logits_for(self, Ybar):
         if self.reference_logits is None:

@@ -18,6 +18,9 @@ class StateIntervention:
         self.mode = mode
         self.effect = effect
         self.benchmark = benchmark
+        # Probabilities at the last observed period (set by the caller for
+        # "probability_relative_to_last_observed").
+        self.anchor_p = None
 
     def _scale(self, t):
         if t < self.start_t:
@@ -42,6 +45,17 @@ class StateIntervention:
             X_new[self.var_idx] += self.delta * scale
             return X_new
 
+        if self.effect == "probability_relative_shift":
+            # Shift, not pin: lower the measure's set point so that, with no feedback, it settles
+            # at (1 + delta) x baseline; each step adds (1 - persistence) x the logit gap, and
+            # the measure keeps responding to its drivers (feedback included).
+            if baseline_p is None or predictor.current_J is None:
+                raise ValueError("probability_relative_shift requires baseline_p and the current J")
+            b = float(np.clip(baseline_p[self.var_idx], 1e-6, 1 - 1e-6))
+            gap = _logit(b * max(0.0, 1.0 + self.delta)) - _logit(b)
+            X_new[self.var_idx] += scale * (1.0 - predictor.current_J[self.var_idx, self.var_idx]) * gap
+            return X_new
+
         p_current = predictor._inverse_x(X_new)[self.var_idx]
 
         if self.effect == "probability_relative":
@@ -52,6 +66,20 @@ class StateIntervention:
                 raise ValueError("probability_relative_to_baseline requires baseline_p")
             multiplier = max(0.0, 1.0 + self.delta)
             p_target = np.clip(float(baseline_p[self.var_idx]) * multiplier, 1e-6, 1 - 1e-6)
+            p_new = np.clip((1 - scale) * float(p_current) + scale * p_target, 1e-6, 1 - 1e-6)
+        elif self.effect == "probability_absolute_to_baseline":
+            # Fixed dose: move toward the baseline probability minus a fixed amount.
+            if baseline_p is None:
+                raise ValueError("probability_absolute_to_baseline requires baseline_p")
+            p_target = np.clip(float(baseline_p[self.var_idx]) + self.delta, 1e-6, 1 - 1e-6)
+            p_new = np.clip((1 - scale) * float(p_current) + scale * p_target, 1e-6, 1 - 1e-6)
+        elif self.effect == "probability_relative_to_last_observed":
+            # Move toward (1 + delta) x the last observed level and hold there; never above the
+            # baseline path, so a measure projected to fall below the target follows its baseline.
+            if baseline_p is None or self.anchor_p is None:
+                raise ValueError("probability_relative_to_last_observed requires baseline_p and anchor_p")
+            p_target = min(float(self.anchor_p[self.var_idx]) * max(0.0, 1.0 + self.delta),
+                           float(baseline_p[self.var_idx]))
             p_new = np.clip((1 - scale) * float(p_current) + scale * p_target, 1e-6, 1 - 1e-6)
         elif self.effect == "probability_gap_to_benchmark":
             if self.benchmark is None:

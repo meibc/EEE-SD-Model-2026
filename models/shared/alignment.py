@@ -105,7 +105,9 @@ def build_cdc_inputs_from_sem(
     """Build aligned CDC inputs from SEM trajectory and raw CDC stocks.
 
     The returned field is still named tau for compatibility, but v7 uses direct
-    hivtest12 / p_test rather than the old hazard-transformed proxy.
+    hivtest12 / p_test rather than the old hazard-transformed proxy. CDC stocks
+    (PrEP-eligible and not virally suppressed) are interpolated within the CDC
+    years and held at the last observed year beyond them.
     """
     hivtest = sem_traj[hivtest_idx, :]
     prep_on = sem_traj[prep_idx, :]
@@ -118,12 +120,12 @@ def build_cdc_inputs_from_sem(
 
     n_elig = np.asarray(unit.get_cdc(n_elig_var), dtype=float)
     if len(n_elig) != len(model_years):
-        n_elig = align_to_years(unit.cdc_years, n_elig, model_years)
+        n_elig = np.interp(model_years, unit.cdc_years, n_elig)
 
     prevalence = np.asarray(unit.get_cdc(prevalence_var), dtype=float)
     viral_suppression = np.asarray(unit.get_cdc(viral_suppression_var), dtype=float)
     no_vs = np.maximum(0.0, prevalence - viral_suppression)
     if len(no_vs) != len(model_years):
-        no_vs = align_to_years(unit.cdc_years, no_vs, model_years)
+        no_vs = np.interp(model_years, unit.cdc_years, no_vs)
 
     return tau, prep_on, n_elig, risk_behavior, no_vs

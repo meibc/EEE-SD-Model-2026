@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+"""Containers for model inputs and simulation outputs."""
+
 import numpy as np
 from dataclasses import dataclass
 
@@ -13,52 +15,6 @@ class PreparedData:
     M: np.ndarray
     ts: np.ndarray
     v_names: list[str]
-    ts_cdc: np.ndarray | None = None
-    cdc_names: list[str] | None = None
-
-
-@dataclass
-class FitResult:
-    """Fit result for single unit."""
-    unit_id: str
-    J: np.ndarray
-    Ybar: np.ndarray
-    Xbar: np.ndarray
-    drift: np.ndarray | None = None
-    loss_diagnostics: list[dict] | None = None
-
-
-@dataclass
-class FitResults:
-    """Fit results for all units."""
-    results: dict[str, FitResult]
-    ts: np.ndarray
-    v_names: list[str]
-
-
-@dataclass
-class PredictionResult:
-    unit_id: str
-    Ypred_rolling: np.ndarray
-    Xpred_rolling: np.ndarray
-    Ypred_trajectory: np.ndarray
-    Xpred_trajectory: np.ndarray
-
-
-@dataclass
-class PredictionResults:
-    """Prediction results for all units."""
-    results: dict[str, PredictionResult]
-    ts: np.ndarray
-    v_names: list[str]
-
-
-@dataclass
-class RunOutput:
-    """Complete output from SBRunner."""
-    inputs: PreparedData
-    fit: FitResults
-    predictions: PredictionResults | None
 
 
 @dataclass
@@ -80,24 +36,6 @@ class CDCOutput:
     incidence: np.ndarray
     diagnosed: np.ndarray
     undiagnosed: np.ndarray
-
-
-@dataclass
-class JointResult:
-    """Joint result for one unit."""
-    unit_id: str
-    sem_trajectory: np.ndarray
-    cdc_inputs: CDCInputs
-    cdc_output: CDCOutput
-
-
-@dataclass
-class JointOutput:
-    """Complete joint pipeline output."""
-    results: dict[str, JointResult]
-    sem_years: np.ndarray
-    cdc_years: np.ndarray
-    v_names: list[str]
 
 
 @dataclass
@@ -136,26 +74,3 @@ class UncertaintyOutput:
     v_names: list[str]
 
 
-@dataclass
-class DeterministicScenarios:
-    """Deterministic scenario outputs."""
-    output: JointOutput | None = None
-    baseline: JointOutput | None = None
-    intervention: JointOutput | None = None
-    interventions: dict[str, JointOutput] | None = None
-
-
-@dataclass
-class UncertaintyScenarios:
-    """Uncertainty scenario outputs."""
-    output: UncertaintyOutput | None = None
-    baseline: UncertaintyOutput | None = None
-    intervention: UncertaintyOutput | None = None
-    interventions: dict[str, UncertaintyOutput] | None = None
-
-
-@dataclass
-class SimulationOutputs:
-    """Top-level simulation containers."""
-    deterministic: DeterministicScenarios
-    uncertainty: UncertaintyScenarios

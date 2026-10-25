@@ -1,10 +1,12 @@
 from __future__ import annotations
 
-"""Run scenario uncertainty from standardized v8 SEM/CDC draws.
+"""Scenario projections from the research bundle (input/research_bundle.py).
 
-This stage consumes the dashboard-ready standardized v8 artifact, applies the
-finalized scenario codebook, and propagates outcomes through the CDC/hierarchical
-model. Stage 02 SEM refitting is optional once standardized v8 has been exported.
+Runs the baseline and each scenario in the codebook (config/interventions.py)
+through pipeline/joint_simulation.py and summarizes paired baseline-scenario
+contrasts at the report years, for the eight modeled measures and the
+epidemiological outcomes (incidence, diagnoses, undiagnosed, PrEP users, and
+cumulative incidence from ``cumulative_start_year``).
 """
 
 from dataclasses import dataclass, field
@@ -24,19 +26,25 @@ from pipeline.results import UncertaintyOutput
 
 @dataclass(frozen=True)
 class SEMScenarioRunConfig:
-    standardized_input_path: Path = Path("output/standardized_input_v8.npz")
-    output_dir: Path = Path("output/sem_scenarios_centered_drift_v5")
+    standardized_input_path: Path = Path("results/03_fits/primary/standardized_research.npz")
+    output_dir: Path = Path("results/04_scenarios/primary")
     scenario_codes: list[str] = field(default_factory=lambda: list(SCENARIO_CODEBOOK.keys()))
     n_samples: int = 500
     seed: int = 123
     target_end_year: int = 2036
     intervention_duration_steps: int = 3
+    projection_start: str = "observed"
+    report_years: tuple[int, ...] = ()
+    cumulative_start_year: int = 2025
     show_progress: bool = False
     save_outputs_pickle: bool = False
     save_draw_level_endpoints: bool = False
+    contextual_prep_pr: float | None = None   # contextual upper-bound sensitivity (pipeline/joint_simulation.py)
+    constant_pr_prep: bool = False            # static evidence-translation sensitivity (pipeline/joint_simulation.py)
+    zero_projection_edges: tuple[tuple[str, str], ...] = ()   # (source, target) pathways off in projections
 
 
-EPI_VARS = ("incidence", "diagnosed", "undiagnosed", "prep_on_count")
+EPI_VARS = ("incidence", "diagnosed", "undiagnosed", "prep_on_count", "incidence_cumulative")
 SEM_VARS_OF_INTEREST = (
     "stigma_ahs",
     "stigma_gss",
@@ -72,6 +80,15 @@ def _sample_epi_stack(output: UncertaintyOutput, unit_id: str, var: str) -> np.n
     return np.asarray([getattr(s.cdc_output, var) for s in output.results[unit_id].samples], dtype=float)
 
 
+def _epi_endpoint(output: UncertaintyOutput, unit_id: str, var: str, cdc_idx: int, cumulative_start_idx: int) -> np.ndarray:
+    """Per-draw value at the endpoint; ``incidence_cumulative`` sums annual
+    incidence from the cumulative start year through the endpoint."""
+    if var == "incidence_cumulative":
+        stack = _sample_epi_stack(output, unit_id, "incidence")
+        return stack[:, cumulative_start_idx:cdc_idx + 1].sum(axis=1)
+    return _sample_epi_stack(output, unit_id, var)[:, cdc_idx]
+
+
 def _idx_for_year(years: np.ndarray, target_year: int) -> int:
     years = np.asarray(years, dtype=int).ravel()
     idx = np.where(years == int(target_year))[0]
@@ -87,8 +104,10 @@ def _summarize_scenario(
     scenario_label: str,
     sem_years: np.ndarray,
     target_year: int,
+    cumulative_start_year: int = 2025,
 ) -> tuple[list[dict], list[dict]]:
     cdc_idx = _idx_for_year(baseline.years, target_year)
+    cum_idx = _idx_for_year(baseline.years, cumulative_start_year)
     sem_idx = _idx_for_year(sem_years, target_year)
     sem_names = list(baseline.v_names)
     common_units = sorted(set(baseline.results) & set(scenario.results))
@@ -125,8 +144,8 @@ def _summarize_scenario(
             sem_rows.append(row)
 
         for var in EPI_VARS:
-            b = _sample_epi_stack(baseline, unit_id, var)[:n, cdc_idx]
-            s = _sample_epi_stack(scenario, unit_id, var)[:n, cdc_idx]
+            b = _epi_endpoint(baseline, unit_id, var, cdc_idx, cum_idx)[:n]
+            s = _epi_endpoint(scenario, unit_id, var, cdc_idx, cum_idx)[:n]
             delta = s - b
             pct = _pct_change(s, b)
             row = {
@@ -152,9 +171,11 @@ def _draw_level_endpoint_rows(
     scenario_label: str,
     sem_years: np.ndarray,
     target_year: int,
+    cumulative_start_year: int = 2025,
 ) -> tuple[list[dict], list[dict]]:
     """Return paired draw-level endpoint rows for baseline/scenario contrasts."""
     cdc_idx = _idx_for_year(baseline.years, target_year)
+    cum_idx = _idx_for_year(baseline.years, cumulative_start_year)
     sem_idx = _idx_for_year(sem_years, target_year)
     sem_names = list(baseline.v_names)
     common_units = sorted(set(baseline.results) & set(scenario.results))
@@ -169,6 +190,8 @@ def _draw_level_endpoint_rows(
         base_sem = base_sem[:n]
         scen_sem = scen_sem[:n]
 
+        epi_base = {var: _epi_endpoint(baseline, unit_id, var, cdc_idx, cum_idx) for var in EPI_VARS}
+        epi_scen = {var: _epi_endpoint(scenario, unit_id, var, cdc_idx, cum_idx) for var in EPI_VARS}
         for draw in range(n):
             for var in SEM_VARS_OF_INTEREST:
                 if var not in sem_names:
@@ -190,8 +213,8 @@ def _draw_level_endpoint_rows(
                 })
 
             for var in EPI_VARS:
-                b = float(_sample_epi_stack(baseline, unit_id, var)[draw, cdc_idx])
-                s = float(_sample_epi_stack(scenario, unit_id, var)[draw, cdc_idx])
+                b = float(epi_base[var][draw])
+                s = float(epi_scen[var][draw])
                 epi_rows.append({
                     "unit_id": unit_id,
                     "scenario": scenario_code,
@@ -206,28 +229,6 @@ def _draw_level_endpoint_rows(
                 })
 
     return sem_rows, epi_rows
-
-
-def _scenario_aggregate_rows(endpoint_epi: pd.DataFrame, endpoint_sem: pd.DataFrame) -> pd.DataFrame:
-    """USA-focused compact table for quick review."""
-    rows = []
-    for df, domain in [(endpoint_epi, "epi"), (endpoint_sem, "sem")]:
-        usa = df[df["unit_id"] == "USA"].copy()
-        for _, row in usa.iterrows():
-            rows.append({
-                "domain": domain,
-                "scenario": row["scenario"],
-                "scenario_label": row["scenario_label"],
-                "year": int(row["year"]),
-                "variable": row["variable"],
-                "baseline_p50": row["baseline_p50"],
-                "scenario_p50": row["scenario_p50"],
-                "delta_p50": row["delta_p50"],
-                "pct_change_p50": row["pct_change_p50"],
-                "delta_p025": row["delta_p025"],
-                "delta_p975": row["delta_p975"],
-            })
-    return pd.DataFrame(rows)
 
 
 def run_sem_scenarios(config: SEMScenarioRunConfig) -> dict[str, Path]:
@@ -262,6 +263,8 @@ def run_sem_scenarios(config: SEMScenarioRunConfig) -> dict[str, Path]:
         state_intervention_codes=[],
         relationship_intervention_codes=[],
         intervention_duration_steps=config.intervention_duration_steps,
+        projection_start=config.projection_start,
+        zero_projection_edges=config.zero_projection_edges,
     )
 
     if config.save_outputs_pickle:
@@ -289,28 +292,36 @@ def run_sem_scenarios(config: SEMScenarioRunConfig) -> dict[str, Path]:
             state_intervention_codes=spec.get("state_codes", []),
             relationship_intervention_codes=spec.get("relationship_codes", []),
             intervention_duration_steps=config.intervention_duration_steps,
+            projection_start=config.projection_start,
+            contextual_prep_pr=config.contextual_prep_pr,
+            constant_pr_prep=config.constant_pr_prep,
+            prep_only_fraction=spec.get("prep_only_fraction"),
+            zero_projection_edges=config.zero_projection_edges,
         )
-        s_rows, e_rows = _summarize_scenario(
-            baseline=baseline,
-            scenario=scenario_output,
-            scenario_code=scenario_code,
-            scenario_label=spec.get("label", scenario_code),
-            sem_years=sem_years,
-            target_year=config.target_end_year,
-        )
-        sem_rows.extend(s_rows)
-        epi_rows.extend(e_rows)
-        if config.save_draw_level_endpoints:
-            sd_rows, ed_rows = _draw_level_endpoint_rows(
+        for report_year in config.report_years or (config.target_end_year,):
+            s_rows, e_rows = _summarize_scenario(
                 baseline=baseline,
                 scenario=scenario_output,
                 scenario_code=scenario_code,
                 scenario_label=spec.get("label", scenario_code),
                 sem_years=sem_years,
-                target_year=config.target_end_year,
+                target_year=report_year,
+                cumulative_start_year=config.cumulative_start_year,
             )
-            sem_draw_rows.extend(sd_rows)
-            epi_draw_rows.extend(ed_rows)
+            sem_rows.extend(s_rows)
+            epi_rows.extend(e_rows)
+            if config.save_draw_level_endpoints:
+                sd_rows, ed_rows = _draw_level_endpoint_rows(
+                    baseline=baseline,
+                    scenario=scenario_output,
+                    scenario_code=scenario_code,
+                    scenario_label=spec.get("label", scenario_code),
+                    sem_years=sem_years,
+                    target_year=report_year,
+                    cumulative_start_year=config.cumulative_start_year,
+                )
+                sem_draw_rows.extend(sd_rows)
+                epi_draw_rows.extend(ed_rows)
         scenario_audit.append({
             "scenario": scenario_code,
             "label": spec.get("label", scenario_code),
@@ -328,7 +339,6 @@ def run_sem_scenarios(config: SEMScenarioRunConfig) -> dict[str, Path]:
     endpoint_epi = pd.DataFrame(epi_rows)
     draw_endpoint_sem = pd.DataFrame(sem_draw_rows)
     draw_endpoint_epi = pd.DataFrame(epi_draw_rows)
-    aggregate = _scenario_aggregate_rows(endpoint_epi, endpoint_sem)
     audit = pd.DataFrame(scenario_audit)
     summary = pd.DataFrame({
         "metric": [
@@ -354,7 +364,6 @@ def run_sem_scenarios(config: SEMScenarioRunConfig) -> dict[str, Path]:
         "endpoint_epi": config.output_dir / "scenario_endpoint_epi.csv",
         "draw_endpoint_sem": config.output_dir / "scenario_endpoint_sem_draws.csv",
         "draw_endpoint_epi": config.output_dir / "scenario_endpoint_epi_draws.csv",
-        "usa_summary": config.output_dir / "scenario_usa_summary.csv",
         "audit": config.output_dir / "scenario_audit.csv",
         "summary": config.output_dir / "scenario_run_summary.csv",
     }
@@ -366,7 +375,6 @@ def run_sem_scenarios(config: SEMScenarioRunConfig) -> dict[str, Path]:
     else:
         paths.pop("draw_endpoint_sem")
         paths.pop("draw_endpoint_epi")
-    aggregate.to_csv(paths["usa_summary"], index=False)
     audit.to_csv(paths["audit"], index=False)
     summary.to_csv(paths["summary"], index=False)
     return paths

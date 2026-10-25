@@ -115,7 +115,7 @@ class StandardizedSEMParamsLoader(_BaseStandardizedLoader):
 
     def __init__(self, bundle: StandardizedBundle):
         super().__init__(bundle)
-        required = ["sem_J_samples", "sem_fit_J_last"]
+        required = ["sem_J_samples", "sem_fit_J_last", "sem_anchor_logits"]
         missing = [k for k in required if k not in self._data]
         if missing:
             raise ValueError(f"Standardized SEM artifact is missing required keys: {missing}")
@@ -144,26 +144,35 @@ class StandardizedSEMParamsLoader(_BaseStandardizedLoader):
         return np.zeros((J.shape[0], J.shape[1], J.shape[2]), dtype=float)
 
     @property
-    def reference_probs(self) -> np.ndarray:
-        if "sem_reference_probs" in self._data:
-            return np.asarray(self._data["sem_reference_probs"], dtype=float)
-        return np.full(len(self.v_names), 0.5, dtype=float)
+    def anchor_logits(self) -> np.ndarray:
+        """State anchors (draw x state x measure mean logits)."""
+        return np.asarray(self._data["sem_anchor_logits"], dtype=float)
+
+    def ahs_prep_apr(self, sample_idx: int, unit_id: str) -> float:
+        """The draw's AHS-PrEP prevalence ratio from the evidence target (scripts/08b)."""
+        if "sem_ahs_prep_apr" not in self._data:
+            raise ValueError("Bundle has no AHS-PrEP prevalence ratios (fit without the evidence target)")
+        return float(self._data["sem_ahs_prep_apr"][self._sample_idx(sample_idx), self._idx(unit_id)])
 
     def load_point_estimates(self, unit_id: str) -> SEMParams:
         i = self._idx(unit_id)
         return SEMParams(
             J=np.nanmean(self.J_samples[:, i, :, :], axis=0),
             drift=np.nanmean(self.drift_samples[:, i, :], axis=0),
-            reference_probs=self.reference_probs,
+            reference_logits=np.nanmedian(self.anchor_logits[:, i, :], axis=0),
         )
 
     def load_sample(self, sample_idx: int, unit_id: str) -> SEMParams:
         i = self._idx(unit_id)
         s = self._sample_idx(sample_idx)
+        observed = None
+        if "sem_obs_samples" in self._data:
+            observed = np.asarray(self._data["sem_obs_samples"][s, i], dtype=float)
         return SEMParams(
             J=self.J_samples[s, i, :, :],
             drift=self.drift_samples[s, i, :],
-            reference_probs=self.reference_probs,
+            reference_logits=self.anchor_logits[s, i, :],
+            observed=observed,
         )
 
 
