@@ -76,12 +76,13 @@ class UncertaintyRunner:
         # Diagnostic: pathways (source, target) set to zero in the projection, baseline and scenario
         # alike (e.g. PrEP -> AHS, to see how much projected AHS growth relies on that feedback).
         self.zero_projection_edges = tuple(zero_projection_edges)
-        # Contextual upper bound (sensitivity): scenario PrEP is additionally multiplied by
-        # contextual_prep_pr ** (change in AHS / 0.10), the between-state association of AHS
-        # climate with everyone's PrEP use, assumed causal.
+        # Contextual upper bound (sensitivity): scenario PrEP is the baseline PrEP multiplied by
+        # contextual_prep_pr ** (change in AHS / 0.10), the between-state association of AHS climate
+        # with everyone's PrEP use, assumed causal; the counterpart of the primary translation below
+        # with the climate ratio in place of the individual one.
         self.contextual_prep_pr = contextual_prep_pr
-        # Static evidence translation (sensitivity): scenario PrEP is the baseline PrEP moved by the
-        # draw's individual-level prevalence ratio r held constant at the projected levels,
+        # Primary translation: scenario PrEP is the baseline PrEP moved by the draw's
+        # respondent-level prevalence ratio r held constant at the projected levels,
         # P_s = P_b (1 - A_s (1 - r)) / (1 - A_b (1 - r)), in place of the fitted PrEP response.
         self.constant_pr_prep = constant_pr_prep
         self.sem_loader = sem_loader
@@ -160,7 +161,7 @@ class UncertaintyRunner:
         if self.contextual_prep_pr is not None:
             ahs = self._v_names.index("stigma_ahs")
             factor = self.contextual_prep_pr ** ((ypred[ahs] - baseline_probs[ahs]) / 0.10)
-            ypred[self._prep_idx] = np.clip(ypred[self._prep_idx] * factor, 1e-6, 1 - 1e-6)
+            ypred[self._prep_idx] = np.clip(baseline_probs[self._prep_idx] * factor, 1e-6, 1 - 1e-6)
         if self.constant_pr_prep:
             ahs = self._v_names.index("stigma_ahs")
             gap = 1 - self.sem_loader.ahs_prep_apr(sem_idx, unit_id)

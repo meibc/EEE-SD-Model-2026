@@ -930,12 +930,125 @@ series has some 2023 values.
 Found for the code review: the all-population "New diagnoses (not AIDS)" stock subtracts an
 all-population AIDS series that no download provides, so it equals total diagnoses; unused downstream.
 
+## Projected AHS under the continued relationship (2026-10-25)
+
+With the fitted PrEP -> AHS relationship continued, a minority of draws project high AHS by 2036 (all
+state-draws: 18.7% above 30%, 6.1% above 50%; MA 27.6% of draws above 50%, SC 30.4%, UT 18.2%, AL
+18.6%), against 2.0% and 0.2% without it; observed state AHS never exceeds about 26%. Cause: unbounded
+projected PrEP growth combined with large fitted PrEP -> AHS coefficients in some draws (MA 90th
+percentile 1.13 per step). Decision (author): keep "continued" as the primary projection, as a
+possibility carried by a minority of draws; report medians with interquartile and 95% ranges (Fig. 2B),
+the share of draws above 30% and 50% by state (supplement), and a limitation on the wide upper range.
+Draws are not trimmed.
+
+## Results scripts and the contextual bound (2026-10-25)
+
+Results scripts (scripts/results_{trajectories,coevolution,ahs_reduction,sensitivity}.py) read prepared
+inputs and model outputs only and write to results/sections/<name>/; shared summaries and figure style
+are in reporting/. Wording analyses are permanent in scripts/08c_wording_items.R (results/02_inputs/wording/).
+"Increase"/"decrease" for observed 2018-2024 changes: the 95% interval of the change across bootstrap
+draws excludes zero (AHS: no clear change in all 24 states; PrEP: increase in all 24).
+Contextual upper bound kept (author) and redefined for the final design: scenario PrEP = baseline PrEP x
+PR ** (AHS change / 0.10) with the climate ratio PR (0.80, 0.70), in place of the respondent-level ratio
+(pipeline/joint_simulation.py; previously applied on top of the dynamic scenario PrEP). Halve AHS:
+-30.0% / -15.5% (PR 0.80, relationship continued / not) and -42.1% / -25.4% (PR 0.70) in 2036.
+Sensitivity (halve AHS, 2036, relationship continued unless stated): primary -7.6%; not continued -3.3%;
+placebo -4.8% / -3.4%; all-cycles association -5.4%; unadjusted wording -9.4%; persistence low / high
+-4.7% / -12.5%.
+
+## Wording adjustment kept as the conservative primary (2026-10-25)
+
+The 0.452 shift (AMIS 2022 vs 2021) likely over-corrects: unchanged items rose as much in 2022
+(experienced healthcare stigma +0.59, general social +0.64, family +0.24 log-odds), the AHS excess over
+them is about 0 (vs general and family +0.00, -0.21 to 0.21; vs experienced healthcare stigma -0.15), and
+placebo years put a plausible wording effect at 0-0.2. Adjusted AHS after 2022 is therefore probably
+understated by roughly 3-5 points, and the scenario benefits with it (unadjusted: halve AHS -9.4% vs
+-7.6%). Decision (author): keep the adjusted series as the primary, described as conservative, with the
+direction of the bias stated and the unadjusted result reported. Fig. 1 labels the adjusted series.
+
+## Figure decisions and caption notes (2026-10-25)
+
+Fig. 1: separate y-scales per panel (author; stigma measures never approach 100%); panel B with
+survey-weighted 95% intervals (national weights, scripts/08c). Fig. 2: observed PrEP-AHS paths only, all
+four periods marked, shared axes. Fig. 3: (A) projected 2036 AHS and (B) reduction in 2036 incidence from
+halving AHS, medians and 95% intervals with the two projections joined; projected-AHS panel moved here
+from Fig. 2.
+Tails in Fig. 3B: reductions above 90% in 3.7% of state-draws with the relationship continued (SC 22%,
+MA 19%, UT 19%, AL 7%, FL 6% of draws) and 0.5% without; they occur where projected baseline incidence is
+already low (median 68 vs 298 new infections in 2036), so large percentages correspond to small numbers.
+Caption notes to carry into the text: Fig. 1 classification rule (95% interval of the 2018-2024 change
+excludes zero), separate scales, unchanged experienced-stigma items; Fig. 2 shared axes and period order;
+Fig. 3 definition of "relationship continued", ordering, and the low-baseline explanation of the tails.
+
+## Figure set revised: projections over time (2026-10-25)
+
+Main figures now run observed -> projected -> by state. Fig. 1 unchanged (2018-2024 endpoints; the
+four-period state paths would make it unreadable). New Fig. 2 (scripts/results_fig2_projections.py): (A) AHS,
+across-state median, no intervention with the relationship continued and not continued and AHS halved,
+the gap halving closes shaded; (B) reduction in annual incidence pooled over states for halving AHS,
+stigma-resilient delivery and halving social and family stigma, relationship continued and not
+continued, 95% ribbons. The observed PrEP-AHS paths (formerly Fig. 2) are now a supplementary figure
+(figS_coevolution): they repeat Fig. 1A apart from the middle periods, which are what the fitted
+relationship rests on.
+To draw Fig. 2, the paper scenarios were rerun (both projections, same seed and draws) reporting every
+two-year model step 2026-2036 (odd years are not on the stigma model's grid). Values at 2030, 2032 and
+2036 are identical to the earlier runs (zero difference across all draw-level values); the earlier runs
+are archived (../EEE-SD-Model-2026-archive/scenarios_three_report_years_20261025) and the new runs carry
+the original folder names.
+What Fig. 2 shows: incidence effects lag the intervention (little before 2028-2030) and are still
+growing in 2036, which is why the 2036 reduction (-7.6%) exceeds the share of 2025-2036 infections averted
+(3.0%); the continued/not continued gap opens after 2030, as projected AHS without intervention drifts up
+to about 13.5% when the relationship is continued and stays near 10.7% when it is not. Caption note: in
+the first projected step (2026), AHS moves from observed 2024 values toward each state's fitted path in
+both projections, before any intervention.
+Benchmark scenario: removed from Table 1 and Fig. 2, reported as a sensitivity row. It is nearly identical
+to halving (state effects correlate 0.98; 5,097 vs 4,990 infections averted) because for the typical state
+halving reaches about the benchmark (5.3%). Text use: one sentence that halving corresponds to a level
+already observed in the lowest-AHS states.
+Fig. 3 redesigned: median, middle 50% and 95% of draws (axes cut at 60% and 50%, arrowheads where the 95%
+range continues), the two projections on the same row, connectors removed. Panel A shades AHS above the
+highest level observed in any primary state and period (26.2%), a rule about plausibility of the baseline
+set independently of effect size. SC, AL and UT have continued medians in or near that zone; SC's large
+continued effect (-25.0% vs -4.8% not continued) rests on its 2020 dip (17.1, 7.1, 17.3, 18.3%), which the
+fit reads as PrEP growth accompanied by rising AHS. Text: state rankings are suggestive; not-continued
+estimates are the more grounded floor.
+
+## Results scripts named by output (2026-10-26)
+
+scripts/results_fig1_trajectories.py (Fig. 1), results_fig2_projections.py (Fig. 2),
+results_table1_fig3_ahs_reduction.py (Table 1, Fig. 3, state supplementary figure and table),
+results_tableS_sensitivity.py (sensitivity table), results_figS_coevolution.py (co-movement supplementary
+figure). Supplementary numbers are assigned at assembly.
+
+## Fig. 3 replaced by a state breakdown (2026-10-26)
+
+The interval figure mixed two kinds of value (projected AHS level; incidence reduction) and its panel A
+repeated Fig. 2A. It moves to the supplement (figS_state_effects). New Fig. 3 (fig3_state_breakdown):
+by state, infections averted 2025-2036 per 100,000 MSM per year (A) and its factors: baseline infections
+per 100,000 MSM per year (B), AHS points removed by halving (C), PrEP gain per AHS point removed (D); per
+draw A = B x C x D x infections averted per PrEP point, the last nearly constant across states (about
+0.8-1.2), so the epidemiological model does not create the state differences. Denominator: the fixed state
+MSM population used to build the stocks, x 12 years. Absolute numbers stay in tables (Table 1 pooled;
+tableS_state_effects by state, on all three scales with 95% intervals), so that state size is not read as
+a model finding.
+Share of the across-state variance in log rate (breakdown_variance_shares.csv): continued: AHS removed
+0.69, burden 0.18, PrEP gain per point 0.17; not continued: burden 0.40, AHS removed 0.34, PrEP gain per
+point 0.18. PrEP gain per AHS point ranges 0.10 (IN) to 0.35 (FL); it reflects the state prevalence ratio
+and existing PrEP use (the scenario PrEP change is proportional to baseline PrEP), so stigma reduction
+yields more PrEP where PrEP is already widespread. Benefit concentrates in the South (SC, AL, GA, FL, TN,
+NC); AL and GA are high under both projections, SC's lead depends on the continued AHS rise (gap 26 vs 6
+points). A fixed-dose (equal AHS points) comparison was considered and not run: it would rank states by
+burden x PrEP gain per point, which panel D already shows. The old state-drivers table and rank
+correlations are superseded.
+
 ## Open items
 
-- AHS rose sharply between 2021 and 2023 in every demographic group simultaneously (e.g. White
-  MSM 25% -> 31%, Black MSM 21% -> 31%). The AHS items did not change; the user attributes it
-  to lower recent survey volume. Revisit before submission: it drives much of the 2022 -> 2024
-  transition in the state models.
+- Resolved (2026-10-25): AHS rose sharply between 2021 and 2023 in every demographic group
+  simultaneously (e.g. White MSM 25% -> 31%, Black MSM 21% -> 31%). The earlier note that the AHS
+  items did not change was wrong: both items were reworded in 2022 (scripts/08c; see the wording
+  entries above). Unchanged experienced-healthcare-stigma items show part of the rise is real; the
+  rest is handled by the wording adjustment (conservative primary) with the unadjusted series as a
+  sensitivity analysis.
 
 ## Consequences for reported numbers
 
