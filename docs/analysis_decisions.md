@@ -1386,6 +1386,19 @@ repeated more than three times); the frozen epidemic fit keeps its settings in p
 fit settings of all nine specifications identical to before; model-input file, two-draw fit, bundle, scenario runs
 and the supplement fit table identical; 36 tests pass.
 
+## Run script (2026-10-28)
+
+run_pipeline.sh runs the analysis by stage (data, evidence, model, results, demographic; default model and results,
+since the R outputs are current). The model stage builds both model-input files (wording-adjusted and unadjusted),
+reuses the stored epidemic posterior unless EPI_FIT=1, fits the primary model, the eight specifications and the
+unadjusted-wording model in parallel (the last with the all-years evidence target), builds the primary, four
+specification and unadjusted bundles, and runs the scenario batch in parallel (continued and not continued, placebo,
+unadjusted wording, the four specifications, contextual bounds 0.80 and 0.70; every two-year step 2026-2036). The
+data stage runs 1_data/06 without --write-config, so config/ priors change only by hand. Logs go to
+results/logs/run_<date>_<time>/. A scaled-down run (2 fit draws, 20 scenario samples) in a copy of the repository
+completed every model and results step; it exposed one fragility, fixed: reporting.summaries.interval returns NaN
+when no draw is finite (PrEP gain per AHS point when the scenario removes no AHS in any draw) instead of failing.
+
 ## Open items
 
 - Resolved (2026-10-25): AHS rose sharply between 2021 and 2023 in every demographic group

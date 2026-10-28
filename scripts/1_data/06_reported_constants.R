@@ -19,7 +19,7 @@
 # With --write-config, also writes the references, the drift target (3 decimals) and the persistence target
 # (phi rounded to the nearest 0.05) to config/dynamic_variables.csv and config/dynamic_persistence_priors.csv.
 #
-# Run from the repository root after scripts 01-07 and before fitting:
+# Run from the repository root after scripts/1_data/01-05 and before fitting:
 #   Rscript scripts/1_data/06_reported_constants.R [--write-config]
 
 suppressPackageStartupMessages({

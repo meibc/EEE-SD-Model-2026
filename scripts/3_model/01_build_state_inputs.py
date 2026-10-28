@@ -10,7 +10,7 @@ Division fallback is completed and audited upstream in scripts/1_data/04_state_b
 
 Outputs: results/02_inputs/state_inputs.npz plus .audit.csv. For the
 AHS-unadjusted sensitivity, pass the unadjusted bootstrap, workbook and output
-paths (results/logs/revision_run.sh).
+paths (run_pipeline.sh does both).
 """
 
 from __future__ import annotations

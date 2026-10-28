@@ -21,6 +21,8 @@ def interval(values) -> dict[str, float]:
     """Median, interquartile range (p25, p75) and 95% interval (low, high)."""
     v = np.asarray(values, dtype=float)
     v = v[np.isfinite(v)]
+    if v.size == 0:     # e.g. PrEP gain per AHS point when the scenario removes no AHS in any draw
+        return dict.fromkeys(("median", "p25", "p75", "low", "high"), float("nan"))
     q = np.quantile(v, [0.025, 0.25, 0.5, 0.75, 0.975])
     return {"median": float(q[2]), "p25": float(q[1]), "p75": float(q[3]), "low": float(q[0]), "high": float(q[4])}
 
