@@ -7,13 +7,13 @@ import unittest
 import numpy as np
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
-from config.sem import SEMConfig  # noqa: E402
-from models.sbm.calibration import evidence_slope, shift_response, shift_response_grad  # noqa: E402
-from models.sbm.estimation.constraints import get_bounds  # noqa: E402
-from models.sbm.estimation.transforms import FeatureTransformer  # noqa: E402
-from models.sbm.prediction.predictor import Predictor  # noqa: E402
-from models.shared.intervention import StateIntervention  # noqa: E402
-from pipeline.state_fit import _permute_periods  # noqa: E402
+from config.dynamic import DynamicConfig  # noqa: E402
+from models.dynamic.calibration import evidence_slope, sustained_shift_response, sustained_shift_response_grad  # noqa: E402
+from models.dynamic.estimation.jacobian import get_bounds  # noqa: E402
+from models.dynamic.estimation.transforms import FeatureTransformer  # noqa: E402
+from models.dynamic.prediction.predictor import Predictor  # noqa: E402
+from models.shared.intervention import MeasureIntervention  # noqa: E402
+from pipeline.dynamic_fit import _permute_periods  # noqa: E402
 
 
 class AnchorTests(unittest.TestCase):
@@ -52,10 +52,10 @@ class CalibrationTests(unittest.TestCase):
         d = np.zeros(8)
         for _ in range(6):
             d = J @ d + np.eye(8)[0]
-        self.assertAlmostEqual(shift_response(J, 0, 6, 6), d[6] / d[0], places=12)
+        self.assertAlmostEqual(sustained_shift_response(J, 0, 6, 6), d[6] / d[0], places=12)
         J[:, 0] = 0.0
         J[0, 0] = 0.5
-        self.assertAlmostEqual(shift_response(J, 0, 6, 6), 0.0, places=12)
+        self.assertAlmostEqual(sustained_shift_response(J, 0, 6, 6), 0.0, places=12)
 
 
 class EvidenceDrawTests(unittest.TestCase):
@@ -66,19 +66,22 @@ class EvidenceDrawTests(unittest.TestCase):
         self.tmp = Path(tempfile.mkdtemp()) / "evidence.csv"
         pd.DataFrame({"state": ["AA", "POOLED"], "log_apr_pooled": [np.log(0.5), np.log(0.7)],
                       "se_pooled": [0.2, 0.1]}).to_csv(self.tmp, index=False)
-        self.config = SEMConfig()
+        self.config = DynamicConfig()
         v = self.config.v_names
         values = np.full((len(v), 4), 0.2)
         values[v.index("stigma_ahs")] = 0.12
         self.units = [SimpleNamespace(id=uid, amis_values=values) for uid in ("AA", "BB")]
 
-    def test_fixed_ratio_and_fallback_to_pooled(self):
-        from pipeline.state_fit import evidence_slopes
-        _, apr = evidence_slopes(self.units, self.config, self.config.v_names, np.arange(3), self.tmp, uncertainty=False)
+    def test_state_ratio_and_fallback_to_pooled(self):
+        import pandas as pd
+        from pipeline.dynamic_fit import evidence_slopes
+        exact = self.tmp.with_name("evidence_exact.csv")          # zero SEs: draws equal the pooled ratios
+        pd.read_csv(self.tmp).assign(se_pooled=0.0).to_csv(exact, index=False)
+        _, apr = evidence_slopes(self.units, self.config, self.config.v_names, np.arange(3), exact)
         np.testing.assert_allclose(apr, np.tile([0.5, 0.7], (3, 1)))
 
     def test_draws_paired_by_source_index(self):
-        from pipeline.state_fit import evidence_slopes
+        from pipeline.dynamic_fit import evidence_slopes
         s1, a1 = evidence_slopes(self.units, self.config, self.config.v_names, np.array([4, 9]), self.tmp)
         s2, a2 = evidence_slopes(self.units, self.config, self.config.v_names, np.array([9]), self.tmp)
         np.testing.assert_array_equal(a1[1], a2[0])
@@ -90,11 +93,11 @@ class ShiftResponseGradientTests(unittest.TestCase):
     def test_analytic_gradient_matches_finite_differences(self):
         rng = np.random.default_rng(6)
         J = np.diag(rng.uniform(0.3, 0.8, 8)) + rng.normal(0, 0.08, (8, 8))
-        r, g = shift_response_grad(J, 0, 6, 6)
-        self.assertAlmostEqual(r, shift_response(J, 0, 6, 6), places=12)
+        r, g = sustained_shift_response_grad(J, 0, 6, 6)
+        self.assertAlmostEqual(r, sustained_shift_response(J, 0, 6, 6), places=12)
         h = 1e-6
-        fd = np.array([[(shift_response(J + h * np.outer(np.eye(8)[i], np.eye(8)[j]), 0, 6, 6)
-                         - shift_response(J - h * np.outer(np.eye(8)[i], np.eye(8)[j]), 0, 6, 6)) / (2 * h)
+        fd = np.array([[(sustained_shift_response(J + h * np.outer(np.eye(8)[i], np.eye(8)[j]), 0, 6, 6)
+                         - sustained_shift_response(J - h * np.outer(np.eye(8)[i], np.eye(8)[j]), 0, 6, 6)) / (2 * h)
                         for j in range(8)] for i in range(8)])
         np.testing.assert_allclose(g, fd, rtol=1e-5, atol=1e-8)
 
@@ -111,7 +114,7 @@ class PlaceboTests(unittest.TestCase):
 
 class SignFreeTests(unittest.TestCase):
     def test_sign_free_pathways_have_both_bounds(self):
-        config = SEMConfig()
+        config = DynamicConfig()
         sign, _, _ = config.structural_prior_arrays()
         M = np.eye(8, dtype=int) + config.allowed_mask()
         LB, UB = get_bounds(sign, M, (-2, 2))
@@ -123,7 +126,7 @@ class SignFreeTests(unittest.TestCase):
             self.assertEqual((LB[k], UB[k]), (-2, 2))
 
     def test_persistence_non_negative(self):
-        config = SEMConfig()
+        config = DynamicConfig()
         sign, _, _ = config.structural_prior_arrays()
         M = np.eye(8, dtype=int) + config.allowed_mask()
         LB, _ = get_bounds(sign, M, (-2, 2))
@@ -131,21 +134,10 @@ class SignFreeTests(unittest.TestCase):
         np.testing.assert_array_equal(LB[diag], -1.0)
 
 
-class ShiftTests(unittest.TestCase):
-    def test_shift_settles_at_target_without_feedback(self):
-        J = np.diag([0.6, 0.8])
-        pred = Predictor(reference_logits=np.zeros(2))
-        iv = StateIntervention(var_idx=0, start_t=1, end_t=1, delta=-0.5, effect="probability_relative_shift")
-        baseline = np.full((2, 40), 0.2)
-        probs, _ = pred.predict_trajectory(J, np.array([np.log(0.2 / 0.8), 0.0]), np.array([np.log(0.2 / 0.8) * 0.4, 0.0]),
-                                           40, state_interventions=[iv], baseline_probs=baseline)
-        self.assertAlmostEqual(probs[0, -1], 0.1, places=6)
-
-
 class LastObservedCutTests(unittest.TestCase):
     def run_cut(self, baseline_level):
         pred = Predictor(reference_logits=np.zeros(2))
-        iv = StateIntervention(var_idx=0, start_t=1, end_t=1, delta=-0.5, effect="probability_relative_to_last_observed")
+        iv = MeasureIntervention(var_idx=0, start_t=1, end_t=1, delta=-0.5, effect="probability_relative_to_last_observed")
         iv.anchor_p = np.array([0.2, 0.5])                       # last observed level
         baseline = np.full((2, 10), 0.5)
         baseline[0] = baseline_level

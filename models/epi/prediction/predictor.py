@@ -1,26 +1,24 @@
 # models/epi/prediction/predictor.py
-"""CDC epi model predictor."""
+"""Epidemic model: incidence, diagnoses and the undiagnosed population."""
 
 import numpy as np
-from pipeline.results import CDCInputs, CDCOutput
-from models.epi.params import CDCParams
+from models.epi.params import POST_YEAR, EpiInputs, EpiOutput, EpiParams
 
 
-class CDCPredictor:
+class EpiPredictor:
     """Discrete-time dynamic HIV incidence and diagnosis model."""
     
-    def __init__(self, params: CDCParams):
+    def __init__(self, params: EpiParams):
         self.params = params
     
-    def predict(self, inputs: CDCInputs, unit_id: str) -> CDCOutput:
+    def predict(self, inputs: EpiInputs, unit_id: str) -> EpiOutput:
         """Run simulation."""
         p = self.params
         T = len(inputs.years)
         
-        # Standardized v7 incidence equation.
-        # Inc_t = beta_s * no_vs_{s,t} * (1 - kappa_prep_s * prep_t)
-        #         * (risk_t / risk0_s) ** alpha
-        prep_on_count = p.kappa_prep * inputs.prep_on * inputs.N_elig
+        # Incidence (as calibrated, pipeline/epi_fit.py):
+        # Inc_t = beta_s * no_vs_{s,t} * (1 - prep_t) * (risk_t / risk0_s) ** alpha
+        prep_on_count = inputs.prep_on * inputs.N_elig
         prep_off_prop = np.clip(1.0 - inputs.prep_on, 1e-6, 1.0)
 
         rb = np.clip(np.asarray(inputs.risk_behavior, dtype=float), 1e-6, None)
@@ -28,9 +26,9 @@ class CDCPredictor:
 
         incidence = p.beta * inputs.no_vs * prep_off_prop * np.power(rb_ratio, p.alpha)
 
-        post_indicator = (np.asarray(inputs.years, dtype=int) >= 2021).astype(float)
+        post_indicator = (np.asarray(inputs.years, dtype=int) >= POST_YEAR).astype(float)
         diagnosis_multiplier = 1.0 + post_indicator * (float(p.post_multiplier) - 1.0)
-        delta = 1 - np.exp(-p.kdx * inputs.tau * diagnosis_multiplier)
+        delta = 1 - np.exp(-p.kdx * inputs.hiv_testing * diagnosis_multiplier)
         
         # Initialize
         undiagnosed = np.zeros(T)
@@ -44,7 +42,7 @@ class CDCPredictor:
             undiagnosed[t] = np.maximum(0, undiagnosed[t-1] + incidence[t-1] - diagnosed[t-1])
             diagnosed[t] = np.maximum(0, undiagnosed[t] * delta[t])
         
-        return CDCOutput(
+        return EpiOutput(
             unit_id=unit_id,
             years=inputs.years,
             prep_on_count=prep_on_count,

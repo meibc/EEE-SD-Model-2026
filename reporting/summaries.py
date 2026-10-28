@@ -9,9 +9,11 @@ from pathlib import Path
 import numpy as np
 import pandas as pd
 
+from data.state_inputs import StateInputs
+from config.projection import TARGET_END_YEAR
 from reporting import sources
 
-END_YEAR = 2036
+END_YEAR = TARGET_END_YEAR
 OBSERVED_YEARS = (2018, 2024)
 
 
@@ -29,8 +31,8 @@ def primary_states() -> list[str]:
 
 @lru_cache(maxsize=None)
 def epi_draws(scenario_dir: Path) -> pd.DataFrame:
-    """Draw-level epidemiological endpoints from a scenario run (scripts/11 --save-draw-level-endpoints)."""
-    return pd.read_csv(Path(scenario_dir) / "scenario_endpoint_epi_draws.csv")
+    """Draw-level epidemiological endpoints from a scenario run (scripts/3_model/05 --save-draw-level-endpoints)."""
+    return pd.read_csv(Path(scenario_dir) / "scenario_endpoint_epi_draws.csv.gz")
 
 
 def pooled_effect(scenario_dir: Path, scenario: str, year: int = END_YEAR) -> dict[str, float]:
@@ -58,21 +60,20 @@ def state_effects(scenario_dir: Path, scenario: str, variable: str = "incidence"
 
 
 @lru_cache(maxsize=None)
-def input_draws() -> tuple[np.ndarray, list[str], list[str], np.ndarray]:
-    """Observed state-period proportions (draw x measure x period x unit), measures, units and periods."""
-    z = np.load(sources.INPUT_DRAWS, allow_pickle=True)
-    return z["Xbars_samples"], z["v_names"].astype(str).tolist(), z["unit_order"].astype(str).tolist(), z["ts"].astype(int)
+def input_draws() -> StateInputs:
+    """The model-input file (observed draws: draw x unit x measure x period)."""
+    return StateInputs.load(sources.INPUT_DRAWS)
 
 
 def observed_change(measure: str, first: int = OBSERVED_YEARS[0], last: int = OBSERVED_YEARS[1]) -> pd.DataFrame:
     """Observed level in ``first`` and ``last`` and their difference (percentage points) by primary state, with
     95% intervals across the respondent-bootstrap draws. Direction is 'increase' or 'decrease' when the 95%
     interval of the difference excludes zero, otherwise 'no clear change'."""
-    x, v_names, units, years = input_draws()
-    years = list(years)
+    inputs = input_draws()
+    years = list(inputs.years)
     rows = {}
     for state in primary_states():
-        series = 100 * x[:, v_names.index(measure), :, units.index(state)]
+        series = 100 * inputs.observed_draws[:, inputs.unit_ids.index(state), inputs.v_names.index(measure)]
         a, b = series[:, years.index(first)], series[:, years.index(last)]
         diff = interval(b - a)
         direction = "increase" if diff["low"] > 0 else "decrease" if diff["high"] < 0 else "no clear change"
@@ -83,9 +84,10 @@ def observed_change(measure: str, first: int = OBSERVED_YEARS[0], last: int = OB
 
 def observed_paths(measures: tuple[str, ...]) -> pd.DataFrame:
     """Median observed level (percent) by primary state, measure and period."""
-    x, v_names, units, years = input_draws()
-    rows = [{"state": s, "measure": m, "year": int(y), "level": float(np.median(100 * x[:, v_names.index(m), i, units.index(s)]))}
-            for s in primary_states() for m in measures for i, y in enumerate(years)]
+    inputs = input_draws()
+    x, v_names, units = inputs.observed_draws, inputs.v_names, inputs.unit_ids
+    rows = [{"state": s, "measure": m, "year": int(y), "level": float(np.median(100 * x[:, units.index(s), v_names.index(m), i]))}
+            for s in primary_states() for m in measures for i, y in enumerate(inputs.years)]
     return pd.DataFrame(rows)
 
 
@@ -95,7 +97,7 @@ def projected_ahs() -> pd.DataFrame:
     across draws, and the share of draws above 30% and 50%)."""
     out = observed_change("stigma_ahs")[["level_2024"]].rename(columns={"level_2024": "observed_2024"})
     for name, path in {"continued": sources.CONTINUED, "not_continued": sources.NOT_CONTINUED}.items():
-        s = pd.read_csv(path / "scenario_endpoint_sem_draws.csv")
+        s = pd.read_csv(path / "scenario_endpoint_dynamic_draws.csv.gz")
         s = s[s["year"].eq(END_YEAR) & s["variable"].eq("stigma_ahs") & s["scenario"].eq("halve_ahs")]
         g = s.groupby("unit_id")["baseline"]
         for label, q in {"": 0.5, "_p25": 0.25, "_p75": 0.75, "_low": 0.025, "_high": 0.975}.items():

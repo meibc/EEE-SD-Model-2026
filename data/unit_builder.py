@@ -5,7 +5,7 @@ import numpy as np
 from .unit import Unit
 
 class UnitDataBuilder:
-    """Builds nation, division and state Units from the workbook AMIS tables (scripts/01)."""
+    """Builds nation, division and state Units from the workbook AMIS tables (scripts/1_data/03)."""
 
     def __init__(self, tbl_all: pd.DataFrame, tbl_states: pd.DataFrame):
         self.tbl_all = tbl_all
@@ -17,7 +17,6 @@ class UnitDataBuilder:
             kind="nation",
             amis_years=np.asarray(ts_amis),
             amis_values=self._extract_amis("USA", ts_amis, v_names),
-            amis_names=v_names,
         )
 
     def build_state(self, state_code: str, ts_amis, v_names) -> Unit:
@@ -27,7 +26,6 @@ class UnitDataBuilder:
             kind="state",
             amis_years=np.asarray(ts_amis),
             amis_values=self._extract_amis(state_code, ts_amis, v_names),
-            amis_names=v_names,
             sample_size=meta.get("sample_size"),
             census_div=meta.get("census_div"),
         )
@@ -38,7 +36,6 @@ class UnitDataBuilder:
             kind="division",
             amis_years=np.asarray(ts_amis),
             amis_values=self._build_division_weighted_amis(div_id, ts_amis, v_names),
-            amis_names=v_names,
             census_div=div_id,
         )
 
@@ -56,9 +53,8 @@ class UnitDataBuilder:
         pivoted = filtered.pivot(index="Indicator", columns="Year", values="Value")
         pivoted = pivoted.reindex(index=v_names, columns=ts)  # Ensure correct order
 
-        # Missing state-periods are 0 here; the fits replace all values with the input draws (scripts/04).
-        
-        return pivoted.fillna(0.0).values
+        # Missing state-periods stay NaN; the fits use the input draws (scripts/3_model/01), not these values.
+        return pivoted.values
 
     def _get_state_meta(self, state_code: str) -> dict:
         """Get sample size and census division for a state."""
@@ -82,7 +78,7 @@ class UnitDataBuilder:
         weights = states_df.set_index("state_calc")["n"]
 
         m, T = len(v_names), len(ts)
-        Ybar = np.zeros((m, T))
+        Ybar = np.full((m, T), np.nan)
 
         for j, var in enumerate(v_names):
             for t, year in enumerate(ts):

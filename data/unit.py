@@ -10,10 +10,9 @@ class Unit:
 
     amis_years: np.ndarray                   # (T,)
     amis_values: np.ndarray                  # (m, T)
-    amis_names: list[str]                    # (m,)
 
     cdc_years: np.ndarray | None = None         # (T_cdc,)
-    cdc_values: np.ndarray | None = None        # (m, T_cdc
+    cdc_values: np.ndarray | None = None        # (m, T_cdc)
     cdc_names: list[str] | None = None
 
     sample_size: float | None = None    # For shrinkage calculation

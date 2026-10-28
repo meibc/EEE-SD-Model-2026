@@ -41,7 +41,7 @@ weights as weighting sensitivity analyses (relevant to co-author comment JS26).
 Primary endpoint remains 2036 (full implementation from 2032 plus time for PrEP to
 respond); 2032 and cumulative infections averted are reported as supplementary outcomes.
 
-## Data-derived model constants (`scripts/08_derive_reported_constants.py`)
+## Data-derived model constants (`scripts/08_derive_reported_constants.R`; Python until 2026-10-27)
 
 | Constant | Previous | Final | Supplement |
 |---|---|---|---|
@@ -1040,6 +1040,351 @@ NC); AL and GA are high under both projections, SC's lead depends on the continu
 points). A fixed-dose (equal AHS points) comparison was considered and not run: it would rank states by
 burden x PrEP gain per point, which panel D already shows. The old state-drivers table and rank
 correlations are superseded.
+
+## Draws synchronized across states (2026-10-26)
+
+The scenario runner drew each state's (state-model draw, epidemic draw) pairs from a stream seeded by the
+state code, so sample k combined different bootstrap replicates and epidemic draws across states, while
+the pooled results (Table 1, Fig. 2, sensitivity table) sum states within samples. Pooled intervals
+therefore treated states as independent although the bootstrap (and the national and division fits) and
+the epidemic posterior are joint across states. Fixed (pipeline/joint_simulation.py): the stream depends
+only on the seed, so sample k uses the same bootstrap replicate and epidemic draw in every state. All
+scenario sets rerun (results/logs/synchronized_draws_run.sh; same seed, fits and bundles; two-year
+report steps); previous outputs in ../EEE-SD-Model-2026-archive/scenarios_unsynchronized_draws_20261026/.
+Effect is small: halve AHS, continued 4,990 (2,821-9,248) averted, 2036 -7.5% (-15.3, -3.9) (was 4,990
+(2,740-8,729), -7.6% (-14.6, -3.6)); not continued 2,562 (1,699-3,644), -3.3% (-5.2, -2.1) (was 2,531
+(1,708-3,744), -3.3%). Shared uncertainty is modest next to state-specific uncertainty. Remaining
+limitation: state prevalence ratios are drawn independently per state (in the fits), so uncertainty in
+the pooled mean ratio is not shared; fixing it needs a refit and is stated as a limitation.
+
+## Scenario draw files compressed; archive draws removed (2026-10-26)
+
+Draw-level endpoints (scenario_endpoint_{sem,epi}_draws) are now written and read as .csv.gz
+(pipeline/sem_scenarios.py; reporting/summaries.py, results scripts); about 5x smaller. The 26 current
+files were compressed with a content check before each original was removed; all results tables are
+byte-identical afterwards. Scripts 12, 13, 13c and 15 still read the old names (to be retired).
+Archive: the 70 draw-level files of superseded runs (9.9 GB) were deleted, summaries kept; list in
+../EEE-SD-Model-2026-archive/DELETED_draw_files_20261026.txt. Draw-level files of the superseded
+old-design folders in results/ (04_scenarios/primary and paper; 05_sensitivity start_2018_reconstruction,
+no_prep_ahs_feedback, constant_pr, contextual_pr070/080, fixed_dose, ahs_wording_unadjusted/scenarios;
+18 files, 3.7 GB) were also deleted, summaries kept. No .npz files were touched (the dashboard
+reads standardized_input_v8/v9.npz in EEE-Model-Dashboard-Integration).
+
+## Supplementary set and climate associations (2026-10-26)
+
+Supplementary set decided with the author (docs/supplement_changes.md). The projected-AHS shares above 30%
+and 50% are columns of the state table (tableS_state_effects.csv, one row per projection and state); the
+full state summaries move to state_breakdown.csv. The contextual (climate) association analysis, previously
+exploratory, is now scripts/08d_climate_associations.R (results/02_inputs/climate_associations.csv): AHS
+climate per 10 points 0.69 (0.61-0.77) across states and 1.04 (0.86-1.26) within states; with social and
+family climate 0.78 (0.68-0.89) vs 1.05; general social 1.35 vs 0.98, family 0.78 vs 1.00; own AHS
+0.63-0.65 throughout. Close to the exploratory values (0.70, 1.06, 0.80, 1.07); the bound inputs 0.80 and
+0.70 are kept as rounded values (0.80 slightly conservative).
+
+## Supplement outputs and retired scripts (2026-10-26)
+
+scripts/results_supplement.py writes the model specification table, the dynamic-model fit figure and the
+epidemic calibration figure (results/sections/supplement/). Fit check (one-step-ahead, in-sample): mean
+absolute error at or below the sampling SD of the observed values for every measure (AHS 1.1 vs 2.6 pp,
+PrEP 1.0 vs 2.8, others 2.2-3.8 vs 3.4-4.5) and below a last-value-carried-forward benchmark (3.2-5.2 pp);
+88-100% of observed values within the 95% interval of the per-draw residual (which includes the
+observation's sampling error). The fitted-mean interval alone covers 71-100% and understates agreement,
+because it ignores the observation's own noise. Demographic figure (scripts/14): measured AHS with the
+reworded years shaded. Retired to deprecated/scripts/ (git mv; deprecated/README.md): 12, 13, 13b, 13c, 15,
+16. scripts/13d (system decomposition) stays. For the code review: package code used only by the retired
+scripts (e.g. source_history_counterfactual) and the old scenario codes in config/interventions.py.
+
+## Language convention (2026-10-27)
+
+Pre-model analysis and input building (survey statistics, evidence, constants) in R; the models (dynamic
+and epidemic) in Python; post-model analysis, results and figures in Python. scripts/08 ported to R
+(outputs identical to machine precision, including the config it writes); it also reports the
+within-state PrEP persistence (0.769, SE 0.037) next to the pooled target (0.846), unused. 08b switched to
+REML for the between-state variance (author, 2026-10-27): pooled ratio unchanged (0.548), between-state SD
+0.27 -> 0.29, state ratios change by at most 0.026; requires refitting before results are final.
+08b now pools with metafor (rma, REML; blup for the state estimates; metafor 5.2.1, CRAN), replacing the
+hand-written REML: all values agree to 1e-5 (optimizer tolerance), and blup's standard error matches the
+se_pooled definition (shrinkage variance plus the shrinkage-weighted variance of the mean). The POOLED row adds
+tau and I^2: old wording tau 0.29, I^2 32%; all cycles tau 0.30, I^2 51%. Cite Viechtbauer (2010).
+scripts/07 and scripts/00 ported to R the same way (2026-10-27): the precision screen reproduces all four outputs
+(same states and order; n_eff to 4e-14); the CDC builder reproduces the Python build row for row (6,760 rows,
+values, missing pattern and imputation labels; national age targets identical). Regenerating
+results/00_cdc/cdc_stocks.csv dropped the 30 empty USA placeholder rows the file still carried from the old
+download (noted 2026-10-25); every other row is unchanged and no code reads USA rows from it.
+
+## CDC stocks pruned to the indicators used (2026-10-27)
+
+scripts/00 (author's revision) writes only the six indicators the pipeline reads: PrEP, PrEP Eligible, HIV
+diagnoses, HIV viral suppression, estimated HIV incidence (MSM) and estimated HIV prevalence (MSM) (01 uses
+the PrEP pair; the epidemic bundle uses all six). Dropped: Off PrEP, AIDS classifications, new diagnoses
+(MSM and all-population), diagnosed prevalence, care and care without viral suppression, knowledge of
+status, lost to care, undiagnosed; with them the care imputation and the 0.942 care-initiation constant. No
+code read them. The 2,228 retained rows match the full build exactly (values, missing pattern, imputation
+labels); national age targets identical. results/00_cdc/cdc_stocks.csv: 6,760 -> 2,228 rows.
+Supplement S3.2: describe only the retained indicators (care and knowledge-of-status allocations no longer
+apply).
+Reorganized the same day: sources read once; each stock carries its imputation_method where it is built (PrEP
+Eligible imputation, the post-2022 prevalence extension, viral-suppression rate imputation); the output drops
+Cases_raw, was_imputed and still_missing_after_imputation, which no code reads. Stocks identical (rows, order,
+values, labels); age targets identical to machine precision (relative 1e-14).
+
+## 08c trimmed to what the paper reports (2026-10-27)
+
+scripts/08c now writes only the Fig. 1B series (AHS measured and adjusted, experienced healthcare stigma, with
+survey-weighted intervals) and the 2022 vs 2021 shift table (AHS and the three unchanged measures). The
+difference-in-differences, placebo year pairs, the PrEP-user split and the single-item columns were removed
+(author: not reported). The shift table now estimates weights after dropping respondents missing the measure, as
+scripts/01 does, so the AHS row equals the shift the model removes (0.452; previously 0.443 from a slightly
+different weighting); unchanged measures +0.59, +0.64, +0.24. Fig. 1B series unchanged (1e-11). The earlier
+entries on the difference-in-differences remain as the record of what was examined.
+
+## Climate associations: standard errors clustered by state (2026-10-27)
+
+scripts/08d treated respondents as independent although the climate is shared within a state-period, so its
+intervals were too narrow. Standard errors are now clustered by state (climate persists over time; 24
+clusters). Point estimates unchanged; intervals per 10 points: AHS climate 0.69 (0.48-0.99) across states,
+1.04 (0.92-1.18) within; with social and family climate 0.78 (0.53-1.15) across vs 1.05 (0.90-1.22) within;
+general social 1.35 (0.93-1.97) vs 0.98; family 0.78 (0.68-0.89) vs 1.00; own AHS 0.63-0.65 throughout
+(e.g. 0.63, 0.53-0.74). Supersedes the intervals in "Supplementary set and climate associations". For the
+text: the between-state climate association is not distinguishable from no effect once the other climates are
+adjusted for, and is absent within states, so the contextual bound is a hypothetical upper bound, not an
+estimated effect. The bound's inputs (0.80, 0.70) and all model results are unchanged.
+
+## Scenario code reduced to the paper scenarios (2026-10-27)
+
+Removed code for analyses no longer in the paper: projection from the 2018 reconstruction
+(projection_start; scripts/11 --projection-start), pathway (relationship) interventions and their codebook,
+the s1-s11 scenarios, the shifted-set-point variants, the fixed-dose registration, and five unused
+intervention effects and ramp shapes (models/shared/intervention.py, config/interventions.py,
+pipeline/joint_simulation.py, pipeline/sem_scenarios.py, pipeline/state_fit.py, models/sbm/prediction/predictor.py).
+config/interventions.py now holds the five scenarios (four paper, one supplement) and their five intervention
+codes; the benchmark intervention is renamed eliminate_ahs -> ahs_to_benchmark. scripts/11 defaults to those
+scenarios and to results/04_scenarios/paper_static. The test of the removed shift effect was dropped. Check: a
+40-draw run of three scenarios (relationship continued, not continued, contextual bound) gives byte-identical
+draw-level and summary outputs before and after. Reviewed alongside: the PrEP translation in
+pipeline/joint_simulation.py is correct; other measures follow the fitted dynamic responses in scenarios, and
+only PrEP (plus a negligible risk change) affects incidence, since HIV testing enters the epidemic model only
+through diagnoses.
+
+## Fit specifications reduced; one scenario route (2026-10-28)
+
+pipeline/state_fit.py keeps nine specifications (author): the five the paper reports (primary,
+evidence_all_years, persistence_low, persistence_high, placebo_ahs) and four supplement checks of the baseline
+projections (trajectory_only, covariance_balanced, no_hierarchy, zero_prep_drift). Removed: covariance_moderate,
+sign_only, common_weak, theory_prior, half_prep_drift, pooled_prep_drift, loose_ahs_drift, cluster_moderate,
+stability_w10, placebo_engagement, evidence_fixed_apr (they informed earlier decisions; their fits remain in
+results/05_sensitivity/model_specification/fits/). With them went the switches for fits without the evidence
+target or without ratio uncertainty. specification_scenarios() and scripts/09 --scenarios were removed: scenario
+projections run only through scripts/10 (bundle) and scripts/11. Added a check that each unit's parent is fitted
+before it (nation, then each division followed by its states, as the data are ordered); the loop no longer
+overwrites the shared unit data with each draw. Check: two-draw fits of primary and placebo_ahs are identical
+before and after (every saved array and the loss table). A fit takes about 5.5 s per draw per specification (about
+45 minutes for 500 draws on one core).
+fit_specification() was then split into named steps (_prepare_units, _fit_draw, _diagnostics_row, and a UnitFit
+record); the two-draw primary and placebo_ahs fits are again identical in every saved array, value and type.
+The hierarchy step then moved to models/sbm/estimation/hierarchy.py (fit_hierarchy, UnitFit): model logic in
+models/, the runner in pipeline/ (as the original models/sbm/runner.py was). Fits identical again.
+Finally restructured like pipeline/joint_simulation.py (author): a Specification dataclass (wrapping FitSettings,
+defined with fit_hierarchy) replaces the settings dictionary, and a StateFitRunner class holds the inputs, units
+and evidence targets, with unit_data(d), fit_draw(d), run() and save(); fit_specification() builds, runs and
+saves. Two-draw fits identical again (primary, placebo_ahs); evidence_all_years reads the all-years file.
+
+## Scenario PrEP translations extracted and tested (2026-10-28)
+
+Following an external code review: the three scenario PrEP translations moved from pipeline/joint_simulation.py
+into pure functions in models/shared/prep_translation.py (prevalence_ratio_translation, contextual_translation,
+retain_prep_fraction), with direct tests (tests/test_prep_translation.py: no AHS change or a ratio of 1 leaves PrEP
+unchanged; a hand-computed example; PrEP among men without AHS held; the contextual bound's 1/0.80 per 10 points;
+resilient delivery at fractions 0, 1 and 0.5). The primary formula previously had no direct test. Scenario outputs
+byte-identical (40-draw reference, continued, not continued and contextual). The review's naming suggestions are
+listed in docs/code_review_guide.md for the naming pass; its other points (keep calibration.py and hierarchy.py;
+move specifications with the settings consolidation) were adopted as deferred items.
+
+## Group A consistency changes (2026-10-28)
+
+From an external review of the fitting code (author-approved; caching of SEMConfig declined): OptimConfig is a
+dataclass with grouped fields; the two clipping bounds are named in core/math/transforms.py (LOGIT_EPS 0.01: the
+model scale before centred logits; PROB_EPS 1e-6: numerical bound on stored and changed probabilities) with one
+shared logit() used by calibration, interventions and the PrEP translations; the loss table gains source_draw
+(the bootstrap draw id; position and id differ when fitting a subset); config/sem.py rejects duplicate or unknown
+pathways, duplicate or unknown persistence rows and a variable table that does not list exactly the model's
+measures; JacobianEstimator.fit returns a JacobianFit (J, drift, diagnostics) instead of setting attributes; UnitFit
+is a frozen dataclass; the constraints docstring states persistence is bounded to [0, 3]; calibration checks its
+inputs; the input-draw audit metric is n_clipped_or_boundary. Checks: two-draw fits identical (every array; loss
+table apart from the new column), 40-draw scenario reference identical, rebuilt input draws identical, prior
+arrays identical, supplement script runs, 47 tests pass. Naming items deferred to the naming pass; the epidemic
+model's own _logit (pipeline/hierarchical_epi_fit.py) is left for the Group C review.
+
+## Group B consistency changes (2026-10-28)
+
+From an external review of the data and bundle code (author-approved): PreparedData moves from pipeline/results.py
+into data/data_prep.py, so the data layer no longer imports the pipeline; core/math/transforms.py has one API
+(module functions logit, inverse_logit via scipy expit, logit_jacobian; the Transforms class is removed and the
+Predictor's unused reference_probs path now clips at LOGIT_EPS instead of 1e-10); the bundle's cached sem_pred clips
+observed values at LOGIT_EPS like the fit (observed values lie in 0.028-0.964, so unchanged); the bundle reader
+checks every array's shape on load and rejects draw indices outside the artifact instead of wrapping them (the
+scenario runner already draws within range); the unused load_point_estimates methods are removed; missing workbook
+state-periods are NaN rather than 0 (the evidence levels use nanmean instead of filtering zeros). Key names
+(sem_*, sem_fit_J_last) are kept for the dashboard, which reads them and has its own copy of the reader. Checks:
+rebuilt input draws, a two-draw primary fit (arrays and loss table), its bundle and 40-draw scenario runs
+(prevalence-ratio and contextual) identical; 47 tests pass. Deferred: input/ -> data/ + artifacts/ split and file
+renames (folder and naming passes); the epidemic fit's STATE_TO_DIVISION (config/data.py) versus the workbook's
+divisions (Group C).
+
+## Read and reshape the survey data once (2026-10-28)
+
+Author's principle: source files are read and arranged once; every later step reads the result directly.
+Before, the workbook was read by scripts 04, 04b, 09 and 10, the same point estimates were rebuilt three times and
+the draws transposed in the bundle; 04, 09 and 10 each took a workbook path, and nothing checked that they matched.
+Now scripts/04 is the only step that reads the R outputs (bootstrap CSV and workbook): it writes one model-input
+file (input/state_input_draws.py) with the observed draws (draw x unit x measure x period, the bundle's layout),
+point estimates, each unit's kind, division and sample size, the covariance, and the workbook path and SHA-256.
+The epidemic fit (04b), the state fits (09) and the bundle (10) read only that file (StateInputs.load); 09 and 10
+no longer take --workbook, and SEMConfig no longer carries a data path (model settings only). The epidemic fit
+reads cdc_stocks.csv once (previously four times) and keeps the bundle's CDC arrays for write_epi_bundle; it
+takes Census divisions from the model-input file, so config/data.py (STATE_TO_DIVISION, which agreed with the
+workbook for every fitted state) is removed. Checks: the new file's draws equal the old array transposed; a
+two-draw primary fit, its bundle, 40-draw scenario runs (prevalence-ratio and contextual), the epidemic-fit inputs,
+the epi bundle rebuilt from the existing posterior, and the reporting summaries of observed draws are identical;
+48 tests pass. results/02_inputs/state_input_draws.npz was rebuilt in the new format; the unadjusted-wording input
+file is rebuilt in the refit.
+
+## One input class; epidemic-model interface (2026-10-28)
+
+PreparedData is removed: StateInputs (input/state_input_draws.py) is the one class for the survey inputs, written
+(save) by scripts/04 and read (load) by every later step; DataPrep is the workbook reader (units(), covariance()).
+Unit.amis_names (never read) is removed, and the scenario fallback to workbook point estimates when a bundle lacks
+per-draw observations is removed (sem_obs_samples is required). From an external review of the epidemic branch:
+CDCInputs and CDCOutput move from pipeline/results.py to models/epi/params.py, so the epidemic model no longer
+imports the pipeline; build_cdc_inputs_from_sem returns a CDCInputs instead of a five-element tuple; kappa_prep is
+removed from CDCParams and the predictor (incidence never used it, and it only multiplied prep_on_count by 1); the
+bundle still writes cdc_kappa_prep = 1 for the dashboard's schema. Checks: model-input file, two-draw primary fit,
+bundle, 40-draw scenario runs (prevalence-ratio and contextual; prep_on_count included), epidemic-fit inputs, epi
+bundle and reporting summaries identical; 48 tests pass.
+
+Kept (author, 2026-10-28): the epidemic model's annual inputs interpolate linearly between survey cycle end years,
+so 2017 (inside the 2017-18 cycle, before its 2018 end year) is extrapolated from the 2018 and 2020 points; the
+calibration does the same, so fit and projections agree, and scenario effects are unaffected (baseline and
+scenarios share 2017). Holding the 2017-18 value for 2017 would be more direct but needs an epidemic refit; revisit
+if the epidemic model is refitted. Methods text: "Annual survey inputs are interpolated linearly between cycle end
+years; 2017 is extrapolated from the first two cycles."
+
+## Group C review and thin-module merges (2026-10-28)
+
+Group C review: the epidemic predictor matches the calibrated model (incidence, risk ratio with the 0.05 baseline
+floor and 0.5-3 limits, diagnosis probability with the post-2021 multiplier, undiagnosed-stock recursion); only
+numerical floors differ. Changes (author-approved): extend_years removed (the projected trajectory always has the
+projection-year length, so it did nothing); the post-2021 diagnosis year (POST_YEAR) is defined once in
+models/epi/params.py for the fit and the predictor; the pilot-only options (selected_states scope with its default
+state list, --skip-diagnosis) are removed from the epidemic fit and scripts/04b. Merges: data/loader.py and
+data/data_prep.py into data/workbook.py (ModelInputWorkbook: units(), covariance()); estimation/shrinkage.py into
+estimation/hierarchy.py; estimation/constraints.py (get_bounds) into estimation/jacobian.py. Declined: further
+validation (bundle required keys, StateInputs.validate, structural.py and sem.py prior checks). Renames
+(state_inputs.py, structural_analysis.py, impulse/benchmark function names, input_draw_index) go to the naming
+pass. Checks: model-input file, two-draw primary fit, bundle, scenario runs, epidemic inputs, epi bundle and
+reporting summaries identical; 48 tests pass.
+
+## Script 13d and models/sbm/structural.py retired (2026-10-28)
+
+Not used by any paper output (author: remove what is not used). scripts/13d_system_decomposition.py (the
+projected-change decomposition cited above for the projected AHS rise), models/sbm/structural.py and
+tests/test_structural.py move to deprecated/ (deprecated/scripts, deprecated/models, deprecated/tests), with the
+retired scripts 13 and 13b that also used the module; the unused SYSTEM_DECOMPOSITION path is removed from
+reporting/sources.py. The decision-log entries citing 13d remain as the record. Active tests: 36 (the 12 structural
+tests moved with the module).
+
+## Group D: scenario summaries (2026-10-28)
+
+From an external review (author-approved): pipeline/sem_scenarios.py extracts the paired baseline/scenario draws
+once per report year (_paired_endpoints) and builds both the summary table and the draw-level table from them,
+replacing two near-identical functions; the min() truncation of paired samples is removed (baseline and scenarios
+always share seed and sample count, so it never acted); the state-model year grid uses extend_to_end_year(step=2);
+UncertaintyResult gains sem_stack()/epi_stack() and loses the unused get_stack/get_quantiles. The run summary now
+records the seed, report years, cumulative start year, PrEP translation (constant_pr_prep, contextual_prep_pr) and
+zero_projection_edges; the audit records each scenario's prep_only_fraction. Declined: draw-ID columns in the
+draw-level files, draw-pair checks, a runner/summaries split; renames go to the naming pass (the
+incidence_cumulative output key stays). Checks: summary and draw-level files of both scenario runs identical;
+36 tests pass.
+
+## Final consistency items (2026-10-28)
+
+From an external review (author-approved): Predictor.inverse_x is public (interventions called the private
+_inverse_x); the shared logit/inverse_logit replace hand-written versions in retain_prep_fraction, calibration.py
+(its _logit wrapper) and the supplement's fit figure; build_cdc_inputs_from_sem moves to models/epi/input_adapter.py,
+so models/shared/alignment.py holds only generic year alignment and no longer imports the epidemic model. Declined:
+input micro-optimizations (lookups on 59 units; primary_states already cached) and reusing baseline projections
+across scenarios (minutes per full run). Deferred to the folder pass: splitting pipeline/hierarchical_epi_fit.py
+into the PyMC model (models/epi/estimation/) and the load-build-sample-save workflow, with plain functions,
+verified by identical inputs, identical model log-probability and gradient at the initial values, and an identical
+bundle from the existing posterior. Checks: model-input file, two-draw fit, bundle, scenario summary and draw files,
+and the supplement's fit table identical; 36 tests pass.
+
+## Naming pass (2026-10-28)
+
+The manuscript calls the model "dynamic"; the code now does too (author-approved table). Earlier entries in this log
+use the old names; this table maps them.
+
+| Old | New |
+|---|---|
+| models/sbm/, config/sem.py, SEMConfig, SEMParams | models/dynamic/, config/dynamic.py, DynamicConfig, DynamicParams |
+| config/sem_variable_config_v3.csv, sem_structural_priors_v3.csv, sem_diagonal_priors_v3.csv | config/dynamic_variables.csv, dynamic_pathway_priors.csv, dynamic_persistence_priors.csv |
+| CDCParams, CDCInputs (tau), CDCOutput, CDCPredictor | EpiParams, EpiInputs (hiv_testing), EpiOutput, EpiPredictor |
+| StandardizedSEMParamsLoader, StandardizedCDCParamsLoader | StandardizedDynamicLoader, StandardizedEpiLoader |
+| build_cdc_inputs_from_sem | epi_inputs_from_dynamic |
+| pipeline/state_fit.py, StateFitRunner | pipeline/dynamic_fit.py, DynamicFitRunner |
+| pipeline/hierarchical_epi_fit.py | pipeline/epi_fit.py |
+| pipeline/joint_simulation.py, UncertaintyRunner, run_uncertainty | pipeline/projection.py, ProjectionRunner, run_projection |
+| pipeline/results.py, UncertaintySample/Result/Output | pipeline/projection_results.py, ProjectionSample/Result/Output |
+| pipeline/sem_scenarios.py, SEMScenarioRunConfig, run_sem_scenarios | pipeline/scenarios.py, ScenarioRunConfig, run_scenarios |
+| input/state_input_draws.py, build_state_input_draws, state_input_draws.npz | input/state_inputs.py, build_state_inputs, state_inputs.npz |
+| ShrinkageCalculator.get_params | shrinkage_reference (function) |
+| StateIntervention, build_state_interventions, state_intervention_codes, codebook state_codes | MeasureIntervention, build_measure_interventions, intervention_codes |
+| shift_response(_grad) | sustained_shift_response(_grad) |
+| total_effect, total_effect_horizon/_tau, L_total_effect | evidence_target, evidence_horizon/_tau, L_evidence |
+| fit keys Jmeans_stack, drift_stack, unit_order, ts, source_draw_indices, ahs_prep_total_effect | J, drift, unit_ids, years, input_draw_indices, ahs_prep_shift_response |
+| paired_source_draw_indices.csv | paired_input_draw_indices.csv |
+| scenario_endpoint_sem(.csv, _draws.csv.gz) | scenario_endpoint_dynamic(.csv, _draws.csv.gz) |
+| sem_* / cdc_* variables (sem_loader, sem_idx, cdc_idx, ...) | dynamic_* / epi_* |
+
+Kept: the standardized bundle's sem_* and cdc_* keys (the dashboard reads them); cdc_* where it means CDC data
+(cdc_stocks.csv, Unit.cdc_values); amis_* for observed survey values; J, wJ, joint_loss, FitSettings; the numbered
+script names. Fit and scenario files written before this pass use the old keys and file names; the refit replaces
+them.
+
+## Folder pass (2026-10-28)
+
+Scripts are grouped by stage, numbered in run order within each folder (author-approved); earlier entries use the
+old numbers:
+
+| Old | New |
+|---|---|
+| 00_clean_amis.R, 00_build_cdc_stocks.R, 01_state_weights.R, 03_state_bootstrap.R, 07_state_precision_screen.R, 08_derive_reported_constants.R | 1_data/01_clean_amis.R, 02_build_cdc_stocks.R, 03_state_weights.R, 04_state_bootstrap.R, 05_state_precision_screen.R, 06_reported_constants.R |
+| 08b_ahs_prep_evidence.R, 08c_wording_items.R, 08d_climate_associations.R | 2_evidence/01_ahs_prep_evidence.R, 02_wording_items.R, 03_climate_associations.R |
+| 04_build_state_input_draws.py, 04b_fit_epi_model.py, 09_fit_state_models.py, 10_build_standardized_bundle.py, 11_run_scenarios.py | 3_model/01_build_state_inputs.py, 02_fit_epi_model.py, 03_fit_dynamic_model.py, 04_build_bundle.py, 05_run_scenarios.py |
+| results_fig1_trajectories.py, results_fig2_projections.py, results_table1_fig3_ahs_reduction.py, results_tableS_sensitivity.py, results_figS_coevolution.py, results_supplement.py | 4_results/fig1_trajectories.py, fig2_projections.py, table1_fig3_ahs_reduction.py, tableS_sensitivity.py, figS_coevolution.py, supplement.py |
+| 02_national_weights.R, 05_group_associations.R, 06_group_bootstrap.R, 14_demographic_descriptives.py | 5_demographic/01_national_weights.R, 02_group_associations.R, 03_group_bootstrap.R, 04_demographic_descriptives.py |
+
+No data-stage script reads an evidence-stage output (the evidence scripts read the precision screen), so the stage
+order is also a valid run order. input/ is split: data/state_inputs.py (the model-input file, before fitting) and
+artifacts/research_bundle.py and artifacts/standardized_runtime.py (the bundle writer and reader). pipeline/epi_fit.py
+stays one file with section headers (settings, inputs, model and sampling, bundle, summaries): the PyMC block reads
+top to bottom as priors, equations and likelihoods. results/ folder names are unchanged; results/07_structural
+(outputs of retired scripts 13-13d) was moved to the Trash. results/logs/*.sh use the old paths and are superseded
+by the refit run script.
+
+## Settings consolidation (2026-10-28)
+
+Model specifications move to config/specifications.py: each is written as its one change from the primary model
+(wR, shrinkage off, drift prior means, persistence shift with its 0.98 cap, permuted measures, evidence file), with
+the evidence seed; pipeline/dynamic_fit.py applies the change. Projection settings written in two places (the
+scenario runner's defaults and scripts/3_model/05's options) move to config/projection.py: sample count 500, seed
+123, end year 2036, ramp of 3 two-year steps, cumulative start 2025, interim report years 2030 and 2032, and the
+contextual-bound prevalence ratios 0.80 and 0.70 (the results scripts take their end year and contextual folders
+from it). config/ now holds: dynamic.py and its CSVs (measures, pathway and persistence priors), optimization.py,
+shrinkage.py, specifications.py, interventions.py, projection.py. Paths stay where they are used (no path is
+repeated more than three times); the frozen epidemic fit keeps its settings in pipeline/epi_fit.py. Checks: the
+fit settings of all nine specifications identical to before; model-input file, two-draw fit, bundle, scenario runs
+and the supplement fit table identical; 36 tests pass.
 
 ## Open items
 

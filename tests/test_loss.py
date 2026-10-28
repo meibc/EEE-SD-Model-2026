@@ -6,13 +6,13 @@ import unittest
 import numpy as np
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
-from config.sem import SEMConfig  # noqa: E402
-from models.sbm.estimation.loss import joint_loss  # noqa: E402
+from config.dynamic import DynamicConfig  # noqa: E402
+from models.dynamic.estimation.loss import joint_loss  # noqa: E402
 
 
 class LossGradientTests(unittest.TestCase):
     def setUp(self):
-        config = SEMConfig()
+        config = DynamicConfig()
         self.sign, self.prior_mean, self.prior_tau = config.structural_prior_arrays()
         self.drift_enabled, self.drift_mean, self.drift_tau = config.drift_prior_arrays()
         m = len(config.v_names)
@@ -28,10 +28,10 @@ class LossGradientTests(unittest.TestCase):
     def check(self, theta, w_stab):
         def f(t):
             return joint_loss(t, self.Xbar, self.Sigma, self.Sigma_eta, 0.01, 10.0, self.u, self.M,
-                              J_ref=self.J_ref, wJ=2.0, w_stab=w_stab,
+                              J_ref=self.J_ref, wJ=2.0, w_stab=w_stab, eps=1e-3, stability_fd_eps=1e-7,
                               structural_prior_mean=self.prior_mean, structural_prior_tau=self.prior_tau,
                               drift_enabled=self.drift_enabled, drift_prior_mean=self.drift_mean,
-                              drift_prior_tau=self.drift_tau, total_effect=getattr(self, "total_effect", None))
+                              drift_prior_tau=self.drift_tau, evidence_target=getattr(self, "evidence_target", None))
         _, grad = f(theta)
         h = 1e-6
         fd = np.array([(f(theta + h * e)[0] - f(theta - h * e)[0]) / (2 * h) for e in np.eye(theta.size)])
@@ -43,7 +43,7 @@ class LossGradientTests(unittest.TestCase):
 
     def test_gradient_with_total_effect_target(self):
         theta = self.rng.normal(0, 0.05, int(self.M.sum()) + int(self.drift_enabled.sum()))
-        self.total_effect = {"source": 0, "target": 6, "horizon": 6, "value": -0.03, "tau": 0.05}
+        self.evidence_target = {"source": 0, "target": 6, "horizon": 6, "value": -0.03, "tau": 0.05}
         self.check(theta, w_stab=0.0)
 
     def test_gradient_with_active_stability_penalty(self):
