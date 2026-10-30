@@ -21,7 +21,7 @@ import sys
 
 ROOT = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(ROOT))
-from core.math.transforms import PROB_EPS  # noqa: E402
+from core.transforms import PROB_EPS  # noqa: E402
 from data.state_inputs import build_state_inputs  # noqa: E402
 
 RESULTS = ROOT / "results"

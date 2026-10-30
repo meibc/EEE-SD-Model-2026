@@ -12,7 +12,7 @@ trajectory, the pooled covariance target, the structural and diagonal priors, th
 drift priors, the stability penalty and an evidence target: the unit's total
 AHS -> PrEP response over the projection horizon (every route and feedback acting)
 should match its access-adjusted individual-level association (scripts/2_evidence/01;
-models/dynamic/calibration.py). The association is estimated on the old AHS wording
+models/dynamic/estimation/calibration.py). The association is estimated on the old AHS wording
 (2017-2021 cycles, the scale of the wording-adjusted AHS) and each draw takes its
 own prevalence ratio from the pooled estimate and its posterior SE (log scale), so
 the target carries the evidence's uncertainty. The theory priors decide how that
@@ -34,7 +34,7 @@ from config.dynamic import DynamicConfig
 from config.shrinkage import ShrinkageConfig
 from config.specifications import EVIDENCE_SEED, PERSISTENCE_CAP, SPECIFICATIONS
 from data.state_inputs import StateInputs
-from models.dynamic.calibration import evidence_slope, sustained_shift_response
+from models.dynamic.estimation.calibration import evidence_slope, sustained_shift_response
 from models.dynamic.estimation.hierarchy import FitSettings, UnitFit, fit_hierarchy
 
 EVIDENCE_PATH = Path(__file__).resolve().parents[1] / "results/02_inputs/ahs_prep_evidence.csv"
@@ -215,7 +215,11 @@ class DynamicFitRunner:
         }
 
     def save(self, output_path: Path) -> None:
-        """Write the fits (NPZ, draw x unit arrays) and the diagnostics table (<output_path>.loss_components.csv)."""
+        """Write fitted arrays and diagnostics.
+
+        ``J`` is draw x unit x target measure x source measure. ``drift`` and ``anchor_logits`` are
+        draw x unit x measure; evidence quantities and success flags are draw x unit.
+        """
         def stack(value, dtype=np.float32):
             return np.array([[value(fit) for fit in draw_fits] for draw_fits in self.fits], dtype=dtype)
 

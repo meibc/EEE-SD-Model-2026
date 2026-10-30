@@ -34,7 +34,7 @@ ROOT = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(ROOT))
 from config.optimization import OptimConfig  # noqa: E402
 from config.shrinkage import ShrinkageConfig  # noqa: E402
-from core.math.transforms import LOGIT_EPS, inverse_logit, logit  # noqa: E402
+from core.transforms import LOGIT_EPS, inverse_logit, logit  # noqa: E402
 from reporting import sources, style  # noqa: E402
 from reporting.summaries import primary_states  # noqa: E402
 

@@ -1,5 +1,10 @@
 """Reader for the standardized bundle (artifacts/research_bundle.py), used by the scenario pipeline.
 
+Array axes follow one convention: draw first, geography second, measure axes next, and period last.
+Thus dynamic matrices are draw x state x target measure x source measure; dynamic trajectories are
+draw x state x measure x period; and epidemic posterior parameters are draw x state. A ``sample`` is
+reserved for the paired dynamic and epidemic draws created later by ``pipeline/projection.py``.
+
 Key names (``sem_*``, ``cdc_*``) follow the dashboard's standardized schema
 (EEE-Model-Dashboard-Integration), which keeps its own copy of this reader.
 """
@@ -65,11 +70,6 @@ class StandardizedBundle:
         return np.asarray(self._load()["sem_obs_years"], dtype=int)
 
     @property
-    def sem_obs(self) -> np.ndarray:
-        """Observed probability-scale trajectories of the dynamic model's measures, by geography."""
-        return np.asarray(self._load()["sem_obs"], dtype=float)
-
-    @property
     def sem_pred_years(self) -> np.ndarray:
         return np.asarray(self._load()["sem_pred_years"], dtype=int)
 
@@ -80,11 +80,6 @@ class StandardizedBundle:
     @property
     def cdc_raw_names(self) -> list[str]:
         return list(np.asarray(self._load()["cdc_raw_names"]).astype(str).tolist())
-
-    @property
-    def cdc_raw(self) -> np.ndarray:
-        """CDC inputs aligned to the model-year grid."""
-        return np.asarray(self._load()["cdc_raw"], dtype=float)
 
     @property
     def cdc_native_years(self) -> np.ndarray:
@@ -171,7 +166,7 @@ class StandardizedDynamicLoader(_BaseStandardizedLoader):
 
     @property
     def anchor_logits(self) -> np.ndarray:
-        """State anchors (draw x state x measure mean logits)."""
+        """State anchors, draw x state x measure."""
         return np.asarray(self._data["sem_anchor_logits"], dtype=float)
 
     def ahs_prep_apr(self, sample_idx: int, unit_id: str) -> float:
@@ -193,9 +188,6 @@ class StandardizedDynamicLoader(_BaseStandardizedLoader):
 
 class StandardizedEpiLoader(_BaseStandardizedLoader):
     """Epidemic-model posterior draws from the standardized bundle."""
-
-    def __init__(self, bundle: StandardizedBundle):
-        super().__init__(bundle)
 
     @property
     def years(self) -> np.ndarray:

@@ -33,7 +33,7 @@ The headline effect is: projected baseline AHS and PrEP (from the fits) x the AH
 - [x] `scripts/1_data/06_reported_constants.R` - references (5th percentiles), PrEP drift 0.420, persistence 0.846.
   Reviewed 2026-10-27; ported from Python (identical outputs), docstring updated, within-state persistence
   (0.769) added as a reported, unused constant.
-- [x] `pipeline/dynamic_fit.py` [325] + `models/dynamic/calibration.py` [71] - state anchoring, the evidence (first pass 2026-10-28; see Package code A)
+- [x] `pipeline/dynamic_fit.py` + `models/dynamic/estimation/calibration.py` - state anchoring and the evidence target (first pass 2026-10-28; see Package code A)
   constraint (6 steps, tolerance 0.01), per-draw prevalence ratio, specifications.
 - [x] `scripts/3_model/03_fit_dynamic_model.py` [80], `scripts/3_model/04_build_bundle.py` [28] - wiring. (first pass 2026-10-28; see Package code A)
 - [x] `config/sem_*_v3.csv`, `config/optimization.py`, `config/shrinkage.py` - check against Table S4 (first pass 2026-10-28; see Package code A)
@@ -75,7 +75,7 @@ Suggested order: the fit first (it is what the refit runs), then the bundle, the
   stability, evidence term
 - [x] `models/dynamic/estimation/jacobian.py` (first pass 2026-10-28) - the optimizer (L-BFGS-B, starts, gradients);
   get_bounds (sign constraints and bounds; merged from constraints.py 2026-10-28)
-- [x] `models/dynamic/calibration.py` [71] (walked through 2026-10-28) - the total AHS -> PrEP response and its gradient (evidence constraint)
+- [x] `models/dynamic/estimation/calibration.py` (walked through 2026-10-28) - the total AHS -> PrEP response and its gradient (evidence constraint)
 - [ ] `models/dynamic/estimation/hierarchy.py` - one draw through the hierarchy (moved from state_fit 2026-10-28) and
   ShrinkageCalculator (state -> division -> nation weights; merged from shrinkage.py 2026-10-28)
 - [x] `pipeline/dynamic_fit.py` (first pass and cleanup 2026-10-28; author to read in detail) - fits every unit and draw; evidence slopes; specifications
@@ -85,19 +85,20 @@ Suggested order: the fit first (it is what the refit runs), then the bundle, the
 - [ ] `artifacts/research_bundle.py` [107], `artifacts/standardized_runtime.py` [222] - the fit + epidemic bundle the
   scenarios read (dashboard-compatible format)
 - [ ] `data/state_inputs.py` - the model-input file (written once by scripts/3_model/01; read by 3_model/02, 03, 04)
-- [ ] `data/unit.py`, `data/unit_builder.py`, `data/workbook.py` (workbook reading, scripts/3_model/01 only; merged from
-  loader.py and data_prep.py 2026-10-28), `core/math/transforms.py`
+- [ ] `data/unit.py`, `data/workbook.py` (workbook reading and unit construction, scripts/3_model/01 only; merged from
+  loader.py, data_prep.py and unit_builder.py), `core/transforms.py`, `core/years.py`
 
 ### C. Epidemic model
-- [ ] `pipeline/epi_fit.py` [511] - priors, likelihood, sampling, bundle (scripts/3_model/02); has its own _logit (consider core/math/transforms.logit)
+- [ ] `pipeline/epi_fit.py` - priors, likelihood, sampling and bundle (scripts/3_model/02); uses the shared probability transforms
 - [ ] `models/epi/prediction/predictor.py` [54], `models/epi/params.py` [18] - the incidence and diagnosis equations
-- [ ] `models/shared/alignment.py` [131] - two-year model steps -> annual epidemic inputs
+- [ ] `core/years.py` - shared year alignment and extension for fitting and projection
 
 ### D. Scenarios
-- [x] `pipeline/projection.py` [267], `models/shared/intervention.py` [81], `config/interventions.py` [42],
+- [x] `pipeline/projection.py` [285], `models/shared/intervention.py` [81], `config/interventions.py` [42],
   `models/dynamic/prediction/predictor.py` [57] - reviewed and cleaned 2026-10-27 (author still to read)
 - [ ] `models/shared/prep_translation.py` - the three scenario PrEP translations (extracted 2026-10-28; tested)
-- [ ] `pipeline/scenarios.py` [374], `pipeline/projection_results.py` [76] - runs scenarios, summaries, draw files
+- [ ] `pipeline/scenarios.py` [185] - runs the baseline and requested scenarios and writes their output tables
+- [ ] `pipeline/scenario_results.py` [130] - paired endpoint extraction, cumulative incidence and summary rows
 
 ### E. Other
 - [x] `models/dynamic/structural.py` and its tests - retired to deprecated/ with 13d (2026-10-28)

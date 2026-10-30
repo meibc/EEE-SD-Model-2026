@@ -1,6 +1,6 @@
 """Prediction functions."""
 import numpy as np
-from core.math.transforms import LOGIT_EPS, inverse_logit, logit
+from core.transforms import LOGIT_EPS, inverse_logit, logit
 
 
 class Predictor:

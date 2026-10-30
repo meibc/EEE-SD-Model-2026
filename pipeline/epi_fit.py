@@ -38,7 +38,8 @@ import pandas as pd
 
 from data.state_inputs import StateInputs
 from models.epi.params import POST_YEAR
-from models.shared.alignment import align_to_years
+from core.years import align_to_years
+from core.transforms import logit
 
 ROOT = Path(__file__).resolve().parents[1]
 RESULTS = ROOT / "results"
@@ -136,11 +137,6 @@ class HierarchicalEpiInputs:
 # =============================================================================
 # Inputs: AMIS estimates and CDC stocks
 # =============================================================================
-
-def _logit(p: np.ndarray | float) -> np.ndarray | float:
-    p = np.clip(p, 1e-9, 1 - 1e-9)
-    return np.log(p / (1.0 - p))
-
 
 def read_cdc_stocks(path: Path) -> pd.DataFrame:
     """MSM stocks, one row per state and indicator, one column per year (NaN where CDC has no value)."""
@@ -304,14 +300,14 @@ def fit_hierarchical_epi_model(config: HierarchicalEpiFitConfig) -> Path:
 
     init_vals = {
         "mu_beta_div": np.full(n_div, -3.2),
-        "mu_alpha_logit": _logit(0.06 / 0.30),
+        "mu_alpha_logit": logit(0.06 / 0.30, 1e-9),
         "sigma_beta": 0.5,
         "z_beta": np.zeros(G),
         "phi_inc": 23.0,
         "mu_log_kappa_div": np.full(n_div, np.log(0.5)),
         "sigma_log_kappa": 0.25,
         "z_kappa": np.zeros(G),
-        "mu_logit_rho": _logit(0.18),
+        "mu_logit_rho": logit(0.18, 1e-9),
         "z_rho": np.zeros(G),
         "mu_log_post": np.log(1.4),
         "sigma_log_post": 0.10,
@@ -342,7 +338,7 @@ def fit_hierarchical_epi_model(config: HierarchicalEpiFitConfig) -> Path:
         alpha_upper = 0.30
         alpha_center_scaled = 0.06 / alpha_upper
         mu_alpha_logit = pm.Normal(
-            "mu_alpha_logit", mu=_logit(alpha_center_scaled), sigma=0.35
+            "mu_alpha_logit", mu=logit(alpha_center_scaled, 1e-9), sigma=0.35
         )
         alpha_global = pm.Deterministic(
             "alpha_global", alpha_upper * pm.math.sigmoid(mu_alpha_logit)
@@ -361,7 +357,7 @@ def fit_hierarchical_epi_model(config: HierarchicalEpiFitConfig) -> Path:
         )
         kappa = pm.Deterministic("kappa", pt.exp(log_kappa), dims="state")
 
-        mu_logit_rho = pm.Normal("mu_logit_rho", mu=_logit(0.18), sigma=0.35)
+        mu_logit_rho = pm.Normal("mu_logit_rho", mu=logit(0.18, 1e-9), sigma=0.35)
         z_rho = pm.Normal("z_rho", 0, 1, dims="state")
         # Fix the state-deviation scale because rho, kappa, and U0 were not
         # separately identifiable with a free hierarchy scale.

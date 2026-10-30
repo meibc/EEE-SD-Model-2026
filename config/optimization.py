@@ -23,7 +23,7 @@ class OptimConfig:
     stability_eps: float = 1e-3
     stability_fd_eps: float = 1e-7
 
-    # Evidence target on the total AHS -> PrEP response (models/dynamic/calibration.py): horizon in
+    # Evidence target on the total AHS -> PrEP response (models/dynamic/estimation/calibration.py): horizon in
     # two-year steps (6 = 2024-2036) and tolerance on the centred-logit scale.
     evidence_horizon: int = 6
     evidence_tau: float = 0.01

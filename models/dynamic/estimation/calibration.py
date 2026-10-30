@@ -17,7 +17,7 @@ from __future__ import annotations
 
 import numpy as np
 
-from core.math.transforms import PROB_EPS, logit
+from core.transforms import PROB_EPS, logit
 
 
 def evidence_slope(ahs: float, prep: float, apr: float, benchmark: float) -> float:

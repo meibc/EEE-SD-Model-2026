@@ -34,7 +34,7 @@ class ExportTests(unittest.TestCase):
         a=self.root/'base.npz';b=self.root/'fit.npz';o=self.root/'current.npz'
         d=self.root/'draws.npz'
         np.savez(a,**self.base);np.savez(b,**self.fit)
-        self.draws=np.random.default_rng(1).uniform(.1,.9,(3,2,2,4))  # draw x unit x variable x period
+        self.draws=np.random.default_rng(1).uniform(.1,.9,(3,2,2,4))  # draw x unit x measure x period
         np.savez(d,observed_draws=self.draws,observed_point=np.full((2,2,4),0.3),unit_ids=np.array(['GA','CA']),
             unit_kinds=np.array(['state','state']),census_divisions=np.array([5,9]),sample_sizes=np.array([100.,200.]),
             covariance=np.eye(2),v_names=np.array(['a','b']),years=np.array([2018,2020,2022,2024]),source_draw_ids=np.arange(3))

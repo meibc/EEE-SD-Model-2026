@@ -1,5 +1,5 @@
 import numpy as np
-from core.math.transforms import LOGIT_EPS, inverse_logit, logit, logit_jacobian
+from core.transforms import LOGIT_EPS, inverse_logit, logit, logit_jacobian
 
 
 class FeatureTransformer:

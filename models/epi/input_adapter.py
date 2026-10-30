@@ -4,7 +4,7 @@ from __future__ import annotations
 import numpy as np
 
 from models.epi.params import EpiInputs
-from models.shared.alignment import align_to_years
+from core.years import align_to_years
 
 
 def epi_inputs_from_dynamic(

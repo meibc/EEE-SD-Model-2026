@@ -55,7 +55,7 @@ def fit_hierarchy(units, unit_Y: list[np.ndarray], slopes: np.ndarray, settings:
                   SigmaY: np.ndarray, M: np.ndarray, source: int, target: int) -> list[UnitFit]:
     """Fit every unit of one draw in order, each centred at its own mean logit (state anchor), shrunk
     toward its parent's fitted J and held to its evidence target: the total response of ``target`` to
-    ``source`` should match the unit's slope (models/dynamic/calibration.py).
+    ``source`` should match the unit's slope (models/dynamic/estimation/calibration.py).
 
     ``units`` must list each parent before its children (nation, then each division and its states);
     ``unit_Y`` holds each unit's observed proportions (measure x period) and ``slopes`` its evidence target.

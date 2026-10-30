@@ -7,7 +7,7 @@ from __future__ import annotations
 
 import numpy as np
 
-from core.math.transforms import PROB_EPS, inverse_logit, logit
+from core.transforms import PROB_EPS, inverse_logit, logit
 
 
 def prevalence_ratio_translation(baseline_prep: np.ndarray, baseline_ahs: np.ndarray, scenario_ahs: np.ndarray,

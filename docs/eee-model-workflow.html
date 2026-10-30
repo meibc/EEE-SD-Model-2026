@@ -1790,7 +1790,7 @@ html&gt;body{padding:0}&lt;/style&gt;
   &lt;div class=&quot;eee-title-row&quot;&gt;
     &lt;div&gt;
       &lt;h2&gt;EEE-SD-Model-2026 workflow&lt;/h2&gt;
-      &lt;div class=&quot;text-small eee-subtitle&quot;&gt;Solid arrows show saved-data flow; dashed arrows show calls between reusable components. Select a section heading to collapse it.&lt;/div&gt;
+      &lt;div class=&quot;text-small eee-subtitle&quot;&gt;Solid arrows show saved-data flow; dashed arrows show calls between reusable components. Select a section heading to collapse it, or a box marked “details” to expand its description.&lt;/div&gt;
     &lt;/div&gt;
     &lt;div class=&quot;eee-legend text-small&quot; aria-label=&quot;Diagram legend&quot;&gt;
       &lt;span&gt;&lt;i class=&quot;eee-swatch eee-r&quot;&gt;&lt;/i&gt;R preparation&lt;/span&gt;
@@ -1850,10 +1850,10 @@ html&gt;body{padding:0}&lt;/style&gt;
             &lt;span&gt;3. Fit both models&lt;/span&gt;&lt;span class=&quot;eee-toggle&quot;&gt;−&lt;/span&gt;
           &lt;/button&gt;
           &lt;div class=&quot;eee-cluster-body eee-fit-body&quot;&gt;
-            &lt;div class=&quot;eee-node kind-py eee-fit-span&quot; id=&quot;build-inputs&quot;&gt;Build state inputs&lt;br&gt;&lt;small&gt;01_build_state_inputs.py&lt;br&gt;data/state_inputs.py · workbook.py · unit_builder.py&lt;/small&gt;&lt;/div&gt;
+            &lt;div class=&quot;eee-node kind-py eee-fit-span&quot; id=&quot;build-inputs&quot;&gt;Build state inputs&lt;br&gt;&lt;small&gt;01_build_state_inputs.py&lt;br&gt;data/state_inputs.py · workbook.py&lt;/small&gt;&lt;/div&gt;
             &lt;div class=&quot;eee-node kind-data eee-fit-span&quot; id=&quot;state-inputs&quot;&gt;state_inputs.npz&lt;/div&gt;
-            &lt;div class=&quot;eee-node kind-py&quot; id=&quot;fit-dynamic&quot;&gt;Fit dynamic model&lt;br&gt;&lt;small&gt;03_fit_dynamic_model.py&lt;br&gt;pipeline/dynamic_fit.py&lt;/small&gt;&lt;/div&gt;
-            &lt;div class=&quot;eee-node kind-py&quot; id=&quot;fit-epi&quot;&gt;Fit epidemic model&lt;br&gt;&lt;small&gt;02_fit_epi_model.py&lt;br&gt;pipeline/epi_fit.py&lt;/small&gt;&lt;/div&gt;
+            &lt;div class=&quot;eee-node kind-py&quot; id=&quot;fit-dynamic&quot;&gt;Fit dynamic model&lt;br&gt;&lt;small&gt;03_fit_dynamic_model.py&lt;/small&gt;&lt;/div&gt;
+            &lt;div class=&quot;eee-node kind-py&quot; id=&quot;fit-epi&quot;&gt;Fit epidemic model&lt;br&gt;&lt;small&gt;02_fit_epi_model.py&lt;/small&gt;&lt;/div&gt;
             &lt;div class=&quot;eee-node kind-data&quot; id=&quot;dynamic-fits&quot;&gt;Dynamic-model fits&lt;br&gt;&lt;small&gt;fitted matrices + drift&lt;/small&gt;&lt;/div&gt;
             &lt;div class=&quot;eee-node kind-data&quot; id=&quot;epi-posterior&quot;&gt;Epidemic posterior&lt;br&gt;&lt;small&gt;parameter draws&lt;/small&gt;&lt;/div&gt;
           &lt;/div&gt;
@@ -1869,10 +1869,10 @@ html&gt;body{padding:0}&lt;/style&gt;
               &lt;div class=&quot;eee-node kind-dynamic&quot; id=&quot;optimization-config&quot;&gt;Configure optimization&lt;br&gt;&lt;small&gt;config/optimization.py&lt;/small&gt;&lt;/div&gt;
               &lt;div class=&quot;eee-node kind-dynamic&quot; id=&quot;shrinkage-config&quot;&gt;Configure shrinkage&lt;br&gt;&lt;small&gt;config/shrinkage.py · specifications.py&lt;/small&gt;&lt;/div&gt;
               &lt;div class=&quot;eee-node kind-dynamic&quot; id=&quot;dynamic-fit-module&quot;&gt;Coordinate dynamic fit&lt;br&gt;&lt;small&gt;pipeline/dynamic_fit.py&lt;/small&gt;&lt;/div&gt;
-              &lt;div class=&quot;eee-node kind-dynamic&quot; id=&quot;hierarchy&quot;&gt;Build shrinkage hierarchy&lt;br&gt;&lt;small&gt;models/dynamic/estimation/hierarchy.py&lt;/small&gt;&lt;/div&gt;
+              &lt;div class=&quot;eee-node kind-dynamic&quot; id=&quot;hierarchy&quot;&gt;Fit nation → divisions → states&lt;br&gt;&lt;small&gt;models/dynamic/estimation/hierarchy.py&lt;/small&gt;&lt;/div&gt;
               &lt;div class=&quot;eee-node kind-dynamic&quot; id=&quot;dynamic-transforms&quot;&gt;Transform model inputs&lt;br&gt;&lt;small&gt;models/dynamic/estimation/transforms.py&lt;/small&gt;&lt;/div&gt;
               &lt;div class=&quot;eee-node kind-dynamic&quot; id=&quot;jacobian&quot;&gt;Construct transition matrix&lt;br&gt;&lt;small&gt;models/dynamic/estimation/jacobian.py&lt;/small&gt;&lt;/div&gt;
-              &lt;div class=&quot;eee-node kind-dynamic&quot; id=&quot;calibration&quot;&gt;Translate evidence target&lt;br&gt;&lt;small&gt;models/dynamic/calibration.py&lt;/small&gt;&lt;/div&gt;
+              &lt;div class=&quot;eee-node kind-dynamic&quot; id=&quot;calibration&quot;&gt;Translate evidence target&lt;br&gt;&lt;small&gt;models/dynamic/estimation/calibration.py&lt;/small&gt;&lt;/div&gt;
               &lt;div class=&quot;eee-node kind-dynamic&quot; id=&quot;loss&quot;&gt;Evaluate joint loss&lt;br&gt;&lt;small&gt;models/dynamic/estimation/loss.py&lt;/small&gt;&lt;/div&gt;
               &lt;div class=&quot;eee-node kind-dynamic&quot; id=&quot;dynamic-params&quot;&gt;Represent fitted parameters&lt;br&gt;&lt;small&gt;models/dynamic/params.py&lt;/small&gt;&lt;/div&gt;
             &lt;/div&gt;
@@ -1884,7 +1884,7 @@ html&gt;body{padding:0}&lt;/style&gt;
             &lt;/button&gt;
             &lt;div class=&quot;eee-cluster-body&quot;&gt;
               &lt;div class=&quot;eee-node kind-epi&quot; id=&quot;epi-fit-module&quot;&gt;Fit hierarchical epidemic model&lt;br&gt;&lt;small&gt;pipeline/epi_fit.py&lt;/small&gt;&lt;/div&gt;
-              &lt;div class=&quot;eee-node kind-epi&quot; id=&quot;alignment&quot;&gt;Align states and draws&lt;br&gt;&lt;small&gt;models/shared/alignment.py&lt;/small&gt;&lt;/div&gt;
+              &lt;div class=&quot;eee-node kind-epi&quot; id=&quot;alignment&quot;&gt;Align model years&lt;br&gt;&lt;small&gt;core/years.py&lt;/small&gt;&lt;/div&gt;
               &lt;div class=&quot;eee-node kind-epi&quot; id=&quot;epi-params&quot;&gt;Represent epidemic parameters&lt;br&gt;&lt;small&gt;models/epi/params.py&lt;/small&gt;&lt;/div&gt;
             &lt;/div&gt;
           &lt;/section&gt;
@@ -1927,7 +1927,7 @@ html&gt;body{padding:0}&lt;/style&gt;
           &lt;div class=&quot;eee-node kind-module&quot; id=&quot;dynamic-predictor&quot;&gt;Project dynamic system&lt;br&gt;&lt;small&gt;models/dynamic/prediction/predictor.py&lt;/small&gt;&lt;/div&gt;
           &lt;div class=&quot;eee-node kind-module&quot; id=&quot;epi-adapter&quot;&gt;Build epidemic inputs&lt;br&gt;&lt;small&gt;models/epi/input_adapter.py&lt;/small&gt;&lt;/div&gt;
           &lt;div class=&quot;eee-node kind-module&quot; id=&quot;epi-predictor&quot;&gt;Project HIV outcomes&lt;br&gt;&lt;small&gt;models/epi/prediction/predictor.py&lt;/small&gt;&lt;/div&gt;
-          &lt;div class=&quot;eee-node kind-module&quot; id=&quot;projection-results&quot;&gt;Collect projection results&lt;br&gt;&lt;small&gt;pipeline/projection_results.py&lt;/small&gt;&lt;/div&gt;
+          &lt;div class=&quot;eee-node kind-module&quot; id=&quot;projection-results&quot;&gt;Compare and summarize paired results&lt;br&gt;&lt;small&gt;pipeline/scenario_results.py&lt;/small&gt;&lt;/div&gt;
           &lt;div class=&quot;eee-node kind-data&quot; id=&quot;endpoints&quot;&gt;Trajectories + HIV endpoints&lt;br&gt;&lt;small&gt;scenario result files&lt;/small&gt;&lt;/div&gt;
         &lt;/div&gt;
         &lt;/section&gt;
@@ -1968,6 +1968,15 @@ html&gt;body{padding:0}&lt;/style&gt;
   #eee-workflow .eee-cluster[data-collapsed=&quot;true&quot;] .eee-cluster-body { display:none; }
   #eee-workflow .eee-node { position:relative; z-index:3; padding:8px 7px; min-height:38px; display:flex; flex-direction:column; justify-content:center; text-align:center; border:1px solid color-mix(in srgb, var(--border) 72%, transparent); background:var(--card); color:var(--card-foreground); font-size:12px; line-height:1.25; }
   #eee-workflow .eee-node small { color:var(--muted-foreground); font-size:11px; margin-top:2px; }
+  #eee-workflow .eee-node.eee-expandable { cursor:pointer; }
+  #eee-workflow .eee-detail-hint { margin-top:5px; color:var(--muted-foreground); font-size:10px; font-weight:600; letter-spacing:.02em; }
+  #eee-workflow .eee-role-badge { align-self:center; display:inline-block; margin:5px 0 1px; padding:2px 5px; border:1px solid color-mix(in srgb, var(--foreground) 58%, transparent); color:var(--foreground); background:color-mix(in srgb, var(--foreground) 5%, transparent); font-size:8.5px; font-weight:700; letter-spacing:.06em; line-height:1.1; text-transform:uppercase; }
+  #eee-workflow .eee-node-detail { display:none; width:100%; box-sizing:border-box; margin-top:7px; padding-top:7px; border-top:1px solid color-mix(in srgb, var(--border) 72%, transparent); text-align:left; color:var(--card-foreground); font-size:10.5px; line-height:1.38; }
+  #eee-workflow .eee-node[data-detail-open=&quot;true&quot;] .eee-node-detail { display:block; }
+  #eee-workflow .eee-node-detail strong { display:block; margin-bottom:3px; font-size:10.5px; }
+  #eee-workflow .eee-node-detail ul { margin:3px 0 0 15px; padding:0; }
+  #eee-workflow .eee-node-detail li { margin:2px 0; }
+  #eee-workflow .eee-node-detail code { font-size:10px; overflow-wrap:anywhere; }
   #eee-workflow .kind-r { background:color-mix(in srgb, var(--green) 12%, var(--card)); border-color:color-mix(in srgb, var(--green) 58%, var(--border)); }
   #eee-workflow .kind-py { background:color-mix(in srgb, var(--blue) 11%, var(--card)); border-color:color-mix(in srgb, var(--blue) 55%, var(--border)); }
   #eee-workflow .kind-data { background:color-mix(in srgb, var(--yellow) 14%, var(--card)); border-color:color-mix(in srgb, var(--yellow) 60%, var(--border)); }
@@ -2033,11 +2042,284 @@ html&gt;body{padding:0}&lt;/style&gt;
     [&#x27;prepared-inputs&#x27;,&#x27;build-inputs&#x27;,&#x27;workbook + bootstrap&#x27;], [&#x27;build-inputs&#x27;,&#x27;state-inputs&#x27;,&#x27;&#x27;], [&#x27;state-inputs&#x27;,&#x27;fit-dynamic&#x27;,&#x27;&#x27;], [&#x27;evidence-target&#x27;,&#x27;fit-dynamic&#x27;,&#x27;constrains total response&#x27;], [&#x27;fit-dynamic&#x27;,&#x27;dynamic-fits&#x27;,&#x27;&#x27;],
     [&#x27;state-inputs&#x27;,&#x27;fit-epi&#x27;,&#x27;observed inputs&#x27;], [&#x27;cdc-stocks&#x27;,&#x27;fit-epi&#x27;,&#x27;CDC stocks&#x27;], [&#x27;fit-epi&#x27;,&#x27;epi-posterior&#x27;,&#x27;&#x27;],
     [&#x27;state-inputs&#x27;,&#x27;build-bundle&#x27;,&#x27;&#x27;], [&#x27;dynamic-fits&#x27;,&#x27;build-bundle&#x27;,&#x27;&#x27;], [&#x27;epi-posterior&#x27;,&#x27;build-bundle&#x27;,&#x27;&#x27;], [&#x27;build-bundle&#x27;,&#x27;research-bundle&#x27;,&#x27;calls&#x27;,&#x27;call&#x27;], [&#x27;research-bundle&#x27;,&#x27;bundle&#x27;,&#x27;&#x27;], [&#x27;bundle&#x27;,&#x27;runtime&#x27;,&#x27;loads&#x27;],
-    [&#x27;runtime&#x27;,&#x27;run-scenarios&#x27;,&#x27;parameters&#x27;], [&#x27;run-scenarios&#x27;,&#x27;scenarios&#x27;,&#x27;calls&#x27;,&#x27;call&#x27;], [&#x27;scenarios&#x27;,&#x27;projection&#x27;,&#x27;runs&#x27;], [&#x27;projection&#x27;,&#x27;dynamic-predictor&#x27;,&#x27;projects prevention system&#x27;], [&#x27;dynamic-predictor&#x27;,&#x27;epi-adapter&#x27;,&#x27;trajectories&#x27;], [&#x27;epi-adapter&#x27;,&#x27;epi-predictor&#x27;,&#x27;epidemic inputs&#x27;], [&#x27;epi-predictor&#x27;,&#x27;projection-results&#x27;,&#x27;HIV outcomes&#x27;], [&#x27;projection-results&#x27;,&#x27;endpoints&#x27;,&#x27;&#x27;],
+    [&#x27;runtime&#x27;,&#x27;run-scenarios&#x27;,&#x27;parameters&#x27;], [&#x27;run-scenarios&#x27;,&#x27;scenarios&#x27;,&#x27;calls&#x27;,&#x27;call&#x27;], [&#x27;scenarios&#x27;,&#x27;projection&#x27;,&#x27;runs&#x27;,&#x27;call&#x27;], [&#x27;projection&#x27;,&#x27;dynamic-predictor&#x27;,&#x27;calls&#x27;,&#x27;call&#x27;], [&#x27;dynamic-predictor&#x27;,&#x27;epi-adapter&#x27;,&#x27;trajectories&#x27;], [&#x27;epi-adapter&#x27;,&#x27;epi-predictor&#x27;,&#x27;epidemic inputs&#x27;], [&#x27;projection&#x27;,&#x27;projection-results&#x27;,&#x27;baseline + scenario outputs&#x27;], [&#x27;scenarios&#x27;,&#x27;projection-results&#x27;,&#x27;requests summaries&#x27;,&#x27;call&#x27;], [&#x27;projection-results&#x27;,&#x27;endpoints&#x27;,&#x27;&#x27;],
     [&#x27;fit-dynamic&#x27;,&#x27;dynamic-fit-module&#x27;,&#x27;calls&#x27;,&#x27;call&#x27;], [&#x27;dynamic-config&#x27;,&#x27;dynamic-fit-module&#x27;,&#x27;configures&#x27;,&#x27;call&#x27;], [&#x27;optimization-config&#x27;,&#x27;dynamic-fit-module&#x27;,&#x27;&#x27;,&#x27;call&#x27;], [&#x27;shrinkage-config&#x27;,&#x27;hierarchy&#x27;,&#x27;&#x27;,&#x27;call&#x27;], [&#x27;dynamic-fit-module&#x27;,&#x27;hierarchy&#x27;,&#x27;&#x27;], [&#x27;hierarchy&#x27;,&#x27;dynamic-transforms&#x27;,&#x27;&#x27;], [&#x27;hierarchy&#x27;,&#x27;jacobian&#x27;,&#x27;&#x27;], [&#x27;jacobian&#x27;,&#x27;loss&#x27;,&#x27;optimizes&#x27;], [&#x27;calibration&#x27;,&#x27;loss&#x27;,&#x27;evidence target&#x27;,&#x27;call&#x27;], [&#x27;loss&#x27;,&#x27;dynamic-params&#x27;,&#x27;fitted parameters&#x27;],
     [&#x27;fit-epi&#x27;,&#x27;epi-fit-module&#x27;,&#x27;calls&#x27;,&#x27;call&#x27;], [&#x27;alignment&#x27;,&#x27;epi-fit-module&#x27;,&#x27;&#x27;,&#x27;call&#x27;], [&#x27;epi-fit-module&#x27;,&#x27;epi-params&#x27;,&#x27;estimates&#x27;],
     [&#x27;intervention-config&#x27;,&#x27;scenarios&#x27;,&#x27;scenario codes&#x27;,&#x27;call&#x27;], [&#x27;projection-config&#x27;,&#x27;run-scenarios&#x27;,&#x27;run settings&#x27;,&#x27;call&#x27;], [&#x27;intervention-build&#x27;,&#x27;projection&#x27;,&#x27;builds changes&#x27;,&#x27;call&#x27;], [&#x27;prep-translation&#x27;,&#x27;projection&#x27;,&#x27;alternative translations&#x27;,&#x27;call&#x27;]
   ];
+
+  const nodeDetails = {
+    &#x27;build-inputs&#x27;: {
+      heading:&#x27;What it does&#x27;,
+      items:[
+        &#x27;Entry/build step that reads the R workbook and long bootstrap table once.&#x27;,
+        &#x27;Validates their shared unit, measure and period layout and writes &lt;code&gt;state_inputs.npz&lt;/code&gt; for both fitted models.&#x27;
+      ]
+    },
+    &#x27;fit-dynamic&#x27;: {
+      heading:&#x27;Entry point&#x27;,
+      items:[
+        &#x27;Parses requested specifications, draw counts and output paths.&#x27;,
+        &#x27;Loads &lt;code&gt;state_inputs.npz&lt;/code&gt; and calls &lt;code&gt;pipeline/dynamic_fit.py&lt;/code&gt;; it does not estimate &lt;code&gt;J&lt;/code&gt; itself.&#x27;
+      ]
+    },
+    &#x27;fit-epi&#x27;: {
+      heading:&#x27;Entry point&#x27;,
+      items:[
+        &#x27;Parses quick/full calibration settings and output paths.&#x27;,
+        &#x27;Calls &lt;code&gt;pipeline/epi_fit.py&lt;/code&gt; to build the PyMC inputs, sample the model and export the epidemic bundle.&#x27;
+      ]
+    },
+    &#x27;prepared-inputs&#x27;: {
+      heading:&#x27;Current artifact shape&#x27;,
+      items:[
+        &#x27;Workbook: point trajectories for 59 units × 8 measures × 4 two-year periods, plus unit metadata and an 8 × 8 covariance target.&#x27;,
+        &#x27;Bootstrap CSV: 500 draws × 59 units × 8 measures × 4 periods = 944,000 rows, with the sampled probability in &lt;code&gt;model_draw&lt;/code&gt;.&#x27;,
+        &#x27;The 59 units are USA + 9 Census divisions + 49 states represented in the input workbook.&#x27;
+      ]
+    },
+    &#x27;evidence-target&#x27;: {
+      heading:&#x27;Current artifact shape&#x27;,
+      items:[
+        &#x27;CSV: 26 rows × 13 columns = 25 state estimates plus one &lt;code&gt;POOLED&lt;/code&gt; estimate.&#x27;,
+        &#x27;Columns carry sample counts, direct log-aPR and SE, empirical-Bayes pooled log-aPR and SE, aPR intervals, τ and I².&#x27;
+      ]
+    },
+    &#x27;state-inputs&#x27;: {
+      heading:&#x27;Current artifact shape&#x27;,
+      items:[
+        &#x27;&lt;code&gt;observed_draws&lt;/code&gt;: draw (500) × unit (59) × measure (8) × period (4).&#x27;,
+        &#x27;&lt;code&gt;observed_point&lt;/code&gt;: unit (59) × measure (8) × period (4).&#x27;,
+        &#x27;&lt;code&gt;covariance&lt;/code&gt;: measure (8) × measure (8). Also stores the 59 unit IDs/types, divisions, sample sizes, four years and 500 source draw IDs.&#x27;
+      ]
+    },
+    &#x27;dynamic-fits&#x27;: {
+      heading:&#x27;Current primary-fit shape&#x27;,
+      items:[
+        &#x27;One NPZ per specification; 34 fitted units = USA + 9 divisions + 24 selected states.&#x27;,
+        &#x27;&lt;code&gt;J&lt;/code&gt;: draw (500) × unit (34) × target measure (8) × source measure (8).&#x27;,
+        &#x27;&lt;code&gt;drift&lt;/code&gt; and &lt;code&gt;anchor_logits&lt;/code&gt;: 500 × 34 × 8; evidence slopes/aPRs: 500 × 34; success flags: 500 × 34.&#x27;
+      ]
+    },
+    &#x27;epi-posterior&#x27;: {
+      heading:&#x27;Current artifact shape&#x27;,
+      items:[
+        &#x27;&lt;code&gt;posterior.nc&lt;/code&gt;: chain (4) × draw (500) × state (48) for state-varying parameters, plus shared parameters.&#x27;,
+        &#x27;&lt;code&gt;epi_bundle.npz&lt;/code&gt;: each parameter is sample (2,000) × state (48).&#x27;,
+        &#x27;&lt;code&gt;cdc_raw&lt;/code&gt;: state (48) × indicator (6) × modeled year (20); native CDC values cover 8 years.&#x27;
+      ]
+    },
+    &#x27;bundle&#x27;: {
+      heading:&#x27;Current standardized-bundle shape&#x27;,
+      items:[
+        &#x27;Restricted to the 24 selected states shared by both fitted models.&#x27;,
+        &#x27;&lt;code&gt;sem_J_samples&lt;/code&gt;: dynamic draw (500) × state (24) × target measure (8) × source measure (8).&#x27;,
+        &#x27;&lt;code&gt;sem_drift_samples&lt;/code&gt;/&lt;code&gt;sem_anchor_logits&lt;/code&gt;: 500 × 24 × 8; &lt;code&gt;sem_obs_samples&lt;/code&gt;: 500 × 24 × 8 × 4.&#x27;,
+        &#x27;Epidemic parameters: 2,000 × 24; &lt;code&gt;cdc_raw&lt;/code&gt;: 24 × 6 indicators × 20 annual years.&#x27;
+      ]
+    },
+    &#x27;endpoints&#x27;: {
+      heading:&#x27;Output-table shape&#x27;,
+      items:[
+        &#x27;Dynamic summary rows = state (24) × scenario × report year × dynamic measure (8).&#x27;,
+        &#x27;Epidemic summary rows = state (24) × scenario × report year × epidemic endpoint (5); the current 5-scenario × 6-year run gives 3,600 rows.&#x27;,
+        &#x27;Each summary has 17 columns: identifiers plus 2.5th/50th/97.5th percentiles for baseline, scenario, difference and percent change.&#x27;,
+        &#x27;Optional draw tables add draw (500): one row per state × scenario × year × draw × variable.&#x27;
+      ]
+    },
+    &#x27;research-bundle&#x27;: {
+      heading:&#x27;What it does&#x27;,
+      items:[
+        &#x27;Aligns the epidemic bundle, dynamic fit and observed state inputs to the same fitted-state order.&#x27;,
+        &#x27;Writes the standardized research NPZ and a provenance manifest.&#x27;
+      ]
+    },
+    &#x27;build-bundle&#x27;: {
+      heading:&#x27;Entry point&#x27;,
+      items:[
+        &#x27;Selects the epidemic bundle, dynamic-fit NPZ and state-input NPZ to combine.&#x27;,
+        &#x27;Calls &lt;code&gt;artifacts/research_bundle.py&lt;/code&gt; and prints the resulting provenance manifest.&#x27;
+      ]
+    },
+    &#x27;runtime&#x27;: {
+      heading:&#x27;What it does&#x27;,
+      items:[
+        &#x27;Opens the standardized bundle and exposes consistent dynamic and epidemic sample loaders.&#x27;,
+        &#x27;Reconstructs the state units used by the scenario runner.&#x27;
+      ]
+    },
+    &#x27;scenarios&#x27;: {
+      heading:&#x27;What it does&#x27;,
+      items:[
+        &#x27;Experiment-level runner: loads the bundle and runs one shared baseline.&#x27;,
+        &#x27;Loops over requested scenario codes and report years, calls &lt;code&gt;projection.py&lt;/code&gt;, delegates comparisons to &lt;code&gt;scenario_results.py&lt;/code&gt;, then writes the tables.&#x27;
+      ]
+    },
+    &#x27;run-scenarios&#x27;: {
+      heading:&#x27;Entry point&#x27;,
+      items:[
+        &#x27;Turns command-line choices into a &lt;code&gt;ScenarioRunConfig&lt;/code&gt;.&#x27;,
+        &#x27;Calls &lt;code&gt;run_scenarios()&lt;/code&gt;; it contains no projection equations or endpoint calculations.&#x27;
+      ]
+    },
+    &#x27;projection&#x27;: {
+      heading:&#x27;What it does&#x27;,
+      items:[
+        &#x27;Runs one intervention specification across requested states and Monte Carlo samples.&#x27;,
+        &#x27;Pairs a dynamic-model draw with an epidemic-posterior draw, projects the prevention system, builds epidemic inputs and returns raw &lt;code&gt;ProjectionOutput&lt;/code&gt; trajectories.&#x27;
+      ]
+    },
+    &#x27;dynamic-predictor&#x27;: {
+      heading:&#x27;What it does&#x27;,
+      items:[
+        &#x27;Propagates the centered-logit system with &lt;code&gt;X[t+1] = J X[t] + drift&lt;/code&gt;.&#x27;,
+        &#x27;Keeps observed periods fixed, applies measure interventions and converts projected logits back to probabilities.&#x27;
+      ]
+    },
+    &#x27;epi-adapter&#x27;: {
+      heading:&#x27;What it does&#x27;,
+      items:[
+        &#x27;Converts two-year dynamic trajectories into annual HIV-model inputs.&#x27;,
+        &#x27;Combines projected testing, PrEP and risk behavior with CDC eligibility and viral-suppression stocks.&#x27;
+      ]
+    },
+    &#x27;epi-predictor&#x27;: {
+      heading:&#x27;What it does&#x27;,
+      items:[
+        &#x27;Applies one epidemic parameter draw to one state’s annual inputs.&#x27;,
+        &#x27;Returns incidence, diagnoses, undiagnosed prevalence and PrEP counts over time.&#x27;
+      ]
+    },
+    &#x27;projection-results&#x27;: {
+      heading:&#x27;What it does&#x27;,
+      items:[
+        &#x27;Takes paired baseline and scenario &lt;code&gt;ProjectionOutput&lt;/code&gt; objects.&#x27;,
+        &#x27;Extracts requested years, constructs cumulative incidence, and produces paired differences, intervals and optional draw-level rows.&#x27;
+      ]
+    },
+    &#x27;dynamic-fit-module&#x27;: {
+      heading:&#x27;Runner responsibility&#x27;,
+      items:[
+        &#x27;For each model specification and each of 500 input draws, assembles the evidence target and calls the hierarchical fit.&#x27;,
+        &#x27;Collects fitted matrices, drifts, anchors and diagnostics, then writes one fit NPZ per specification.&#x27;
+      ]
+    },
+    &#x27;hierarchy&#x27;: {
+      heading:&#x27;What it does&#x27;,
+      items:[
+        &#x27;Fits one draw in parent-first order: USA → Census divisions → selected states.&#x27;,
+        &#x27;The national &lt;code&gt;J&lt;/code&gt; becomes each division’s shrinkage reference; each fitted division &lt;code&gt;J&lt;/code&gt; becomes its states’ reference.&#x27;
+      ]
+    },
+    &#x27;epi-fit-module&#x27;: {
+      heading:&#x27;Runner responsibility&#x27;,
+      items:[
+        &#x27;Builds aligned AMIS and CDC arrays, defines the hierarchical PyMC model and samples the posterior.&#x27;,
+        &#x27;Writes &lt;code&gt;posterior.nc&lt;/code&gt;, calibration summaries and &lt;code&gt;epi_bundle.npz&lt;/code&gt;.&#x27;
+      ]
+    },
+    &#x27;intervention-config&#x27;: {
+      heading:&#x27;What it defines&#x27;,
+      items:[
+        &#x27;&lt;code&gt;INTERVENTION_CODEBOOK&lt;/code&gt;: five measure-level changes—three halving targets, holding AHS at 2024, and moving AHS to its benchmark.&#x27;,
+        &#x27;&lt;code&gt;SCENARIO_CODEBOOK&lt;/code&gt;: five policy scenarios that combine those changes; four are designated for the paper and one for the supplement.&#x27;,
+        &#x27;This file declares codes, targets and labels only; it does not run a projection.&#x27;
+      ]
+    },
+    &#x27;projection-config&#x27;: {
+      heading:&#x27;Current run settings&#x27;,
+      items:[
+        &#x27;500 paired dynamic/epidemic samples with seed 123; projections end in 2036.&#x27;,
+        &#x27;Interventions ramp over three two-year steps (six years); cumulative infections begin in 2025.&#x27;,
+        &#x27;Interim report years are 2030 and 2032; contextual upper-bound ratios are 0.80 and 0.70.&#x27;
+      ]
+    },
+    &#x27;intervention-build&#x27;: {
+      heading:&#x27;What it does&#x27;,
+      items:[
+        &#x27;Converts intervention codes into &lt;code&gt;MeasureIntervention&lt;/code&gt; objects for one state’s dynamic-year grid.&#x27;,
+        &#x27;Starts after the last observed period, ramps toward the target, and then holds the change.&#x27;,
+        &#x27;At each step it changes the selected probability and returns it to the model’s centered-logit coordinates.&#x27;
+      ]
+    },
+    &#x27;prep-translation&#x27;: {
+      heading:&#x27;What it does&#x27;,
+      items:[
+        &#x27;&lt;code&gt;prevalence_ratio_translation&lt;/code&gt;: primary AHS→PrEP translation using the draw-specific respondent-level ratio.&#x27;,
+        &#x27;&lt;code&gt;contextual_translation&lt;/code&gt;: upper-bound translation using the between-state climate ratio.&#x27;,
+        &#x27;&lt;code&gt;retain_prep_fraction&lt;/code&gt;: resilient-delivery comparison that retains part of the PrEP gain while returning every other measure to baseline.&#x27;
+      ]
+    }
+  };
+
+  const nodeRoles = {
+    &#x27;build-inputs&#x27;:&#x27;entry + builder&#x27;,
+    &#x27;fit-dynamic&#x27;:&#x27;entry point&#x27;,
+    &#x27;fit-epi&#x27;:&#x27;entry point&#x27;,
+    &#x27;build-bundle&#x27;:&#x27;entry point&#x27;,
+    &#x27;run-scenarios&#x27;:&#x27;entry point&#x27;,
+    &#x27;dynamic-fit-module&#x27;:&#x27;runner&#x27;,
+    &#x27;epi-fit-module&#x27;:&#x27;runner&#x27;,
+    &#x27;scenarios&#x27;:&#x27;runner&#x27;,
+    &#x27;projection&#x27;:&#x27;engine&#x27;,
+    &#x27;dynamic-predictor&#x27;:&#x27;model component&#x27;,
+    &#x27;epi-adapter&#x27;:&#x27;adapter&#x27;,
+    &#x27;epi-predictor&#x27;:&#x27;model component&#x27;,
+    &#x27;projection-results&#x27;:&#x27;summarizer&#x27;,
+    &#x27;intervention-config&#x27;:&#x27;codebook&#x27;,
+    &#x27;projection-config&#x27;:&#x27;settings&#x27;,
+    &#x27;intervention-build&#x27;:&#x27;builder&#x27;,
+    &#x27;prep-translation&#x27;:&#x27;translation functions&#x27;
+  };
+
+  Object.entries(nodeRoles).forEach(([nodeId, role]) =&gt; {
+    const node = document.getElementById(nodeId);
+    if (!node) return;
+    const badge = document.createElement(&#x27;span&#x27;);
+    badge.className = &#x27;eee-role-badge&#x27;;
+    badge.textContent = role;
+    node.appendChild(badge);
+  });
+
+  function toggleNodeDetail(node) {
+    const opening = node.dataset.detailOpen !== &#x27;true&#x27;;
+    node.dataset.detailOpen = String(opening);
+    node.setAttribute(&#x27;aria-expanded&#x27;, String(opening));
+    const hint = node.querySelector(&#x27;.eee-detail-hint&#x27;);
+    if (hint) hint.textContent = opening ? &#x27;hide details ▴&#x27; : &#x27;details ▾&#x27;;
+    requestAnimationFrame(draw);
+  }
+
+  Object.entries(nodeDetails).forEach(([nodeId, detail]) =&gt; {
+    const node = document.getElementById(nodeId);
+    if (!node) return;
+    node.classList.add(&#x27;eee-expandable&#x27;);
+    node.dataset.detailOpen = &#x27;false&#x27;;
+    node.tabIndex = 0;
+    node.setAttribute(&#x27;role&#x27;, &#x27;button&#x27;);
+    node.setAttribute(&#x27;aria-expanded&#x27;, &#x27;false&#x27;);
+    node.setAttribute(&#x27;aria-label&#x27;, `${node.firstChild?.textContent?.trim() || nodeId}; expand details`);
+
+    const hint = document.createElement(&#x27;span&#x27;);
+    hint.className = &#x27;eee-detail-hint&#x27;;
+    hint.textContent = &#x27;details ▾&#x27;;
+    node.appendChild(hint);
+
+    const panel = document.createElement(&#x27;div&#x27;);
+    panel.className = &#x27;eee-node-detail&#x27;;
+    panel.innerHTML = `&lt;strong&gt;${detail.heading}&lt;/strong&gt;&lt;ul&gt;${detail.items.map(item =&gt; `&lt;li&gt;${item}&lt;/li&gt;`).join(&#x27;&#x27;)}&lt;/ul&gt;`;
+    node.appendChild(panel);
+
+    node.addEventListener(&#x27;click&#x27;, event =&gt; {
+      event.stopPropagation();
+      toggleNodeDetail(node);
+    });
+    node.addEventListener(&#x27;keydown&#x27;, event =&gt; {
+      if (event.key !== &#x27;Enter&#x27; &amp;&amp; event.key !== &#x27; &#x27;) return;
+      event.preventDefault();
+      toggleNodeDetail(node);
+    });
+  });
 
   function targetFor(id) {
     const el = document.getElementById(id);
@@ -2182,6 +2464,8 @@ html&gt;body{padding:0}&lt;/style&gt;
   root.querySelectorAll(&#x27;.eee-node&#x27;).forEach(node =&gt; {
     node.addEventListener(&#x27;pointerenter&#x27;,() =&gt; highlightNode(node.id));
     node.addEventListener(&#x27;pointerleave&#x27;,clearHighlight);
+    node.addEventListener(&#x27;focus&#x27;,() =&gt; highlightNode(node.id));
+    node.addEventListener(&#x27;blur&#x27;,clearHighlight);
   });
   new ResizeObserver(draw).observe(canvas);
   requestAnimationFrame(draw);

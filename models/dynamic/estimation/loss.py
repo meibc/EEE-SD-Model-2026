@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import numpy as np
 
-from models.dynamic.calibration import sustained_shift_response_grad
+from models.dynamic.estimation.calibration import sustained_shift_response_grad
 
 
 def joint_loss(
@@ -36,7 +36,7 @@ def joint_loss(
     shrinkage toward J_ref; L_prior_J / L_prior_c: structural and drift priors;
     L_stab: spectral-radius penalty; L_evidence: evidence target on the total
     response of one measure to another (``evidence_target``: source, target, horizon,
-    value, tau; models/dynamic/calibration.py). The parameter vector is [free J-I
+    value, tau; models/dynamic/estimation/calibration.py). The parameter vector is [free J-I
     entries, enabled drift entries]. Weights and the stability threshold (1 - eps)
     come from config/optimization.py; J_ref is None (and wJ 0) for the nation.
     """

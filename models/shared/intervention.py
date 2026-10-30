@@ -1,6 +1,6 @@
 import numpy as np
 from config.interventions import INTERVENTION_CODEBOOK
-from core.math.transforms import PROB_EPS, logit
+from core.transforms import PROB_EPS, logit
 
 
 class MeasureIntervention:

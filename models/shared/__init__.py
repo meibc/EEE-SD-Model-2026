@@ -1,3 +1,1 @@
-from .alignment import align_to_years
-
-__all__ = ["align_to_years"]
+"""Domain logic shared by the dynamic and epidemic models."""

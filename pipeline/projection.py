@@ -11,23 +11,61 @@ pooled intervals carry uncertainty shared across states. Baseline and scenario r
 with the same seed use the same pairs, so their contrasts are paired.
 """
 
+from dataclasses import dataclass
 from typing import Any
 import numpy as np
 from tqdm import tqdm
 
 from data.unit import Unit
 from models.epi.input_adapter import epi_inputs_from_dynamic
-from models.shared.alignment import extend_to_end_year
+from core.years import extend_to_end_year
 from models.shared.intervention import build_measure_interventions
 from models.shared.prep_translation import contextual_translation, prevalence_ratio_translation, retain_prep_fraction
+from models.epi.params import EpiOutput
 from models.epi.prediction.predictor import EpiPredictor
 from models.dynamic.estimation.transforms import FeatureTransformer
 from models.dynamic.prediction.predictor import Predictor
-from pipeline.projection_results import (
-    ProjectionSample,
-    ProjectionResult,
-    ProjectionOutput,
-)
+
+
+# =============================================================================
+# Projection outputs
+# =============================================================================
+
+@dataclass
+class ProjectionSample:
+    """One paired dynamic-model and epidemic-model Monte Carlo sample."""
+    dynamic_idx: int
+    epi_idx: int
+    dynamic_trajectory: np.ndarray
+    epi_output: EpiOutput
+
+
+@dataclass
+class ProjectionResult:
+    """All Monte Carlo samples for one unit."""
+    unit_id: str
+    samples: list[ProjectionSample]
+    years: np.ndarray
+
+    @property
+    def n_samples(self) -> int:
+        return len(self.samples)
+
+    def dynamic_stack(self) -> np.ndarray:
+        """Projected measures, sample x measure x dynamic-model year."""
+        return np.asarray([sample.dynamic_trajectory for sample in self.samples], dtype=float)
+
+    def epi_stack(self, variable: str) -> np.ndarray:
+        """One epidemic output, sample x year."""
+        return np.asarray([getattr(sample.epi_output, variable) for sample in self.samples], dtype=float)
+
+
+@dataclass
+class ProjectionOutput:
+    """Monte Carlo results for all requested units."""
+    results: dict[str, ProjectionResult]
+    years: np.ndarray
+    v_names: list[str]
 
 # =============================================================================
 # Projection runner
