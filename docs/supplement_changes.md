@@ -165,7 +165,7 @@ named, not from the draft.
 - **Remove** the demographic-group dynamic models (S6.2-S6.5, including the California Hispanic/Latino
   analysis). [Population analyses]
 - Replace with a short descriptive section: weighted 2017-2024 stigma and PrEP trajectories by group with
-  bootstrap intervals, and survey-weighted cross-sectional associations.
+  bootstrap intervals (F8). The cross-sectional group associations are not reported (decided 2026-10-30).
 - Limitations sentence: group models were explored, but annual subgroup data were too imprecise to
   identify group-specific pathway structure robustly.
 

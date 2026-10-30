@@ -13,7 +13,7 @@
 #   evidence     R: AHS-PrEP evidence, 2022 wording items, climate associations
 #   model        Python: model-input files, dynamic-model fits (in parallel), bundles, scenario runs (in parallel)
 #   results      Python: paper figures and tables (results/sections/)
-#   demographic  R + Python: demographic-group associations and descriptives (results/08_demographic/)
+#   demographic  R + Python: demographic-group trajectories (results/08_demographic/)
 #
 # Logs go to results/logs/run_<date>_<time>/. Settings: config/ (specifications.py, projection.py, ...).
 # FIT_DRAWS and SCENARIO_SAMPLES (defaults in config/fit.py and config/projection.py) shrink the run for a quick
@@ -152,9 +152,8 @@ fi
 
 if has demographic; then
   step "demographic"
-  Rscript scripts/5_demographic/01_group_associations.R > "$LOG/demographic_01_associations.log" 2>&1
-  Rscript scripts/5_demographic/02_group_bootstrap.R > "$LOG/demographic_02_bootstrap.log" 2>&1
-  $PY scripts/5_demographic/03_demographic_descriptives.py > "$LOG/demographic_03_descriptives.log" 2>&1
+  Rscript scripts/5_demographic/01_group_bootstrap.R > "$LOG/demographic_01_bootstrap.log" 2>&1
+  $PY scripts/5_demographic/02_demographic_descriptives.py > "$LOG/demographic_02_descriptives.log" 2>&1
 fi
 
 step "done"

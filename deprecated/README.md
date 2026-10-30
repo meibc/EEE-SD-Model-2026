@@ -12,5 +12,6 @@ See docs/analysis_decisions.md for the decisions behind each retirement.
 | scripts/13c_ahs_prep_individual_bounds.R | Model vs individual-evidence diagnostic | Evidence is now a constraint in the fit (scripts/08b, pipeline/state_fit.py) |
 | scripts/13d_system_decomposition.py | Projected change split into own momentum/drift vs the rest of the system | Not in the paper outputs; cited only in the decision log (projected AHS rise via PrEP -> AHS) |
 | models/structural.py, tests/test_structural.py | Post-fit analysis of J: impulse coupling, source counterfactuals, trajectory decomposition (was models/sbm/structural.py) | Used only by scripts 13, 13b and 13d; these scripts import it as models.sbm.structural |
+| scripts/group_associations.R | Survey-weighted logistic regressions of each pathway within six demographic groups (was scripts/5_demographic/01_group_associations.R) | Not reported in S6 (2026-10-30); the supplement shows the group trajectories only |
 | scripts/15_main_figures.py | Previous main figures and Table 1 | Replaced by scripts/results_*.py |
 | scripts/16_supplementary_outputs.py | Previous supplement tables, data tables and figures | Replaced by scripts/results_supplement.py and the results scripts |

@@ -1,17 +1,14 @@
 #!/usr/bin/env python3
-"""Weighted stigma and PrEP trajectories, and cross-sectional associations, by demographic group.
+"""Weighted stigma and PrEP trajectories by demographic group.
 
 Descriptive companion to the state analysis; no group-specific dynamic models.
 
 - Trajectories: national age-PrEP weighted estimates for six marginal groups
   (Black non-Hispanic, Hispanic/Latino, White non-Hispanic; ages <=24, 25-34,
   >=35) over the observed AMIS waves, with 95% intervals from the 500
-  respondent-bootstrap replicates (scripts/5_demographic/02_group_bootstrap.R). Estimates are the ESS-weighted
-  local logit smooth used for these groups, so endpoint years borrow from the
-  adjacent wave.
+  respondent-bootstrap replicates (scripts/5_demographic/01_group_bootstrap.R). Estimates are the
+  weighted proportions in each wave (no smoothing).
 - Change 2017 -> 2024 with bootstrap intervals.
-- Cross-sectional associations: survey-weighted quasibinomial regressions within
-  each group (scripts/5_demographic/01_group_associations.R), reported as odds ratios.
 """
 
 from __future__ import annotations
@@ -44,10 +41,6 @@ VARIABLES = {
     "stigma_gss": "General social stigma",
     "stigma_family": "Family stigma",
 }
-RELATIONSHIPS = [
-    "stigma_ahs -> prep_used", "stigma_ahs -> out_gid", "stigma_ahs -> hivtest12",
-    "stigma_ahs -> seehcp", "out_gid -> prep_used", "hivtest12 -> prep_used",
-]
 COLORS = ["#2a78d6", "#eb6834", "#1baf7a"]
 INK, MUTED, GRID, SURFACE = "#0b0b0b", "#52514e", "#e6e5e1", "#fcfcfb"
 
@@ -69,13 +62,6 @@ def changes(draws: pd.DataFrame, points: pd.DataFrame, first: int, last: int) ->
                         "change_pp": 100 * (pts[last] - pts[first])}).join(q)
     out["interval_excludes_zero"] = (out["change_p025"] > 0) | (out["change_p975"] < 0)
     return out.reset_index()
-
-
-def associations(workbook: Path) -> pd.DataFrame:
-    terms = pd.read_excel(workbook, sheet_name="key_terms")
-    terms = terms[terms["relationship"].isin(RELATIONSHIPS)]
-    return terms[["population_id", "population_label", "relationship", "odds_ratio", "conf_low_or",
-                  "conf_high_or", "p.value", "n_complete"]].sort_values(["relationship", "population_id"])
 
 
 def plot(traj: pd.DataFrame, path: Path) -> None:
@@ -110,7 +96,7 @@ def plot(traj: pd.DataFrame, path: Path) -> None:
             ax.tick_params(colors=MUTED, labelsize=8)
             for spine in ax.spines.values():
                 spine.set_color(GRID)
-    fig.text(0.01, 0.01, "Lines: weighted estimates (local smooth across adjacent AMIS waves; no 2020 wave); "
+    fig.text(0.01, 0.01, "Lines: weighted estimates for each AMIS wave (no 2020 wave); "
              "bands: 95% intervals across 500 respondent-bootstrap replicates. Anticipated healthcare stigma is "
              "as measured; shading marks the reworded items (AMIS 2022 onward).", fontsize=8, color=MUTED)
     fig.tight_layout(rect=(0, 0.03, 1, 1))
@@ -122,8 +108,6 @@ def plot(traj: pd.DataFrame, path: Path) -> None:
 def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     parser.add_argument("--bootstrap-dir", type=Path, default=RESULTS / "02_inputs/group_bootstrap")
-    parser.add_argument("--regressions", type=Path,
-                        default=RESULTS / "02_inputs/group_associations.xlsx")
     parser.add_argument("--output-dir", type=Path, default=RESULTS / "08_demographic")
     args = parser.parse_args()
     args.output_dir.mkdir(parents=True, exist_ok=True)
@@ -137,17 +121,14 @@ def main() -> None:
     traj = trajectories(draws, points)
     years = sorted(points.Year.unique())
     change = changes(draws, points, years[0], years[-1])
-    assoc = associations(args.regressions)
 
     traj.to_csv(args.output_dir / "group_trajectories.csv", index=False)
     change.to_csv(args.output_dir / "group_change_2017_2024.csv", index=False)
-    assoc.to_csv(args.output_dir / "group_cross_sectional_associations.csv", index=False)
     plot(traj, args.output_dir / "group_trajectories.png")
 
     show = change[change.variable.isin(VARIABLES)].copy()
     show["change"] = show.apply(lambda r: f"{r.change_pp:+.1f} ({r.change_p025:+.1f} to {r.change_p975:+.1f})", axis=1)
     print(show.pivot(index="population_id", columns="variable", values="change").loc[pops].to_string())
-    print(assoc.pivot(index="population_id", columns="relationship", values="odds_ratio").loc[pops].round(2).to_string())
     print(f"Wrote outputs to {args.output_dir}")
 
 

@@ -1446,6 +1446,28 @@ optimizer label, parameter containers filled by the bundle reader).
   (results/05_sensitivity/static_specifications/placebo_ahs, read by no results script); the placebo scenarios
   in static_placebo_ahs/ (with and without the feedback) are unchanged.
 
+## Demographic group associations retired (2026-10-30)
+
+S6 reports the weighted group trajectories (F8) only, to keep the supplement short. The survey-weighted
+pathway regressions within groups (5_demographic/01_group_associations.R) move to
+deprecated/scripts/group_associations.R, and 02_demographic_descriptives.py no longer writes
+group_cross_sectional_associations.csv. The demographic scripts renumber: 01_group_bootstrap.R,
+02_demographic_descriptives.py. Trajectory and change outputs verified identical.
+
+The group trajectories are no longer smoothed. The n_eff-weighted logit smooth over adjacent waves was kept
+from the retired group dynamic models (which needed stable annual inputs); for a descriptive figure it
+mixed the old and new AHS wording across 2021-2022 and moved the 2017 and 2024 endpoints toward 2018
+and 2023. Each point is now the weighted proportion for the wave, with the same respondent bootstrap.
+2017 -> 2024 changes, smoothed -> raw (pp, 95% interval; * = excludes zero):
+- PrEP: every group still increases (+11 to +18 pp).
+- AHS: White non-Hispanic +3.7* -> +1.8 and 35+ +3.1* -> +2.5 lose significance; <=24 +2.5 -> -9.5*
+  (2024 n_eff 55). No group has a clear AHS increase.
+- Family stigma: Black non-Hispanic +7.0* -> +7.6 (-2.2, +18.0), no longer clear; no group is.
+- General social stigma: Black non-Hispanic +15.2*, White non-Hispanic +5.4* and 35+ +5.9* stay clear;
+  <=24 and 25-34 lose significance.
+The draft statement that Black MSM had significant increases in all three stigma domains does not hold
+(it already did not with the smoothed series under the current weights); only general social stigma does.
+
 ## Open items
 
 - Resolved (2026-10-25): AHS rose sharply between 2021 and 2023 in every demographic group

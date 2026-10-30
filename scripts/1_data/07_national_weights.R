@@ -1,5 +1,5 @@
 # National raking weights, used by the national AHS wording series (scripts/2_evidence/02) and the
-# demographic-group analyses (scripts/5_demographic/01, 02).
+# demographic-group analyses (scripts/5_demographic/01).
 #
 # Rakes AMIS respondents within each model period to national MSM margins (age
 # group, race/ethnicity, education, Census region; inputs/national_msm_margins.csv,

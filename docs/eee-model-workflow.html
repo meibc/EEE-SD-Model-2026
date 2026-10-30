@@ -1837,9 +1837,8 @@ html&gt;body{padding:0}&lt;/style&gt;
             &lt;span&gt;Parallel demographic analysis&lt;/span&gt;&lt;span class=&quot;eee-toggle&quot;&gt;−&lt;/span&gt;
           &lt;/button&gt;
           &lt;div class=&quot;eee-cluster-body&quot;&gt;
-            &lt;div class=&quot;eee-node kind-r&quot; id=&quot;group-associations&quot;&gt;Estimate group associations&lt;br&gt;&lt;small&gt;scripts/5_demographic/01_group_associations.R&lt;/small&gt;&lt;/div&gt;
-            &lt;div class=&quot;eee-node kind-r&quot; id=&quot;group-bootstrap&quot;&gt;Bootstrap group trajectories&lt;br&gt;&lt;small&gt;scripts/5_demographic/02_group_bootstrap.R&lt;/small&gt;&lt;/div&gt;
-            &lt;div class=&quot;eee-node kind-py&quot; id=&quot;demographic-descriptives&quot;&gt;Summarize demographic patterns&lt;br&gt;&lt;small&gt;scripts/5_demographic/03_demographic_descriptives.py&lt;/small&gt;&lt;/div&gt;
+            &lt;div class=&quot;eee-node kind-r&quot; id=&quot;group-bootstrap&quot;&gt;Bootstrap group trajectories&lt;br&gt;&lt;small&gt;scripts/5_demographic/01_group_bootstrap.R&lt;/small&gt;&lt;/div&gt;
+            &lt;div class=&quot;eee-node kind-py&quot; id=&quot;demographic-descriptives&quot;&gt;Summarize demographic patterns&lt;br&gt;&lt;small&gt;scripts/5_demographic/02_demographic_descriptives.py&lt;/small&gt;&lt;/div&gt;
           &lt;/div&gt;
         &lt;/section&gt;
       &lt;/div&gt;
@@ -2027,7 +2026,7 @@ html&gt;body{padding:0}&lt;/style&gt;
   const nodeGroup = {
     &#x27;clean-amis&#x27;:&#x27;data&#x27;,&#x27;national-weights&#x27;:&#x27;data&#x27;,&#x27;cdc-stocks&#x27;:&#x27;data&#x27;,&#x27;state-weights&#x27;:&#x27;data&#x27;,&#x27;state-bootstrap&#x27;:&#x27;data&#x27;,&#x27;state-screen&#x27;:&#x27;data&#x27;,&#x27;prepared-inputs&#x27;:&#x27;data&#x27;,
     &#x27;ahs-evidence&#x27;:&#x27;evidence&#x27;,&#x27;evidence-target&#x27;:&#x27;evidence&#x27;,&#x27;wording-items&#x27;:&#x27;evidence&#x27;,&#x27;climate&#x27;:&#x27;evidence&#x27;,
-    &#x27;group-associations&#x27;:&#x27;demographic&#x27;,&#x27;group-bootstrap&#x27;:&#x27;demographic&#x27;,&#x27;demographic-descriptives&#x27;:&#x27;demographic&#x27;,
+    &#x27;group-bootstrap&#x27;:&#x27;demographic&#x27;,&#x27;demographic-descriptives&#x27;:&#x27;demographic&#x27;,
     &#x27;build-inputs&#x27;:&#x27;fit&#x27;,&#x27;state-inputs&#x27;:&#x27;fit&#x27;,&#x27;fit-dynamic&#x27;:&#x27;fit&#x27;,&#x27;dynamic-fits&#x27;:&#x27;fit&#x27;,&#x27;fit-epi&#x27;:&#x27;fit&#x27;,&#x27;epi-posterior&#x27;:&#x27;fit&#x27;,
     &#x27;build-bundle&#x27;:&#x27;bundle&#x27;,&#x27;research-bundle&#x27;:&#x27;bundle&#x27;,&#x27;bundle&#x27;:&#x27;bundle&#x27;,&#x27;runtime&#x27;:&#x27;bundle&#x27;,
     &#x27;run-scenarios&#x27;:&#x27;project&#x27;,&#x27;scenarios&#x27;:&#x27;project&#x27;,&#x27;projection&#x27;:&#x27;project&#x27;,&#x27;dynamic-predictor&#x27;:&#x27;project&#x27;,&#x27;epi-adapter&#x27;:&#x27;project&#x27;,&#x27;epi-predictor&#x27;:&#x27;project&#x27;,&#x27;projection-results&#x27;:&#x27;project&#x27;,&#x27;endpoints&#x27;:&#x27;project&#x27;,
@@ -2038,7 +2037,7 @@ html&gt;body{padding:0}&lt;/style&gt;
   const edges = [
     [&#x27;clean-amis&#x27;,&#x27;state-weights&#x27;,&#x27;survey data&#x27;], [&#x27;cdc-stocks&#x27;,&#x27;state-weights&#x27;,&#x27;stocks&#x27;], [&#x27;state-weights&#x27;,&#x27;state-bootstrap&#x27;,&#x27;weighted estimates&#x27;], [&#x27;state-bootstrap&#x27;,&#x27;state-screen&#x27;,&#x27;precision&#x27;], [&#x27;state-screen&#x27;,&#x27;prepared-inputs&#x27;,&#x27;&#x27;],
     [&#x27;prepared-inputs&#x27;,&#x27;ahs-evidence&#x27;,&#x27;weighted respondents&#x27;], [&#x27;ahs-evidence&#x27;,&#x27;evidence-target&#x27;,&#x27;aPR + uncertainty&#x27;], [&#x27;prepared-inputs&#x27;,&#x27;wording-items&#x27;,&#x27;&#x27;], [&#x27;national-weights&#x27;,&#x27;wording-items&#x27;,&#x27;national weights&#x27;], [&#x27;prepared-inputs&#x27;,&#x27;climate&#x27;,&#x27;weighted respondents + wording shift&#x27;],
-    [&#x27;clean-amis&#x27;,&#x27;national-weights&#x27;,&#x27;cleaned respondents&#x27;], [&#x27;cdc-stocks&#x27;,&#x27;national-weights&#x27;,&#x27;age × PrEP targets&#x27;], [&#x27;national-weights&#x27;,&#x27;group-associations&#x27;,&#x27;national weights&#x27;], [&#x27;national-weights&#x27;,&#x27;group-bootstrap&#x27;,&#x27;national weights&#x27;], [&#x27;group-associations&#x27;,&#x27;demographic-descriptives&#x27;,&#x27;association estimates&#x27;], [&#x27;group-bootstrap&#x27;,&#x27;demographic-descriptives&#x27;,&#x27;trajectory draws&#x27;],
+    [&#x27;clean-amis&#x27;,&#x27;national-weights&#x27;,&#x27;cleaned respondents&#x27;], [&#x27;cdc-stocks&#x27;,&#x27;national-weights&#x27;,&#x27;age × PrEP targets&#x27;], [&#x27;national-weights&#x27;,&#x27;group-bootstrap&#x27;,&#x27;national weights&#x27;], [&#x27;group-bootstrap&#x27;,&#x27;demographic-descriptives&#x27;,&#x27;trajectory draws&#x27;],
     [&#x27;prepared-inputs&#x27;,&#x27;build-inputs&#x27;,&#x27;workbook + bootstrap&#x27;], [&#x27;build-inputs&#x27;,&#x27;state-inputs&#x27;,&#x27;&#x27;], [&#x27;state-inputs&#x27;,&#x27;fit-dynamic&#x27;,&#x27;&#x27;], [&#x27;evidence-target&#x27;,&#x27;fit-dynamic&#x27;,&#x27;constrains total response&#x27;], [&#x27;fit-dynamic&#x27;,&#x27;dynamic-fits&#x27;,&#x27;&#x27;],
     [&#x27;state-inputs&#x27;,&#x27;fit-epi&#x27;,&#x27;observed inputs&#x27;], [&#x27;cdc-stocks&#x27;,&#x27;fit-epi&#x27;,&#x27;CDC stocks&#x27;], [&#x27;fit-epi&#x27;,&#x27;epi-posterior&#x27;,&#x27;&#x27;],
     [&#x27;state-inputs&#x27;,&#x27;build-bundle&#x27;,&#x27;&#x27;], [&#x27;dynamic-fits&#x27;,&#x27;build-bundle&#x27;,&#x27;&#x27;], [&#x27;epi-posterior&#x27;,&#x27;build-bundle&#x27;,&#x27;&#x27;], [&#x27;build-bundle&#x27;,&#x27;research-bundle&#x27;,&#x27;calls&#x27;,&#x27;call&#x27;], [&#x27;research-bundle&#x27;,&#x27;bundle&#x27;,&#x27;&#x27;], [&#x27;bundle&#x27;,&#x27;runtime&#x27;,&#x27;loads&#x27;],
