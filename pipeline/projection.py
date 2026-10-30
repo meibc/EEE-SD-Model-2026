@@ -1,5 +1,3 @@
-from __future__ import annotations
-
 """Monte Carlo projection: fitted dynamic model -> epidemic model, with interventions.
 
 Each sample pairs one dynamic-model draw (transition matrix, drift, observed inputs)
@@ -11,6 +9,8 @@ pooled intervals carry uncertainty shared across states. Baseline and scenario r
 with the same seed use the same pairs, so their contrasts are paired.
 """
 
+from __future__ import annotations
+
 from dataclasses import dataclass
 from typing import Any
 import numpy as np
@@ -19,8 +19,8 @@ from tqdm import tqdm
 from data.unit import Unit
 from models.epi.input_adapter import epi_inputs_from_dynamic
 from core.years import extend_to_end_year
-from models.shared.intervention import build_measure_interventions
-from models.shared.prep_translation import contextual_translation, prevalence_ratio_translation, retain_prep_fraction
+from models.scenarios.intervention import build_measure_interventions
+from models.scenarios.prep_translation import contextual_translation, prevalence_ratio_translation, retain_prep_fraction
 from models.epi.params import EpiOutput
 from models.epi.prediction.predictor import EpiPredictor
 from models.dynamic.estimation.transforms import FeatureTransformer
@@ -96,7 +96,7 @@ class ProjectionRunner:
             raise ValueError(f"Unknown PrEP translation {prep_translation!r}")
         if prep_translation == "contextual" and (contextual_prep_pr is None or prep_only_fraction is not None):
             raise ValueError("The contextual translation needs contextual_prep_pr and excludes prep_only_fraction")
-        # Scenario PrEP from the AHS change (models/shared/prep_translation.py): "none" keeps the fitted
+        # Scenario PrEP from the AHS change (models/scenarios/prep_translation.py): "none" keeps the fitted
         # dynamic response (the baseline run, where AHS does not change), "prevalence_ratio" is the primary
         # translation and "contextual" the upper bound.
         self.prep_translation = prep_translation
@@ -175,7 +175,7 @@ class ProjectionRunner:
             baseline_probs=baseline_probs,
             fixed_prefix=fixed_prefix,
         )
-        # Scenario PrEP from the AHS change (models/shared/prep_translation.py)
+        # Scenario PrEP from the AHS change (models/scenarios/prep_translation.py)
         ahs, prep = self._v_names.index("stigma_ahs"), self._prep_idx
         if self.prep_translation == "contextual":
             ypred[prep] = contextual_translation(baseline_probs[prep], baseline_probs[ahs], ypred[ahs],

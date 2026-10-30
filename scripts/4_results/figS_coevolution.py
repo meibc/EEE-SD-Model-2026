@@ -1,6 +1,4 @@
 #!/usr/bin/env python3
-from __future__ import annotations
-
 """Supplement: PrEP-AHS co-evolution behind the fitted relationship (Supplementary figure).
 
 Fig. S   Observed past-year PrEP use and anticipated healthcare stigma (AHS) by state over the four
@@ -15,6 +13,8 @@ Outputs (results/sections/coevolution/): figS_coevolution.{png,pdf}; observed_pa
 prep_to_ahs.csv (by state, primary and placebo: median, 95% interval, share of
 draws above zero); prep_to_ahs_overall.csv.
 """
+
+from __future__ import annotations
 
 from pathlib import Path
 import sys

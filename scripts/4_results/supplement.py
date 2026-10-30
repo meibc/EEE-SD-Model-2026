@@ -1,6 +1,4 @@
 #!/usr/bin/env python3
-from __future__ import annotations
-
 """Supplement: model specification table, dynamic-model fit and epidemic-model calibration.
 
 Table S  Model specification: centred-logit references, state anchoring, drift, persistence and pathway
@@ -21,6 +19,8 @@ Fig. S   Epidemic-model calibration: observed CDC period means (new diagnoses, e
 Outputs (results/sections/supplement/): tableS_model_specification.csv; figS_pathways.{png,pdf}; figS_dynamic_fit.{png,pdf} and
 dynamic_fit.csv; figS_epi_calibration.{png,pdf} and epi_calibration_summary.csv.
 """
+
+from __future__ import annotations
 
 from pathlib import Path
 import sys

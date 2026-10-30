@@ -1,6 +1,4 @@
 #!/usr/bin/env python3
-from __future__ import annotations
-
 """Results, section 3: projected effects of reducing anticipated healthcare stigma (AHS) (Table 1, Fig. 3).
 
 Scenario PrEP changes come from the respondent-level AHS-PrEP prevalence ratio applied at each state's
@@ -33,6 +31,8 @@ figS_state_effects.{png,pdf}; tableS_state_effects.csv; state_breakdown.csv (all
 median, interquartile range and 95% interval); breakdown_variance_shares.csv (share of the across-state
 variance in log rate attributable to each factor); state_effects.csv; projected_ahs.csv; association.csv.
 """
+
+from __future__ import annotations
 
 from pathlib import Path
 import sys

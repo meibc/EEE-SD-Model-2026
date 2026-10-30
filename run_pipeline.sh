@@ -132,7 +132,8 @@ EOF
     echo "scen_placebo_continued|$RUN --scenario halve_ahs --standardized-input-path $SPEC/bundles/placebo_ahs.npz --output-dir $SENS/static_placebo_ahs/feedback_on"
     echo "scen_placebo_not_continued|$RUN --scenario halve_ahs $OFF --standardized-input-path $SPEC/bundles/placebo_ahs.npz --output-dir $SENS/static_placebo_ahs/feedback_off"
     echo "scen_unadjusted|$RUN $ALL --standardized-input-path $UNADJ/standardized_research.npz --output-dir $UNADJ/scenarios_static"
-    for s in evidence_all_years persistence_low persistence_high placebo_ahs; do
+    # placebo_ahs runs above (static_placebo_ahs), with and without the feedback.
+    for s in evidence_all_years persistence_low persistence_high; do
       echo "scen_spec_$s|$RUN --scenario halve_ahs --standardized-input-path $SPEC/bundles/$s.npz --output-dir $SENS/static_specifications/$s"
     done
     for pr in 0.80 0.70; do

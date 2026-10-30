@@ -16,7 +16,7 @@ from models.dynamic.estimation.calibration import (  # noqa: E402
 from models.dynamic.estimation.jacobian import get_bounds  # noqa: E402
 from models.dynamic.estimation.transforms import FeatureTransformer  # noqa: E402
 from models.dynamic.prediction.predictor import Predictor  # noqa: E402
-from models.shared.intervention import MeasureIntervention  # noqa: E402
+from models.scenarios.intervention import MeasureIntervention  # noqa: E402
 from pipeline.dynamic_fit import _permute_periods  # noqa: E402
 
 

@@ -1,6 +1,4 @@
 #!/usr/bin/env python3
-from __future__ import annotations
-
 """Results, section 1: observed stigma and prevention trajectories (Fig. 1).
 
 Fig. 1A  2018 and 2024 levels of the eight modeled measures in the primary states, each on its own scale
@@ -15,6 +13,8 @@ Outputs (results/sections/trajectories/): fig1_trajectories.{png,pdf}; state_cha
 and 2024 and the change with its 95% interval, by measure and state); summary.csv (across-state median
 and the number of states with an increase, a decrease or no clear change, by measure).
 """
+
+from __future__ import annotations
 
 from pathlib import Path
 import sys

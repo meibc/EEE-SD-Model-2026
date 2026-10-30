@@ -1,6 +1,6 @@
 """Scenario definitions for the paper.
 
-Intervention codes say which stigma measure changes and how (models/shared/intervention.py); scenarios
+Intervention codes say which stigma measure changes and how (models/scenarios/intervention.py); scenarios
 combine them. Cuts are set relative to each draw's own 2024 (last observed) level and held there, never
 above the baseline path, so their size does not depend on the projected baseline. The benchmark is the AHS
 reference probability (5th percentile of observed state-period levels). Resilient PrEP delivery is a derived

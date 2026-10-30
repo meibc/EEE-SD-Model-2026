@@ -1,5 +1,3 @@
-from __future__ import annotations
-
 """Hierarchical Bayesian calibration of the epidemiological model, and its bundle.
 
 For every state with AMIS and CDC data, fits
@@ -28,6 +26,8 @@ likelihood.
 ``write_epi_bundle`` converts the posterior into the arrays the scenarios read
 (artifacts.standardized_runtime).
 """
+
+from __future__ import annotations
 
 from dataclasses import dataclass
 from pathlib import Path
@@ -80,6 +80,14 @@ STATE_POPS = {
     "VT": 643077, "WY": 576851,
 }
 
+# Prior centres; the sampler also starts from them.
+LOG_BETA_CENTRE = -3.2
+ALPHA_UPPER = 0.30                       # alpha is bounded in (0, ALPHA_UPPER)
+ALPHA_CENTRE = 0.06
+KAPPA_CENTRE = 0.5
+RHO_CENTRE = 0.18
+POST_MULTIPLIER_CENTRE = 1.4
+
 
 # =============================================================================
 # Settings and input containers
@@ -112,13 +120,7 @@ class HierarchicalEpiInputs:
     model_years: np.ndarray
     div_id: np.ndarray
     unique_div: list[int]
-    no_vs: np.ndarray
-    prep_off_prop: np.ndarray
-    risk: np.ndarray
     p_test: np.ndarray
-    hiv_prevalence: np.ndarray
-    dx_obs: np.ndarray
-    inc_obs: np.ndarray
     period_labels: list[str]
     period_idx: list[np.ndarray]
     period_targets: pd.DataFrame
@@ -126,7 +128,6 @@ class HierarchicalEpiInputs:
     inc_t_idx: np.ndarray
     inc_obs_vec: np.ndarray
     risk_baseline: np.ndarray
-    risk_ratio: np.ndarray
     log_risk_ratio: np.ndarray
     exposure: np.ndarray
     prevalence0: np.ndarray
@@ -213,11 +214,12 @@ def build_hierarchical_epi_inputs(config: HierarchicalEpiFitConfig) -> Hierarchi
 
     inc_annual_mask = np.isfinite(inc_obs) & (model_years != 2020)[None, :]
     inc_g_idx, inc_t_idx = np.where(inc_annual_mask)
-    inc_obs_vec = inc_obs[inc_g_idx, inc_t_idx].astype("int64")
+    # MSM incidence is an allocated share of the all-population estimate, so not a whole number; the negative
+    # binomial needs counts, so round to the nearest one.
+    inc_obs_vec = np.round(inc_obs[inc_g_idx, inc_t_idx]).astype("int64")
 
     risk_baseline = np.maximum(risk[:, 0], RISK_BASELINE_FLOOR)
-    risk_ratio = np.clip(risk / risk_baseline[:, None], *RISK_RATIO_BOUNDS)
-    log_risk_ratio = np.log(risk_ratio)
+    log_risk_ratio = np.log(np.clip(risk / risk_baseline[:, None], *RISK_RATIO_BOUNDS))
     exposure = no_vs * prep_off_prop
     prevalence0 = hiv_prevalence[:, 0]
 
@@ -232,13 +234,7 @@ def build_hierarchical_epi_inputs(config: HierarchicalEpiFitConfig) -> Hierarchi
         model_years=model_years,
         div_id=div_id,
         unique_div=unique_div,
-        no_vs=no_vs,
-        prep_off_prop=prep_off_prop,
-        risk=risk,
         p_test=p_test,
-        hiv_prevalence=hiv_prevalence,
-        dx_obs=dx_obs,
-        inc_obs=inc_obs,
         period_labels=period_labels,
         period_idx=period_idx,
         period_targets=period_targets,
@@ -246,7 +242,6 @@ def build_hierarchical_epi_inputs(config: HierarchicalEpiFitConfig) -> Hierarchi
         inc_t_idx=inc_t_idx,
         inc_obs_vec=inc_obs_vec,
         risk_baseline=risk_baseline,
-        risk_ratio=risk_ratio,
         log_risk_ratio=log_risk_ratio,
         exposure=exposure,
         prevalence0=prevalence0,
@@ -260,23 +255,10 @@ def build_hierarchical_epi_inputs(config: HierarchicalEpiFitConfig) -> Hierarchi
 # =============================================================================
 
 def sample_settings(config: HierarchicalEpiFitConfig) -> dict:
-    if config.run_mode == "quick":
-        return dict(
-            draws=config.quick_draws,
-            tune=config.quick_tune,
-            chains=config.quick_chains,
-            cores=config.quick_cores,
-            target_accept=config.target_accept,
-        )
-    if config.run_mode == "full":
-        return dict(
-            draws=config.full_draws,
-            tune=config.full_tune,
-            chains=config.full_chains,
-            cores=config.full_cores,
-            target_accept=config.target_accept,
-        )
-    raise ValueError("run_mode must be 'quick' or 'full'")
+    if config.run_mode not in ("quick", "full"):
+        raise ValueError("run_mode must be 'quick' or 'full'")
+    settings = {k: getattr(config, f"{config.run_mode}_{k}") for k in ("draws", "tune", "chains", "cores")}
+    return settings | {"target_accept": config.target_accept}
 
 
 def fit_hierarchical_epi_model(config: HierarchicalEpiFitConfig) -> Path:
@@ -284,9 +266,6 @@ def fit_hierarchical_epi_model(config: HierarchicalEpiFitConfig) -> Path:
 
     PyMC is imported lazily so ordinary pipeline imports do not initialize PyTensor.
     """
-
-    import os
-    os.environ.setdefault("PYTENSOR_FLAGS", "cxx=")
 
     import pymc as pm
     import pytensor.tensor as pt
@@ -297,19 +276,20 @@ def fit_hierarchical_epi_model(config: HierarchicalEpiFitConfig) -> Path:
     G = len(inputs.geos)
     T_model = len(inputs.model_years)
     n_div = len(inputs.unique_div)
+    settings = sample_settings(config)
 
     init_vals = {
-        "mu_beta_div": np.full(n_div, -3.2),
-        "mu_alpha_logit": logit(0.06 / 0.30, 1e-9),
+        "mu_beta_div": np.full(n_div, LOG_BETA_CENTRE),
+        "mu_alpha_logit": logit(ALPHA_CENTRE / ALPHA_UPPER, 1e-9),
         "sigma_beta": 0.5,
         "z_beta": np.zeros(G),
         "phi_inc": 23.0,
-        "mu_log_kappa_div": np.full(n_div, np.log(0.5)),
+        "mu_log_kappa_div": np.full(n_div, np.log(KAPPA_CENTRE)),
         "sigma_log_kappa": 0.25,
         "z_kappa": np.zeros(G),
-        "mu_logit_rho": logit(0.18, 1e-9),
+        "mu_logit_rho": logit(RHO_CENTRE, 1e-9),
         "z_rho": np.zeros(G),
-        "mu_log_post": np.log(1.4),
+        "mu_log_post": np.log(POST_MULTIPLIER_CENTRE),
         "sigma_log_post": 0.10,
         "z_post": np.zeros(G),
     }
@@ -322,7 +302,7 @@ def fit_hierarchical_epi_model(config: HierarchicalEpiFitConfig) -> Path:
     }
 
     with pm.Model(coords=coords):
-        mu_beta_div = pm.Normal("mu_beta_div", mu=-3.2, sigma=1.0, dims="division")
+        mu_beta_div = pm.Normal("mu_beta_div", mu=LOG_BETA_CENTRE, sigma=1.0, dims="division")
         sigma_beta = pm.HalfNormal("sigma_beta", 0.5)
         z_beta = pm.Normal("z_beta", 0, 1, dims="state")
         state_freedom = pt.as_tensor_variable(inputs.state_freedom)
@@ -335,19 +315,13 @@ def fit_hierarchical_epi_model(config: HierarchicalEpiFitConfig) -> Path:
 
         # One bounded risk-behavior elasticity shared by all states. State-specific
         # alpha variation was not identifiable in the all-state pilot.
-        alpha_upper = 0.30
-        alpha_center_scaled = 0.06 / alpha_upper
-        mu_alpha_logit = pm.Normal(
-            "mu_alpha_logit", mu=logit(alpha_center_scaled, 1e-9), sigma=0.35
-        )
-        alpha_global = pm.Deterministic(
-            "alpha_global", alpha_upper * pm.math.sigmoid(mu_alpha_logit)
-        )
+        mu_alpha_logit = pm.Normal("mu_alpha_logit", mu=logit(ALPHA_CENTRE / ALPHA_UPPER, 1e-9), sigma=0.35)
+        alpha_global = pm.Deterministic("alpha_global", ALPHA_UPPER * pm.math.sigmoid(mu_alpha_logit))
         alpha = pm.Deterministic(
             "alpha", pt.ones(G) * alpha_global, dims="state"
         )
 
-        mu_log_kappa_div = pm.Normal("mu_log_kappa_div", mu=np.log(0.5), sigma=0.5, dims="division")
+        mu_log_kappa_div = pm.Normal("mu_log_kappa_div", mu=np.log(KAPPA_CENTRE), sigma=0.5, dims="division")
         sigma_log_kappa = pm.HalfNormal("sigma_log_kappa", 0.35)
         z_kappa = pm.Normal("z_kappa", 0, 1, dims="state")
         log_kappa = pm.Deterministic(
@@ -357,7 +331,7 @@ def fit_hierarchical_epi_model(config: HierarchicalEpiFitConfig) -> Path:
         )
         kappa = pm.Deterministic("kappa", pt.exp(log_kappa), dims="state")
 
-        mu_logit_rho = pm.Normal("mu_logit_rho", mu=logit(0.18, 1e-9), sigma=0.35)
+        mu_logit_rho = pm.Normal("mu_logit_rho", mu=logit(RHO_CENTRE, 1e-9), sigma=0.35)
         z_rho = pm.Normal("z_rho", 0, 1, dims="state")
         # Fix the state-deviation scale because rho, kappa, and U0 were not
         # separately identifiable with a free hierarchy scale.
@@ -367,7 +341,7 @@ def fit_hierarchical_epi_model(config: HierarchicalEpiFitConfig) -> Path:
         )
         U0 = pm.Deterministic("U0", rho * inputs.prevalence0, dims="state")
 
-        mu_log_post = pm.Normal("mu_log_post", mu=np.log(1.4), sigma=0.30)
+        mu_log_post = pm.Normal("mu_log_post", mu=np.log(POST_MULTIPLIER_CENTRE), sigma=0.30)
         sigma_log_post = pm.HalfNormal("sigma_log_post", 0.20)
         z_post = pm.Normal("z_post", 0, 1, dims="state")
         post_multiplier = pm.Deterministic("post_multiplier", pt.exp(mu_log_post + sigma_log_post * z_post), dims="state")
@@ -418,11 +392,10 @@ def fit_hierarchical_epi_model(config: HierarchicalEpiFitConfig) -> Path:
 
         start = time.time()
         idata = pm.sample(
-            **sample_settings(config),
+            **settings,
             initvals=init_vals,
             random_seed=config.random_seed,
             init="jitter+adapt_diag",
-            idata_kwargs={"log_likelihood": True},
         )
         elapsed = time.time() - start
 
@@ -430,9 +403,9 @@ def fit_hierarchical_epi_model(config: HierarchicalEpiFitConfig) -> Path:
     idata.attrs["years"] = ",".join(map(str, inputs.model_years.tolist()))
     idata.attrs["diagnosis_periods"] = ",".join(inputs.period_labels)
     idata.attrs["source"] = "pipeline.epi_fit"
-    idata.attrs["chains"] = int(sample_settings(config)["chains"])
-    idata.attrs["retained_draws_per_chain"] = int(sample_settings(config)["draws"])
-    idata.attrs["tuning_steps_per_chain"] = int(sample_settings(config)["tune"])
+    idata.attrs["chains"] = int(settings["chains"])
+    idata.attrs["retained_draws_per_chain"] = int(settings["draws"])
+    idata.attrs["tuning_steps_per_chain"] = int(settings["tune"])
     idata.attrs["sampling_minutes"] = elapsed / 60
 
     output_nc = config.output_dir / "posterior.nc"

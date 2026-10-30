@@ -1,6 +1,6 @@
-from __future__ import annotations
-
 """Transition-matrix (J) and drift estimation for one geographic unit."""
+
+from __future__ import annotations
 
 from dataclasses import dataclass
 

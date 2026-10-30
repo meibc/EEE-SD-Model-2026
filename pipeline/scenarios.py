@@ -1,5 +1,3 @@
-from __future__ import annotations
-
 """Scenario projections from the research bundle (artifacts/research_bundle.py).
 
 Runs the baseline and each scenario in the codebook (config/interventions.py)
@@ -8,6 +6,8 @@ contrasts at the report years, for the eight modeled measures and the
 epidemiological outcomes (incidence, diagnoses, undiagnosed, PrEP users, and
 cumulative incidence from ``cumulative_start_year``).
 """
+
+from __future__ import annotations
 
 from dataclasses import dataclass, field
 from pathlib import Path

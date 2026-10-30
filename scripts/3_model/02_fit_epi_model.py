@@ -1,6 +1,4 @@
 #!/usr/bin/env python3
-from __future__ import annotations
-
 """Fit the hierarchical Bayesian epidemiological model and write its bundle.
 
 Calibrates incidence and diagnosis parameters for every state to CDC MSM
@@ -18,6 +16,8 @@ Outputs (results/02_inputs/epi_fit/):
 --bundle-only rebuilds epi_bundle.npz from an existing posterior.nc.
 """
 
+from __future__ import annotations
+
 import argparse
 import sys
 from pathlib import Path
@@ -30,12 +30,13 @@ from pipeline.epi_fit import (  # noqa: E402
 
 
 def main() -> None:
+    defaults = HierarchicalEpiFitConfig()
     parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
-    parser.add_argument("--output-dir", type=Path, default=ROOT / "results/02_inputs/epi_fit")
+    parser.add_argument("--output-dir", type=Path, default=defaults.output_dir)
     parser.add_argument("--run-mode", choices=["quick", "full"], default="full")
-    parser.add_argument("--random-seed", type=int, default=42)
-    parser.add_argument("--quick-draws", type=int, default=100)
-    parser.add_argument("--quick-tune", type=int, default=300)
+    parser.add_argument("--random-seed", type=int, default=defaults.random_seed)
+    parser.add_argument("--quick-draws", type=int, default=defaults.quick_draws)
+    parser.add_argument("--quick-tune", type=int, default=defaults.quick_tune)
     parser.add_argument("--bundle-only", action="store_true")
     args = parser.parse_args()
 

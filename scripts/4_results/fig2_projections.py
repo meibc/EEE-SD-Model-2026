@@ -1,6 +1,4 @@
 #!/usr/bin/env python3
-from __future__ import annotations
-
 """Results, section 2: projections over time (Fig. 2).
 
 Fig. 2   (A) Anticipated healthcare stigma (AHS), across-state median, 2024-2036: no intervention with the
@@ -14,6 +12,8 @@ Fig. 2   (A) Anticipated healthcare stigma (AHS), across-state median, 2024-2036
 Outputs (results/sections/projections/): fig2_projections.{png,pdf}; ahs_trajectories.csv;
 incidence_trajectories.csv.
 """
+
+from __future__ import annotations
 
 from pathlib import Path
 import sys

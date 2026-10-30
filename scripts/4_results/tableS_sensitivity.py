@@ -1,6 +1,4 @@
 #!/usr/bin/env python3
-from __future__ import annotations
-
 """Results, section 4: sensitivity of the effect of halving anticipated healthcare stigma (AHS).
 
 One row per analysis, pooled over the primary states: infections averted 2025-2036 and the change in
@@ -13,6 +11,8 @@ of the respondent-level one, relationship continued and not continued).
 
 Output (results/sections/sensitivity/): table_sensitivity.csv
 """
+
+from __future__ import annotations
 
 from pathlib import Path
 import sys

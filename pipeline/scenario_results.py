@@ -1,5 +1,3 @@
-from __future__ import annotations
-
 """Paired baseline-scenario endpoint extraction and summaries.
 
 ``pipeline/projection.py`` produces the Monte Carlo samples represented here.
@@ -7,6 +5,8 @@ from __future__ import annotations
 and summarize paired baseline-scenario contrasts without knowing the internal
 shape of each projection result.
 """
+
+from __future__ import annotations
 
 import numpy as np
 from pipeline.projection import ProjectionOutput, ProjectionResult

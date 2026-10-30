@@ -1,6 +1,6 @@
-from __future__ import annotations
-
 """Dynamic model parameters for one geography and draw."""
+
+from __future__ import annotations
 
 from dataclasses import dataclass
 import numpy as np

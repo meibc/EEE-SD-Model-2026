@@ -1,6 +1,6 @@
-from __future__ import annotations
-
 """Epidemic model parameters, inputs and outputs."""
+
+from __future__ import annotations
 
 from dataclasses import dataclass
 

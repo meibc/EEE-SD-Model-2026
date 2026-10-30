@@ -1,6 +1,4 @@
 #!/usr/bin/env python3
-from __future__ import annotations
-
 """Weighted stigma and PrEP trajectories, and cross-sectional associations, by demographic group.
 
 Descriptive companion to the state analysis; no group-specific dynamic models.
@@ -15,6 +13,8 @@ Descriptive companion to the state analysis; no group-specific dynamic models.
 - Cross-sectional associations: survey-weighted quasibinomial regressions within
   each group (scripts/5_demographic/01_group_associations.R), reported as odds ratios.
 """
+
+from __future__ import annotations
 
 import argparse
 from pathlib import Path

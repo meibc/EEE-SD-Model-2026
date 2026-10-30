@@ -1,4 +1,4 @@
-"""Scenario PrEP from the AHS change (models/shared/prep_translation.py)."""
+"""Scenario PrEP from the AHS change (models/scenarios/prep_translation.py)."""
 from pathlib import Path
 import sys
 import unittest
@@ -6,7 +6,7 @@ import unittest
 import numpy as np
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
-from models.shared.prep_translation import (  # noqa: E402
+from models.scenarios.prep_translation import (  # noqa: E402
     contextual_translation, prevalence_ratio_translation, retain_prep_fraction,
 )
 

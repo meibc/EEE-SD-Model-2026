@@ -19,7 +19,7 @@ The headline effect is: projected baseline AHS and PrEP (from the fits) x the AH
 - [x] `pipeline/projection.py` (reviewed and cleaned 2026-10-27) - the translation P_s = P_b (1 - A_s (1 - r)) / (1 - A_b (1 - r))
   (`constant_pr_prep`), the contextual bound, `prep_only_fraction` (resilient delivery), the PrEP -> AHS
   switch (`zero_projection_edges`), and the draw pairing (now shared across states).
-- [x] `models/shared/intervention.py` (cleaned 2026-10-27) - how "halve from the 2024 level" is applied: target =
+- [x] `models/scenarios/intervention.py` (cleaned 2026-10-27) - how "halve from the 2024 level" is applied: target =
   min(2024 value x 0.5, baseline), ramp 2028-2032, held after.
 - [x] `config/interventions.py` (reduced to the five scenarios 2026-10-27) - the five paper scenarios plus 39 older scenario codes no longer used
   (candidates to remove).
@@ -94,9 +94,9 @@ Suggested order: the fit first (it is what the refit runs), then the bundle, the
 - [ ] `core/years.py` - shared year alignment and extension for fitting and projection
 
 ### D. Scenarios
-- [x] `pipeline/projection.py` [285], `models/shared/intervention.py` [81], `config/interventions.py` [42],
+- [x] `pipeline/projection.py` [285], `models/scenarios/intervention.py` [81], `config/interventions.py` [42],
   `models/dynamic/prediction/predictor.py` [57] - reviewed and cleaned 2026-10-27 (author still to read)
-- [ ] `models/shared/prep_translation.py` - the three scenario PrEP translations (extracted 2026-10-28; tested)
+- [ ] `models/scenarios/prep_translation.py` - the three scenario PrEP translations (extracted 2026-10-28; tested)
 - [ ] `pipeline/scenarios.py` [185] - runs the baseline and requested scenarios and writes their output tables
 - [ ] `pipeline/scenario_results.py` [130] - paired endpoint extraction, cumulative incidence and summary rows
 

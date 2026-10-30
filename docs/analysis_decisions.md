@@ -1425,6 +1425,27 @@ weights in the data stage. Script contents unchanged apart from comments; the re
 (docs/eee-model-workflow.html) is updated to match, with its text corrected (report years and default translation,
 optimizer label, parameter containers filled by the bundle reader).
 
+## Epidemic-fit tidy-up, scenario package, duplicate placebo run (2026-10-30)
+
+- pipeline/epi_fit.py no longer disables PyTensor's C compilation (`PYTENSOR_FLAGS=cxx=`): a 1-chain test fit
+  sampled in 6.1 instead of 14.4 minutes. It no longer stores per-observation log-likelihoods (nothing computes
+  LOO/WAIC). The prior centres are named once (they are also the sampler's starting values), and seven unused
+  fields of HierarchicalEpiInputs are dropped. Verified: inputs, model log-probability at two fixed points,
+  sampler settings and the bundle from the stored posterior are identical. A refit with C compilation will not
+  reproduce the stored posterior draw for draw (floating-point order differs); the stored posterior is unchanged.
+- CDC MSM incidence enters the negative binomial rounded to the nearest count instead of truncated: it is an
+  allocated share of the all-population estimate, so 181 of 183 values are fractional, and truncation lowered them
+  by 0.2% on average. 77 of the 183 observations change by one; takes effect at the next epidemic refit.
+- scripts/3_model/02_fit_epi_model.py takes its seed, quick-mode sizes and output folder from
+  HierarchicalEpiFitConfig instead of repeating them. In 15 modules the docstring moves above
+  `from __future__ import annotations`, so Python registers it (`--help` of 02_fit_epi_model.py and
+  5_demographic/03 now shows the description); code unchanged (syntax trees compared).
+- models/shared/ -> models/scenarios/: it holds only scenario logic used by the projections (measure
+  interventions, PrEP translations). Earlier entries above keep the old path.
+- run_pipeline.sh no longer runs the placebo specification a second time in the specification scenario loop
+  (results/05_sensitivity/static_specifications/placebo_ahs, read by no results script); the placebo scenarios
+  in static_placebo_ahs/ (with and without the feedback) are unchanged.
+
 ## Open items
 
 - Resolved (2026-10-25): AHS rose sharply between 2021 and 2023 in every demographic group
