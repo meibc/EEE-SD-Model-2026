@@ -7,6 +7,8 @@ from dataclasses import dataclass
 import numpy as np
 
 POST_YEAR = 2021        # the diagnosis multiplier (post_multiplier) applies from this year
+RISK_BASELINE_FLOOR = 0.05      # lower bound on a state's baseline risk behaviour (risk0)
+RISK_RATIO_BOUNDS = (0.5, 3.0)  # risk behaviour relative to baseline, limited to this range
 
 
 @dataclass

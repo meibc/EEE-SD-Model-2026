@@ -1,4 +1,5 @@
-# National raking weights for the demographic-group analyses (scripts/5_demographic/02, 06).
+# National raking weights, used by the national AHS wording series (scripts/2_evidence/02) and the
+# demographic-group analyses (scripts/5_demographic/01, 02).
 #
 # Rakes AMIS respondents within each model period to national MSM margins (age
 # group, race/ethnicity, education, Census region; inputs/national_msm_margins.csv,
@@ -16,7 +17,7 @@
 # (median age 42-51 vs 26-35 earlier), so that age group carries large weights in
 # 2021-2024.
 #
-# Run from the repository root: Rscript scripts/5_demographic/01_national_weights.R
+# Run from the repository root: Rscript scripts/1_data/07_national_weights.R
 
 suppressPackageStartupMessages({
   library(tidyverse)

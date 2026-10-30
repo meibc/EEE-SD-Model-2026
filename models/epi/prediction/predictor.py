@@ -2,7 +2,7 @@
 """Epidemic model: incidence, diagnoses and the undiagnosed population."""
 
 import numpy as np
-from models.epi.params import POST_YEAR, EpiInputs, EpiOutput, EpiParams
+from models.epi.params import POST_YEAR, RISK_BASELINE_FLOOR, RISK_RATIO_BOUNDS, EpiInputs, EpiOutput, EpiParams
 
 
 class EpiPredictor:
@@ -22,7 +22,7 @@ class EpiPredictor:
         prep_off_prop = np.clip(1.0 - inputs.prep_on, 1e-6, 1.0)
 
         rb = np.clip(np.asarray(inputs.risk_behavior, dtype=float), 1e-6, None)
-        rb_ratio = np.clip(rb / max(float(p.risk0), 0.05), 0.5, 3.0)
+        rb_ratio = np.clip(rb / max(float(p.risk0), RISK_BASELINE_FLOOR), *RISK_RATIO_BOUNDS)
 
         incidence = p.beta * inputs.no_vs * prep_off_prop * np.power(rb_ratio, p.alpha)
 

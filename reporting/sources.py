@@ -18,7 +18,7 @@ MSM_POPULATION = ROOT / "inputs/msm_state_population.csv"          # fixed state
 PRIMARY_FIT = RESULTS / "03_fits/primary/fits/primary.npz"
 SPECIFICATION_FITS = RESULTS / "05_sensitivity/model_specification/fits"
 
-# Scenario outputs (scripts/3_model/05, --constant-pr-prep, reported at every two-year step 2026-2036): the fitted
+# Scenario outputs (scripts/3_model/05, primary PrEP translation, reported at every two-year step 2026-2036): the fitted
 # PrEP -> AHS relationship continued in the projections (primary) or not continued
 # (--zero-projection-edge prep_used:stigma_ahs).
 CONTINUED = RESULTS / "04_scenarios/paper_static"

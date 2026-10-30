@@ -10,7 +10,7 @@ if str(REPO_ROOT) not in sys.path:
     sys.path.insert(0, str(REPO_ROOT))
 
 from config.interventions import PAPER_SCENARIOS, SCENARIO_CODEBOOK, SUPPLEMENT_SCENARIOS
-from config.projection import INTERIM_REPORT_YEARS, INTERVENTION_DURATION_STEPS, N_SAMPLES, SEED, TARGET_END_YEAR
+from config.projection import INTERVENTION_DURATION_STEPS, N_SAMPLES, REPORT_YEARS, SEED, TARGET_END_YEAR
 from pipeline.scenarios import ScenarioRunConfig, run_scenarios
 
 
@@ -30,14 +30,13 @@ def main() -> None:
     parser.add_argument("--scenario", dest="scenarios", action="append", choices=sorted(SCENARIO_CODEBOOK), help="Scenario code to run; repeatable. Default: the paper and supplement scenarios.")
     parser.add_argument(
         "--report-year", dest="report_years", type=int, action="append",
-        help="Endpoint year to summarize; repeatable. Default: config/projection.py INTERIM_REPORT_YEARS and the target end year.",
+        help="Endpoint year to summarize; repeatable. Default: config/projection.py REPORT_YEARS.",
     )
     parser.add_argument("--contextual-prep-pr", type=float, default=None,
-                        help="Contextual upper-bound sensitivity: multiply scenario PrEP by PR ** (AHS change / 0.10).")
+                        help="Contextual upper bound in place of the primary translation (scenario PrEP from the "
+                             "respondent-level prevalence ratio): multiply scenario PrEP by PR ** (AHS change / 0.10).")
     parser.add_argument("--zero-projection-edge", action="append", default=[], metavar="SOURCE:TARGET",
                         help="Set a pathway to zero in projections (baseline and scenarios), e.g. prep_used:stigma_ahs; repeatable.")
-    parser.add_argument("--constant-pr-prep", action="store_true",
-                        help="Primary analysis: scenario PrEP from the respondent-level prevalence ratio at the projected levels.")
     parser.add_argument("--show-progress", action="store_true")
     parser.add_argument("--save-outputs-pickle", action="store_true")
     parser.add_argument("--save-draw-level-endpoints", action="store_true")
@@ -52,12 +51,11 @@ def main() -> None:
             seed=args.seed,
             target_end_year=args.target_end_year,
             intervention_duration_steps=args.intervention_duration_steps,
-            report_years=tuple(args.report_years or sorted({*INTERIM_REPORT_YEARS, args.target_end_year})),
+            report_years=tuple(args.report_years or REPORT_YEARS),
             show_progress=args.show_progress,
             save_outputs_pickle=args.save_outputs_pickle,
             save_draw_level_endpoints=args.save_draw_level_endpoints,
             contextual_prep_pr=args.contextual_prep_pr,
-            constant_pr_prep=args.constant_pr_prep,
             zero_projection_edges=tuple(tuple(e.split(":")) for e in args.zero_projection_edge),
         )
     )

@@ -87,13 +87,19 @@ class ProjectionRunner:
         prep_var: str = 'prep_used',
         risk_var: str = 'risk_behavior',
         n_elig_var: str = 'PrEP Eligible',
+        prep_translation: str = "none",
         contextual_prep_pr: float | None = None,
-        constant_pr_prep: bool = False,
         prep_only_fraction: float | None = None,
         zero_projection_edges: tuple[tuple[str, str], ...] = (),
     ):
-        if contextual_prep_pr is not None and (constant_pr_prep or prep_only_fraction is not None):
-            raise ValueError("contextual_prep_pr cannot be combined with constant_pr_prep or prep_only_fraction")
+        if prep_translation not in ("none", "prevalence_ratio", "contextual"):
+            raise ValueError(f"Unknown PrEP translation {prep_translation!r}")
+        if prep_translation == "contextual" and (contextual_prep_pr is None or prep_only_fraction is not None):
+            raise ValueError("The contextual translation needs contextual_prep_pr and excludes prep_only_fraction")
+        # Scenario PrEP from the AHS change (models/shared/prep_translation.py): "none" keeps the fitted
+        # dynamic response (the baseline run, where AHS does not change), "prevalence_ratio" is the primary
+        # translation and "contextual" the upper bound.
+        self.prep_translation = prep_translation
         # Resilient delivery (derived policy comparison): only this fraction of the scenario's change in
         # PrEP (centered logit) is kept, and every other measure, AHS included, stays at baseline.
         self.prep_only_fraction = prep_only_fraction
@@ -108,7 +114,6 @@ class ProjectionRunner:
         # Primary translation: scenario PrEP is the baseline PrEP moved by the draw's
         # respondent-level prevalence ratio r held constant at the projected levels,
         # P_s = P_b (1 - A_s (1 - r)) / (1 - A_b (1 - r)), in place of the fitted PrEP response.
-        self.constant_pr_prep = constant_pr_prep
         self.dynamic_loader = dynamic_loader
         self.epi_loader = epi_loader
         self.units = units
@@ -172,10 +177,10 @@ class ProjectionRunner:
         )
         # Scenario PrEP from the AHS change (models/shared/prep_translation.py)
         ahs, prep = self._v_names.index("stigma_ahs"), self._prep_idx
-        if self.contextual_prep_pr is not None:
+        if self.prep_translation == "contextual":
             ypred[prep] = contextual_translation(baseline_probs[prep], baseline_probs[ahs], ypred[ahs],
                                                  self.contextual_prep_pr)
-        if self.constant_pr_prep:
+        if self.prep_translation == "prevalence_ratio":
             ypred[prep] = prevalence_ratio_translation(baseline_probs[prep], baseline_probs[ahs], ypred[ahs],
                                                        self.dynamic_loader.ahs_prep_apr(dynamic_idx, unit_id))
         if self.prep_only_fraction is not None:

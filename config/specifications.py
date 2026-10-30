@@ -10,7 +10,6 @@ Change keys:
     evidence           "all_years": evidence target from all AMIS cycles (both AHS wordings)
 """
 
-EVIDENCE_SEED = 20261023    # each draw's prevalence ratio, seeded by its input draw (paired across specifications)
 PERSISTENCE_CAP = 0.98
 
 SPECIFICATIONS = {

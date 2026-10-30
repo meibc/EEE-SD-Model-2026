@@ -24,7 +24,7 @@
 # the state's last observed estimated-to-diagnosed prevalence ratio; estimated incidence is not extended.
 # Only indicators consumed by the weighting or epidemiological-model pipeline are written.
 #
-# National PrEP targets by age group (for the national raking, scripts/5_demographic/01):
+# National PrEP targets by age group (for the national raking, scripts/1_data/07):
 #   target_age = target_men x coverage_age / coverage_all
 #   target_men     national PrEP / PrEP Eligible from the state stocks above
 #   coverage_age   CDC persons prescribed / persons with indications by age (both sexes, age rows of

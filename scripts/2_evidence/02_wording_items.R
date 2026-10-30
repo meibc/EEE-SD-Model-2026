@@ -8,7 +8,7 @@
 # composites (yes to any item), coded as in scripts/1_data/01.
 #
 # Outputs (results/02_inputs/wording/):
-#   items_by_year.csv  national % by survey year (national weights, scripts/5_demographic/01) with survey-weighted 95%
+#   items_by_year.csv  national % by survey year (national weights, scripts/1_data/07) with survey-weighted 95%
 #                      intervals: AHS as measured, AHS adjusted as in the model (the scripts/1_data/03 shift for
 #                      2022 onward; its interval is the measured one moved by the same shift), and
 #                      experienced healthcare stigma (Fig. 1B)
@@ -63,7 +63,7 @@ ehs <- imap_dfr(cycles, function(file, survey) {
 
 # ---- National series by year (Fig. 1B) ---------------------------------------------------------
 
-# Use the national raking weights from scripts/5_demographic/01. The inner join deliberately retains only respondents
+# Use the national raking weights from scripts/1_data/07. The inner join deliberately retains only respondents
 # whose raw records could be linked to the analytic file; measure-specific missing values are then removed
 # separately below so AHS and EHS each use all linked respondents observed for that measure.
 national <- readRDS("results/01_weights/national_raked.rds")$variables %>%

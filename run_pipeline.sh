@@ -3,29 +3,33 @@
 #
 #   ./run_pipeline.sh                   model + results (default: the R outputs are current)
 #   ./run_pipeline.sh data evidence model results demographic
-#   EPI_FIT=1 ./run_pipeline.sh model   also refit the epidemic model (about 3 hours; by default the
-#                                       stored posterior in results/02_inputs/epi_fit is reused)
+#   EPI_FIT=1 ./run_pipeline.sh model   also refit the epidemic model (about 3 hours). Without it the stored
+#                                       posterior in results/02_inputs/epi_fit is reused, unless the data
+#                                       stage runs: new survey inputs always refit the epidemic model.
 #
 # Stages (scripts/<stage>/, numbered in run order):
 #   data         R: AMIS file, CDC stocks, state weights and bootstrap (wording-adjusted and unadjusted),
-#                precision screen, reported constants          needs inputs/restricted/ (AMIS)
+#                precision screen, reported constants, national weights   needs inputs/restricted/ (AMIS)
 #   evidence     R: AHS-PrEP evidence, 2022 wording items, climate associations
 #   model        Python: model-input files, dynamic-model fits (in parallel), bundles, scenario runs (in parallel)
 #   results      Python: paper figures and tables (results/sections/)
-#   demographic  R + Python: national weights and the demographic descriptives (results/08_demographic/)
+#   demographic  R + Python: demographic-group associations and descriptives (results/08_demographic/)
 #
 # Logs go to results/logs/run_<date>_<time>/. Settings: config/ (specifications.py, projection.py, ...).
-# FIT_DRAWS and SCENARIO_SAMPLES (default 500) shrink the run for a quick end-to-end check; use them only in a
-# copy of the repository, since the outputs overwrite results/.
+# FIT_DRAWS and SCENARIO_SAMPLES (defaults in config/fit.py and config/projection.py) shrink the run for a quick
+# end-to-end check; use them only in a copy of the repository, since the outputs overwrite results/.
 set -euo pipefail
 cd "$(dirname "$0")"
 
 PY=${PY:-python}
-FIT_DRAWS=${FIT_DRAWS:-500}
-SCENARIO_SAMPLES=${SCENARIO_SAMPLES:-500}
 export OMP_NUM_THREADS=1 VECLIB_MAXIMUM_THREADS=1 OPENBLAS_NUM_THREADS=1 MKL_NUM_THREADS=1
 STAGES=${*:-model results}
-LOG=results/logs/run_$(date +%Y%m%d_%H%M)
+for s in $STAGES; do
+  case $s in data|evidence|model|results|demographic) ;;
+    *) echo "unknown stage: $s (choose from data evidence model results demographic)"; exit 1 ;;
+  esac
+done
+LOG=results/logs/run_$(date +%Y%m%d_%H%M%S)
 mkdir -p "$LOG"
 
 IN=results/02_inputs
@@ -62,6 +66,7 @@ if has data; then
   Rscript scripts/1_data/05_state_precision_screen.R > "$LOG/data_05_precision_screen.log" 2>&1
   # Without --write-config: config/ priors are not overwritten (pass it by hand after reviewing the constants).
   Rscript scripts/1_data/06_reported_constants.R > "$LOG/data_06_reported_constants.log" 2>&1
+  Rscript scripts/1_data/07_national_weights.R > "$LOG/data_07_national_weights.log" 2>&1
 fi
 
 if has evidence; then
@@ -79,6 +84,10 @@ if has model; then
     --data-path results/01_weights/state_model_inputs_ahs_unadjusted.xlsx \
     --output-path $UNADJ_INPUTS > "$LOG/model_01_inputs_unadjusted.log" 2>&1
 
+  if has data && [ "${EPI_FIT:-0}" != 1 ]; then
+    EPI_FIT=1
+    step "model: epidemic fit runs because the data stage changed its survey inputs"
+  fi
   if [ "${EPI_FIT:-0}" = 1 ]; then
     step "model: epidemic fit (about 3 hours)"
     $PY scripts/3_model/02_fit_epi_model.py > "$LOG/model_02_epi_fit.log" 2>&1
@@ -87,7 +96,7 @@ if has model; then
   fi
 
   step "model: dynamic-model fits, all specifications in parallel (about 3-4 hours)"
-  FIT="$PY scripts/3_model/03_fit_dynamic_model.py --force --n-draws $FIT_DRAWS"
+  FIT="$PY scripts/3_model/03_fit_dynamic_model.py --force ${FIT_DRAWS:+--n-draws $FIT_DRAWS}"
   {
     echo "fit_primary|$FIT --specifications primary"
     for s in evidence_all_years persistence_low persistence_high placebo_ahs \
@@ -113,19 +122,18 @@ EOF
     >> "$LOG/model_04_bundle.log" 2>&1
 
   step "model: scenario runs in parallel"
-  RUN="$PY scripts/3_model/05_run_scenarios.py --save-draw-level-endpoints --n-samples $SCENARIO_SAMPLES"
-  for y in 2026 2028 2030 2032 2034 2036; do RUN="$RUN --report-year $y"; done
+  # Report years, samples, seed and the primary PrEP translation come from config/projection.py and the script's defaults.
+  RUN="$PY scripts/3_model/05_run_scenarios.py --save-draw-level-endpoints ${SCENARIO_SAMPLES:+--n-samples $SCENARIO_SAMPLES}"
   ALL="--scenario halve_ahs --scenario ahs_to_benchmark --scenario resilient_prep_delivery --scenario halve_upstream_stigma --scenario ahs_no_worsening"
   OFF="--zero-projection-edge prep_used:stigma_ahs"
-  PR="--constant-pr-prep"
   {
-    echo "scen_continued|$RUN $PR $ALL --output-dir results/04_scenarios/paper_static"
-    echo "scen_not_continued|$RUN $PR $ALL $OFF --output-dir $SENS/static_no_prep_ahs_feedback"
-    echo "scen_placebo_continued|$RUN $PR --scenario halve_ahs --standardized-input-path $SPEC/bundles/placebo_ahs.npz --output-dir $SENS/static_placebo_ahs/feedback_on"
-    echo "scen_placebo_not_continued|$RUN $PR --scenario halve_ahs $OFF --standardized-input-path $SPEC/bundles/placebo_ahs.npz --output-dir $SENS/static_placebo_ahs/feedback_off"
-    echo "scen_unadjusted|$RUN $PR $ALL --standardized-input-path $UNADJ/standardized_research.npz --output-dir $UNADJ/scenarios_static"
+    echo "scen_continued|$RUN $ALL --output-dir results/04_scenarios/paper_static"
+    echo "scen_not_continued|$RUN $ALL $OFF --output-dir $SENS/static_no_prep_ahs_feedback"
+    echo "scen_placebo_continued|$RUN --scenario halve_ahs --standardized-input-path $SPEC/bundles/placebo_ahs.npz --output-dir $SENS/static_placebo_ahs/feedback_on"
+    echo "scen_placebo_not_continued|$RUN --scenario halve_ahs $OFF --standardized-input-path $SPEC/bundles/placebo_ahs.npz --output-dir $SENS/static_placebo_ahs/feedback_off"
+    echo "scen_unadjusted|$RUN $ALL --standardized-input-path $UNADJ/standardized_research.npz --output-dir $UNADJ/scenarios_static"
     for s in evidence_all_years persistence_low persistence_high placebo_ahs; do
-      echo "scen_spec_$s|$RUN $PR --scenario halve_ahs --standardized-input-path $SPEC/bundles/$s.npz --output-dir $SENS/static_specifications/$s"
+      echo "scen_spec_$s|$RUN --scenario halve_ahs --standardized-input-path $SPEC/bundles/$s.npz --output-dir $SENS/static_specifications/$s"
     done
     for pr in 0.80 0.70; do
       echo "scen_contextual_${pr}_continued|$RUN --contextual-prep-pr $pr --scenario halve_ahs --output-dir $SENS/contextual_static_pr${pr/./}/continued"
@@ -143,10 +151,9 @@ fi
 
 if has demographic; then
   step "demographic"
-  Rscript scripts/5_demographic/01_national_weights.R > "$LOG/demographic_01_weights.log" 2>&1
-  Rscript scripts/5_demographic/02_group_associations.R > "$LOG/demographic_02_associations.log" 2>&1
-  Rscript scripts/5_demographic/03_group_bootstrap.R > "$LOG/demographic_03_bootstrap.log" 2>&1
-  $PY scripts/5_demographic/04_demographic_descriptives.py > "$LOG/demographic_04_descriptives.log" 2>&1
+  Rscript scripts/5_demographic/01_group_associations.R > "$LOG/demographic_01_associations.log" 2>&1
+  Rscript scripts/5_demographic/02_group_bootstrap.R > "$LOG/demographic_02_bootstrap.log" 2>&1
+  $PY scripts/5_demographic/03_demographic_descriptives.py > "$LOG/demographic_03_descriptives.log" 2>&1
 fi
 
 step "done"

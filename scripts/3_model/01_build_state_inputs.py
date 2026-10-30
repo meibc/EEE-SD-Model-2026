@@ -21,6 +21,7 @@ import sys
 
 ROOT = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(ROOT))
+from config.fit import BOOTSTRAP_DRAWS  # noqa: E402
 from core.transforms import PROB_EPS  # noqa: E402
 from data.state_inputs import build_state_inputs  # noqa: E402
 
@@ -33,7 +34,7 @@ def main() -> None:
     parser.add_argument("--data-path", type=Path, default=RESULTS / "01_weights/state_model_inputs.xlsx")
     parser.add_argument("--output-path", type=Path, default=RESULTS / "02_inputs/state_inputs.npz")
     parser.add_argument("--eps", type=float, default=PROB_EPS)
-    parser.add_argument("--expected-draws", type=int, default=500)
+    parser.add_argument("--expected-draws", type=int, default=BOOTSTRAP_DRAWS)
     args = parser.parse_args()
 
     metrics = build_state_inputs(args.bootstrap_path, args.data_path, args.output_path, args.eps, args.expected_draws)

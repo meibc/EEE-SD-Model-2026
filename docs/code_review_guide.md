@@ -51,7 +51,7 @@ The headline effect is: projected baseline AHS and PrEP (from the fits) x the AH
 
 - [x] `scripts/2_evidence/02_wording_items.R` - trimmed 2026-10-27 to the Fig. 1B series and the 2022 shift table.
 - [x] `scripts/2_evidence/03_climate_associations.R` - reviewed 2026-10-27; standard errors clustered by state.
-- [ ] `scripts/5_demographic/02_group_associations.R` [96], `03_group_bootstrap.R` [89], `04_demographic_descriptives.py`
+- [ ] `scripts/5_demographic/01_group_associations.R` [96], `02_group_bootstrap.R` [89], `03_demographic_descriptives.py`
   [155] - demographic descriptives only (group dynamic models removed).
 - [x] `scripts/13d_system_decomposition.py` - retired to deprecated/ (2026-10-28; not in the paper outputs)
 

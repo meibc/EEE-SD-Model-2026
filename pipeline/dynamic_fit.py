@@ -32,7 +32,8 @@ import pandas as pd
 from config.optimization import OptimConfig
 from config.dynamic import DynamicConfig
 from config.shrinkage import ShrinkageConfig
-from config.specifications import EVIDENCE_SEED, PERSISTENCE_CAP, SPECIFICATIONS
+from config.fit import EVIDENCE_SEED
+from config.specifications import PERSISTENCE_CAP, SPECIFICATIONS
 from data.state_inputs import StateInputs
 from models.dynamic.estimation.calibration import evidence_slope, sustained_shift_response
 from models.dynamic.estimation.hierarchy import FitSettings, UnitFit, fit_hierarchy
@@ -138,7 +139,8 @@ class DynamicFitRunner:
             raise ValueError("Model-input measures do not match the model")
         self.v_names, self.years = inputs.v_names, inputs.years
         self.selected_states = list(selected_states)
-        self.draw_indices = np.asarray(draw_indices, dtype=int)
+        self.draw_indices = np.asarray(draw_indices, dtype=int)          # positions in the model-input file
+        self.source_draw_ids = inputs.source_draw_ids[self.draw_indices]  # their bootstrap IDs (scripts/1_data/04)
         self.units = self._select_units(inputs)
         self.unit_ids = [str(u.id) for u in self.units]
         self.SigmaY = inputs.covariance
@@ -204,7 +206,7 @@ class DynamicFitRunner:
         diag = fit.diagnostics
         components = diag.get("final_components", {})
         return {
-            "variant": self.spec.name, "draw": d, "source_draw": int(self.draw_indices[d]),
+            "variant": self.spec.name, "draw": d, "input_draw_index": int(self.draw_indices[d]),
             "unit_id": str(unit.id), "unit_kind": str(unit.kind),
             "success": bool(diag.get("success", False)), "optimizer_status": diag.get("status"),
             "optimizer_message": diag.get("message"), "final_loss": float(diag.get("final_loss", np.nan)),
@@ -230,7 +232,8 @@ class DynamicFitRunner:
             drift=stack(lambda f: f.drift), anchor_logits=stack(lambda f: f.anchor),
             success_stack=stack(lambda f: f.diagnostics.get("success", False), bool),
             unit_ids=np.asarray(self.unit_ids), v_names=np.asarray(self.v_names), years=self.years,
-            input_draw_indices=self.draw_indices, selected_states=np.asarray(self.selected_states),
+            input_draw_indices=self.draw_indices, source_draw_ids=self.source_draw_ids,
+            selected_states=np.asarray(self.selected_states),
             ahs_prep_evidence_slope=self.slopes, ahs_prep_apr=self.aprs,              # draw x unit
             ahs_prep_evidence_path=np.asarray(str(self.spec.evidence_path)),
             ahs_prep_shift_response=stack(lambda f: sustained_shift_response(f.J, self.source, self.target, horizon)),

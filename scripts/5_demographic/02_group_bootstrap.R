@@ -2,17 +2,17 @@
 # with joint respondent-bootstrap replicates.
 #
 # Groups: Black non-Hispanic, Hispanic/Latino, White non-Hispanic; ages <=24,
-# 25-34, >=35. Each annual estimate uses the national raking weights (scripts/5_demographic/01)
+# 25-34, >=35. Each annual estimate uses the national raking weights (scripts/1_data/07)
 # and is smoothed on the logit scale with its adjacent observed waves (weights:
 # focal wave 1, neighbours 0.5, each times the cell's Kish n_eff), so endpoint
 # years borrow from one neighbour. There is no 2020 wave. Respondents are
 # resampled within state x survey-year strata with weights held fixed.
 #
 # Outputs (results/02_inputs/group_bootstrap/):
-#   group_trajectories.csv      point estimates (scripts/5_demographic/04)
-#   group_draws.csv.gz          bootstrap replicates (scripts/5_demographic/04)
+#   group_trajectories.csv      point estimates (scripts/5_demographic/03)
+#   group_draws.csv.gz          bootstrap replicates (scripts/5_demographic/03)
 #
-# Run from the repository root: Rscript scripts/5_demographic/03_group_bootstrap.R [n_boot]
+# Run from the repository root: Rscript scripts/5_demographic/02_group_bootstrap.R [n_boot]
 
 suppressPackageStartupMessages({
   library(tidyverse)

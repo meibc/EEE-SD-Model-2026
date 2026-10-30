@@ -1815,6 +1815,7 @@ html&gt;body{padding:0}&lt;/style&gt;
           &lt;div class=&quot;eee-node kind-r&quot; id=&quot;state-weights&quot;&gt;State weights + workbook&lt;br&gt;&lt;small&gt;03_state_weights.R&lt;/small&gt;&lt;/div&gt;
           &lt;div class=&quot;eee-node kind-r&quot; id=&quot;state-bootstrap&quot;&gt;Respondent bootstrap&lt;br&gt;&lt;small&gt;04_state_bootstrap.R&lt;/small&gt;&lt;/div&gt;
           &lt;div class=&quot;eee-node kind-r&quot; id=&quot;state-screen&quot;&gt;Precision screen + constants&lt;br&gt;&lt;small&gt;05_state_precision_screen.R&lt;br&gt;06_reported_constants.R&lt;/small&gt;&lt;/div&gt;
+          &lt;div class=&quot;eee-node kind-r&quot; id=&quot;national-weights&quot;&gt;National weights&lt;br&gt;&lt;small&gt;07_national_weights.R&lt;/small&gt;&lt;/div&gt;
           &lt;div class=&quot;eee-node kind-data&quot; id=&quot;prepared-inputs&quot;&gt;Model-ready R outputs&lt;br&gt;&lt;small&gt;workbook + bootstrap files&lt;/small&gt;&lt;/div&gt;
         &lt;/div&gt;
         &lt;/section&gt;
@@ -1836,10 +1837,9 @@ html&gt;body{padding:0}&lt;/style&gt;
             &lt;span&gt;Parallel demographic analysis&lt;/span&gt;&lt;span class=&quot;eee-toggle&quot;&gt;−&lt;/span&gt;
           &lt;/button&gt;
           &lt;div class=&quot;eee-cluster-body&quot;&gt;
-            &lt;div class=&quot;eee-node kind-r&quot; id=&quot;national-weights&quot;&gt;Build national weights&lt;br&gt;&lt;small&gt;scripts/5_demographic/01_national_weights.R&lt;/small&gt;&lt;/div&gt;
-            &lt;div class=&quot;eee-node kind-r&quot; id=&quot;group-associations&quot;&gt;Estimate group associations&lt;br&gt;&lt;small&gt;scripts/5_demographic/02_group_associations.R&lt;/small&gt;&lt;/div&gt;
-            &lt;div class=&quot;eee-node kind-r&quot; id=&quot;group-bootstrap&quot;&gt;Bootstrap group trajectories&lt;br&gt;&lt;small&gt;scripts/5_demographic/03_group_bootstrap.R&lt;/small&gt;&lt;/div&gt;
-            &lt;div class=&quot;eee-node kind-py&quot; id=&quot;demographic-descriptives&quot;&gt;Summarize demographic patterns&lt;br&gt;&lt;small&gt;scripts/5_demographic/04_demographic_descriptives.py&lt;/small&gt;&lt;/div&gt;
+            &lt;div class=&quot;eee-node kind-r&quot; id=&quot;group-associations&quot;&gt;Estimate group associations&lt;br&gt;&lt;small&gt;scripts/5_demographic/01_group_associations.R&lt;/small&gt;&lt;/div&gt;
+            &lt;div class=&quot;eee-node kind-r&quot; id=&quot;group-bootstrap&quot;&gt;Bootstrap group trajectories&lt;br&gt;&lt;small&gt;scripts/5_demographic/02_group_bootstrap.R&lt;/small&gt;&lt;/div&gt;
+            &lt;div class=&quot;eee-node kind-py&quot; id=&quot;demographic-descriptives&quot;&gt;Summarize demographic patterns&lt;br&gt;&lt;small&gt;scripts/5_demographic/03_demographic_descriptives.py&lt;/small&gt;&lt;/div&gt;
           &lt;/div&gt;
         &lt;/section&gt;
       &lt;/div&gt;
@@ -1867,11 +1867,11 @@ html&gt;body{padding:0}&lt;/style&gt;
             &lt;div class=&quot;eee-cluster-body&quot;&gt;
               &lt;div class=&quot;eee-node kind-dynamic&quot; id=&quot;dynamic-config&quot;&gt;Configure variables + pathways&lt;br&gt;&lt;small&gt;config/dynamic.py&lt;/small&gt;&lt;/div&gt;
               &lt;div class=&quot;eee-node kind-dynamic&quot; id=&quot;optimization-config&quot;&gt;Configure optimization&lt;br&gt;&lt;small&gt;config/optimization.py&lt;/small&gt;&lt;/div&gt;
-              &lt;div class=&quot;eee-node kind-dynamic&quot; id=&quot;shrinkage-config&quot;&gt;Configure shrinkage&lt;br&gt;&lt;small&gt;config/shrinkage.py · specifications.py&lt;/small&gt;&lt;/div&gt;
+              &lt;div class=&quot;eee-node kind-dynamic&quot; id=&quot;shrinkage-config&quot;&gt;Configure shrinkage, specifications + draws&lt;br&gt;&lt;small&gt;config/shrinkage.py · specifications.py · fit.py&lt;/small&gt;&lt;/div&gt;
               &lt;div class=&quot;eee-node kind-dynamic&quot; id=&quot;dynamic-fit-module&quot;&gt;Coordinate dynamic fit&lt;br&gt;&lt;small&gt;pipeline/dynamic_fit.py&lt;/small&gt;&lt;/div&gt;
               &lt;div class=&quot;eee-node kind-dynamic&quot; id=&quot;hierarchy&quot;&gt;Fit nation → divisions → states&lt;br&gt;&lt;small&gt;models/dynamic/estimation/hierarchy.py&lt;/small&gt;&lt;/div&gt;
               &lt;div class=&quot;eee-node kind-dynamic&quot; id=&quot;dynamic-transforms&quot;&gt;Transform model inputs&lt;br&gt;&lt;small&gt;models/dynamic/estimation/transforms.py&lt;/small&gt;&lt;/div&gt;
-              &lt;div class=&quot;eee-node kind-dynamic&quot; id=&quot;jacobian&quot;&gt;Construct transition matrix&lt;br&gt;&lt;small&gt;models/dynamic/estimation/jacobian.py&lt;/small&gt;&lt;/div&gt;
+              &lt;div class=&quot;eee-node kind-dynamic&quot; id=&quot;jacobian&quot;&gt;Estimate transition matrix (optimizer)&lt;br&gt;&lt;small&gt;models/dynamic/estimation/jacobian.py&lt;/small&gt;&lt;/div&gt;
               &lt;div class=&quot;eee-node kind-dynamic&quot; id=&quot;calibration&quot;&gt;Translate evidence target&lt;br&gt;&lt;small&gt;models/dynamic/estimation/calibration.py&lt;/small&gt;&lt;/div&gt;
               &lt;div class=&quot;eee-node kind-dynamic&quot; id=&quot;loss&quot;&gt;Evaluate joint loss&lt;br&gt;&lt;small&gt;models/dynamic/estimation/loss.py&lt;/small&gt;&lt;/div&gt;
               &lt;div class=&quot;eee-node kind-dynamic&quot; id=&quot;dynamic-params&quot;&gt;Represent fitted parameters&lt;br&gt;&lt;small&gt;models/dynamic/params.py&lt;/small&gt;&lt;/div&gt;
@@ -1935,7 +1935,7 @@ html&gt;body{padding:0}&lt;/style&gt;
     &lt;/div&gt;
   &lt;/div&gt;
 
-  &lt;div class=&quot;eee-accessible text-small&quot; aria-live=&quot;polite&quot;&gt;Five-stage state-model workflow: R data preparation and evidence analyses feed separate dynamic and epidemiological fits; those fits are bundled and used by coupled scenario projections. A parallel demographic branch produces descriptive subgroup analyses without feeding the fitted state models.&lt;/div&gt;
+  &lt;div class=&quot;eee-accessible text-small&quot; aria-live=&quot;polite&quot;&gt;Five-stage workflow: R data preparation and evidence analyses feed separate dynamic-model and epidemic-model fits; those fits are bundled and used by coupled scenario projections. A parallel demographic branch produces descriptive subgroup analyses without feeding the fitted models.&lt;/div&gt;
 &lt;/div&gt;
 
 &lt;style&gt;
@@ -2025,9 +2025,9 @@ html&gt;body{padding:0}&lt;/style&gt;
   const canvas = document.getElementById(&#x27;eee-canvas&#x27;);
   const svg = document.getElementById(&#x27;eee-links&#x27;);
   const nodeGroup = {
-    &#x27;clean-amis&#x27;:&#x27;data&#x27;,&#x27;cdc-stocks&#x27;:&#x27;data&#x27;,&#x27;state-weights&#x27;:&#x27;data&#x27;,&#x27;state-bootstrap&#x27;:&#x27;data&#x27;,&#x27;state-screen&#x27;:&#x27;data&#x27;,&#x27;prepared-inputs&#x27;:&#x27;data&#x27;,
+    &#x27;clean-amis&#x27;:&#x27;data&#x27;,&#x27;national-weights&#x27;:&#x27;data&#x27;,&#x27;cdc-stocks&#x27;:&#x27;data&#x27;,&#x27;state-weights&#x27;:&#x27;data&#x27;,&#x27;state-bootstrap&#x27;:&#x27;data&#x27;,&#x27;state-screen&#x27;:&#x27;data&#x27;,&#x27;prepared-inputs&#x27;:&#x27;data&#x27;,
     &#x27;ahs-evidence&#x27;:&#x27;evidence&#x27;,&#x27;evidence-target&#x27;:&#x27;evidence&#x27;,&#x27;wording-items&#x27;:&#x27;evidence&#x27;,&#x27;climate&#x27;:&#x27;evidence&#x27;,
-    &#x27;national-weights&#x27;:&#x27;demographic&#x27;,&#x27;group-associations&#x27;:&#x27;demographic&#x27;,&#x27;group-bootstrap&#x27;:&#x27;demographic&#x27;,&#x27;demographic-descriptives&#x27;:&#x27;demographic&#x27;,
+    &#x27;group-associations&#x27;:&#x27;demographic&#x27;,&#x27;group-bootstrap&#x27;:&#x27;demographic&#x27;,&#x27;demographic-descriptives&#x27;:&#x27;demographic&#x27;,
     &#x27;build-inputs&#x27;:&#x27;fit&#x27;,&#x27;state-inputs&#x27;:&#x27;fit&#x27;,&#x27;fit-dynamic&#x27;:&#x27;fit&#x27;,&#x27;dynamic-fits&#x27;:&#x27;fit&#x27;,&#x27;fit-epi&#x27;:&#x27;fit&#x27;,&#x27;epi-posterior&#x27;:&#x27;fit&#x27;,
     &#x27;build-bundle&#x27;:&#x27;bundle&#x27;,&#x27;research-bundle&#x27;:&#x27;bundle&#x27;,&#x27;bundle&#x27;:&#x27;bundle&#x27;,&#x27;runtime&#x27;:&#x27;bundle&#x27;,
     &#x27;run-scenarios&#x27;:&#x27;project&#x27;,&#x27;scenarios&#x27;:&#x27;project&#x27;,&#x27;projection&#x27;:&#x27;project&#x27;,&#x27;dynamic-predictor&#x27;:&#x27;project&#x27;,&#x27;epi-adapter&#x27;:&#x27;project&#x27;,&#x27;epi-predictor&#x27;:&#x27;project&#x27;,&#x27;projection-results&#x27;:&#x27;project&#x27;,&#x27;endpoints&#x27;:&#x27;project&#x27;,
@@ -2037,15 +2037,15 @@ html&gt;body{padding:0}&lt;/style&gt;
   };
   const edges = [
     [&#x27;clean-amis&#x27;,&#x27;state-weights&#x27;,&#x27;survey data&#x27;], [&#x27;cdc-stocks&#x27;,&#x27;state-weights&#x27;,&#x27;stocks&#x27;], [&#x27;state-weights&#x27;,&#x27;state-bootstrap&#x27;,&#x27;weighted estimates&#x27;], [&#x27;state-bootstrap&#x27;,&#x27;state-screen&#x27;,&#x27;precision&#x27;], [&#x27;state-screen&#x27;,&#x27;prepared-inputs&#x27;,&#x27;&#x27;],
-    [&#x27;prepared-inputs&#x27;,&#x27;ahs-evidence&#x27;,&#x27;weighted respondents&#x27;], [&#x27;ahs-evidence&#x27;,&#x27;evidence-target&#x27;,&#x27;aPR + uncertainty&#x27;], [&#x27;prepared-inputs&#x27;,&#x27;wording-items&#x27;,&#x27;&#x27;], [&#x27;prepared-inputs&#x27;,&#x27;climate&#x27;,&#x27;weighted respondents + wording shift&#x27;],
+    [&#x27;prepared-inputs&#x27;,&#x27;ahs-evidence&#x27;,&#x27;weighted respondents&#x27;], [&#x27;ahs-evidence&#x27;,&#x27;evidence-target&#x27;,&#x27;aPR + uncertainty&#x27;], [&#x27;prepared-inputs&#x27;,&#x27;wording-items&#x27;,&#x27;&#x27;], [&#x27;national-weights&#x27;,&#x27;wording-items&#x27;,&#x27;national weights&#x27;], [&#x27;prepared-inputs&#x27;,&#x27;climate&#x27;,&#x27;weighted respondents + wording shift&#x27;],
     [&#x27;clean-amis&#x27;,&#x27;national-weights&#x27;,&#x27;cleaned respondents&#x27;], [&#x27;cdc-stocks&#x27;,&#x27;national-weights&#x27;,&#x27;age × PrEP targets&#x27;], [&#x27;national-weights&#x27;,&#x27;group-associations&#x27;,&#x27;national weights&#x27;], [&#x27;national-weights&#x27;,&#x27;group-bootstrap&#x27;,&#x27;national weights&#x27;], [&#x27;group-associations&#x27;,&#x27;demographic-descriptives&#x27;,&#x27;association estimates&#x27;], [&#x27;group-bootstrap&#x27;,&#x27;demographic-descriptives&#x27;,&#x27;trajectory draws&#x27;],
     [&#x27;prepared-inputs&#x27;,&#x27;build-inputs&#x27;,&#x27;workbook + bootstrap&#x27;], [&#x27;build-inputs&#x27;,&#x27;state-inputs&#x27;,&#x27;&#x27;], [&#x27;state-inputs&#x27;,&#x27;fit-dynamic&#x27;,&#x27;&#x27;], [&#x27;evidence-target&#x27;,&#x27;fit-dynamic&#x27;,&#x27;constrains total response&#x27;], [&#x27;fit-dynamic&#x27;,&#x27;dynamic-fits&#x27;,&#x27;&#x27;],
     [&#x27;state-inputs&#x27;,&#x27;fit-epi&#x27;,&#x27;observed inputs&#x27;], [&#x27;cdc-stocks&#x27;,&#x27;fit-epi&#x27;,&#x27;CDC stocks&#x27;], [&#x27;fit-epi&#x27;,&#x27;epi-posterior&#x27;,&#x27;&#x27;],
     [&#x27;state-inputs&#x27;,&#x27;build-bundle&#x27;,&#x27;&#x27;], [&#x27;dynamic-fits&#x27;,&#x27;build-bundle&#x27;,&#x27;&#x27;], [&#x27;epi-posterior&#x27;,&#x27;build-bundle&#x27;,&#x27;&#x27;], [&#x27;build-bundle&#x27;,&#x27;research-bundle&#x27;,&#x27;calls&#x27;,&#x27;call&#x27;], [&#x27;research-bundle&#x27;,&#x27;bundle&#x27;,&#x27;&#x27;], [&#x27;bundle&#x27;,&#x27;runtime&#x27;,&#x27;loads&#x27;],
     [&#x27;runtime&#x27;,&#x27;run-scenarios&#x27;,&#x27;parameters&#x27;], [&#x27;run-scenarios&#x27;,&#x27;scenarios&#x27;,&#x27;calls&#x27;,&#x27;call&#x27;], [&#x27;scenarios&#x27;,&#x27;projection&#x27;,&#x27;runs&#x27;,&#x27;call&#x27;], [&#x27;projection&#x27;,&#x27;dynamic-predictor&#x27;,&#x27;calls&#x27;,&#x27;call&#x27;], [&#x27;dynamic-predictor&#x27;,&#x27;epi-adapter&#x27;,&#x27;trajectories&#x27;], [&#x27;epi-adapter&#x27;,&#x27;epi-predictor&#x27;,&#x27;epidemic inputs&#x27;], [&#x27;projection&#x27;,&#x27;projection-results&#x27;,&#x27;baseline + scenario outputs&#x27;], [&#x27;scenarios&#x27;,&#x27;projection-results&#x27;,&#x27;requests summaries&#x27;,&#x27;call&#x27;], [&#x27;projection-results&#x27;,&#x27;endpoints&#x27;,&#x27;&#x27;],
-    [&#x27;fit-dynamic&#x27;,&#x27;dynamic-fit-module&#x27;,&#x27;calls&#x27;,&#x27;call&#x27;], [&#x27;dynamic-config&#x27;,&#x27;dynamic-fit-module&#x27;,&#x27;configures&#x27;,&#x27;call&#x27;], [&#x27;optimization-config&#x27;,&#x27;dynamic-fit-module&#x27;,&#x27;&#x27;,&#x27;call&#x27;], [&#x27;shrinkage-config&#x27;,&#x27;hierarchy&#x27;,&#x27;&#x27;,&#x27;call&#x27;], [&#x27;dynamic-fit-module&#x27;,&#x27;hierarchy&#x27;,&#x27;&#x27;], [&#x27;hierarchy&#x27;,&#x27;dynamic-transforms&#x27;,&#x27;&#x27;], [&#x27;hierarchy&#x27;,&#x27;jacobian&#x27;,&#x27;&#x27;], [&#x27;jacobian&#x27;,&#x27;loss&#x27;,&#x27;optimizes&#x27;], [&#x27;calibration&#x27;,&#x27;loss&#x27;,&#x27;evidence target&#x27;,&#x27;call&#x27;], [&#x27;loss&#x27;,&#x27;dynamic-params&#x27;,&#x27;fitted parameters&#x27;],
-    [&#x27;fit-epi&#x27;,&#x27;epi-fit-module&#x27;,&#x27;calls&#x27;,&#x27;call&#x27;], [&#x27;alignment&#x27;,&#x27;epi-fit-module&#x27;,&#x27;&#x27;,&#x27;call&#x27;], [&#x27;epi-fit-module&#x27;,&#x27;epi-params&#x27;,&#x27;estimates&#x27;],
-    [&#x27;intervention-config&#x27;,&#x27;scenarios&#x27;,&#x27;scenario codes&#x27;,&#x27;call&#x27;], [&#x27;projection-config&#x27;,&#x27;run-scenarios&#x27;,&#x27;run settings&#x27;,&#x27;call&#x27;], [&#x27;intervention-build&#x27;,&#x27;projection&#x27;,&#x27;builds changes&#x27;,&#x27;call&#x27;], [&#x27;prep-translation&#x27;,&#x27;projection&#x27;,&#x27;alternative translations&#x27;,&#x27;call&#x27;]
+    [&#x27;fit-dynamic&#x27;,&#x27;dynamic-fit-module&#x27;,&#x27;calls&#x27;,&#x27;call&#x27;], [&#x27;dynamic-config&#x27;,&#x27;dynamic-fit-module&#x27;,&#x27;configures&#x27;,&#x27;call&#x27;], [&#x27;optimization-config&#x27;,&#x27;dynamic-fit-module&#x27;,&#x27;&#x27;,&#x27;call&#x27;], [&#x27;shrinkage-config&#x27;,&#x27;hierarchy&#x27;,&#x27;&#x27;,&#x27;call&#x27;], [&#x27;dynamic-fit-module&#x27;,&#x27;hierarchy&#x27;,&#x27;&#x27;], [&#x27;hierarchy&#x27;,&#x27;dynamic-transforms&#x27;,&#x27;&#x27;], [&#x27;hierarchy&#x27;,&#x27;jacobian&#x27;,&#x27;&#x27;], [&#x27;jacobian&#x27;,&#x27;loss&#x27;,&#x27;optimizes&#x27;], [&#x27;calibration&#x27;,&#x27;loss&#x27;,&#x27;evidence target&#x27;,&#x27;call&#x27;], [&#x27;runtime&#x27;,&#x27;dynamic-params&#x27;,&#x27;loads draws&#x27;,&#x27;call&#x27;],
+    [&#x27;fit-epi&#x27;,&#x27;epi-fit-module&#x27;,&#x27;calls&#x27;,&#x27;call&#x27;], [&#x27;alignment&#x27;,&#x27;epi-fit-module&#x27;,&#x27;&#x27;,&#x27;call&#x27;], [&#x27;runtime&#x27;,&#x27;epi-params&#x27;,&#x27;loads draws&#x27;,&#x27;call&#x27;],
+    [&#x27;intervention-config&#x27;,&#x27;scenarios&#x27;,&#x27;scenario codes&#x27;,&#x27;call&#x27;], [&#x27;projection-config&#x27;,&#x27;run-scenarios&#x27;,&#x27;run settings&#x27;,&#x27;call&#x27;], [&#x27;intervention-build&#x27;,&#x27;projection&#x27;,&#x27;builds changes&#x27;,&#x27;call&#x27;], [&#x27;prep-translation&#x27;,&#x27;projection&#x27;,&#x27;PrEP translation&#x27;,&#x27;call&#x27;]
   ];
 
   const nodeDetails = {
@@ -2231,7 +2231,7 @@ html&gt;body{padding:0}&lt;/style&gt;
       items:[
         &#x27;500 paired dynamic/epidemic samples with seed 123; projections end in 2036.&#x27;,
         &#x27;Interventions ramp over three two-year steps (six years); cumulative infections begin in 2025.&#x27;,
-        &#x27;Interim report years are 2030 and 2032; contextual upper-bound ratios are 0.80 and 0.70.&#x27;
+        &#x27;Report years are every two-year step 2026-2036. Scenario PrEP uses the respondent-level prevalence ratio by default; the contextual upper bound (ratios 0.80 and 0.70) is requested per run.&#x27;
       ]
     },
     &#x27;intervention-build&#x27;: {

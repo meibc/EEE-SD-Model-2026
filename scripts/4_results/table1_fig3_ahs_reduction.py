@@ -4,7 +4,7 @@ from __future__ import annotations
 """Results, section 3: projected effects of reducing anticipated healthcare stigma (AHS) (Table 1, Fig. 3).
 
 Scenario PrEP changes come from the respondent-level AHS-PrEP prevalence ratio applied at each state's
-projected levels (scripts/3_model/05 --constant-pr-prep), with the fitted PrEP -> AHS relationship continued
+projected levels (scripts/3_model/05, the default), with the fitted PrEP -> AHS relationship continued
 (primary) or not continued in the projections.
 
 Table 1  Pooled over the primary states: infections averted 2025-2036 (number and percent of baseline)

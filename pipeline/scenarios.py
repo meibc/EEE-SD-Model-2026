@@ -39,8 +39,7 @@ class ScenarioRunConfig:
     show_progress: bool = False
     save_outputs_pickle: bool = False
     save_draw_level_endpoints: bool = False
-    contextual_prep_pr: float | None = None   # contextual upper-bound sensitivity (pipeline/projection.py)
-    constant_pr_prep: bool = False            # primary PrEP translation from the prevalence ratio (pipeline/projection.py)
+    contextual_prep_pr: float | None = None   # contextual upper bound in place of the primary translation (pipeline/projection.py)
     zero_projection_edges: tuple[tuple[str, str], ...] = ()   # (source, target) pathways off in projections
 
 
@@ -98,8 +97,8 @@ def run_scenarios(config: ScenarioRunConfig) -> dict[str, Path]:
             model_years=model_years,
             intervention_codes=spec.get("intervention_codes", []),
             intervention_duration_steps=config.intervention_duration_steps,
+            prep_translation="contextual" if config.contextual_prep_pr is not None else "prevalence_ratio",
             contextual_prep_pr=config.contextual_prep_pr,
-            constant_pr_prep=config.constant_pr_prep,
             prep_only_fraction=spec.get("prep_only_fraction"),
             zero_projection_edges=config.zero_projection_edges,
         )
@@ -143,7 +142,7 @@ def run_scenarios(config: ScenarioRunConfig) -> dict[str, Path]:
             "seed",
             "report_years",
             "cumulative_start_year",
-            "constant_pr_prep",
+            "prep_translation",
             "contextual_prep_pr",
             "zero_projection_edges",
             "elapsed_seconds",
@@ -157,7 +156,7 @@ def run_scenarios(config: ScenarioRunConfig) -> dict[str, Path]:
             config.seed,
             ",".join(map(str, config.report_years or (config.target_end_year,))),
             config.cumulative_start_year,
-            config.constant_pr_prep,
+            "contextual" if config.contextual_prep_pr is not None else "prevalence_ratio",
             config.contextual_prep_pr,
             ",".join(f"{a}:{b}" for a, b in config.zero_projection_edges),
             time.time() - t0,

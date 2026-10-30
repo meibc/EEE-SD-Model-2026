@@ -20,6 +20,7 @@ import pandas as pd
 ROOT = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(ROOT))
 from data.state_inputs import StateInputs  # noqa: E402
+from config.fit import DRAW_SEED, FIT_DRAWS  # noqa: E402
 from config.specifications import SPECIFICATIONS  # noqa: E402
 from pipeline.dynamic_fit import EVIDENCE_PATH, fit_specification  # noqa: E402
 
@@ -30,8 +31,8 @@ def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     parser.add_argument("--specifications", default="primary",
                         help=f"Comma-separated, from: {', '.join(SPECIFICATIONS)}")
-    parser.add_argument("--n-draws", type=int, default=500)
-    parser.add_argument("--draw-seed", type=int, default=20260921,
+    parser.add_argument("--n-draws", type=int, default=FIT_DRAWS)
+    parser.add_argument("--draw-seed", type=int, default=DRAW_SEED,
                         help="Seed for choosing input draws when --n-draws is below the number available.")
     parser.add_argument("--selected-states", type=Path, default=RESULTS / "02_inputs/state_screen/primary_states.csv")
     parser.add_argument("--input-draws", type=Path, default=RESULTS / "02_inputs/state_inputs.npz")
@@ -52,7 +53,7 @@ def main() -> None:
         raise ValueError(f"Requested {args.n_draws} draws but only {n_available} are available")
     draw_indices = np.sort(np.random.default_rng(args.draw_seed).choice(n_available, args.n_draws, replace=False))
     (args.output_dir / "fits").mkdir(parents=True, exist_ok=True)
-    pd.DataFrame({"input_draw_index": draw_indices}).to_csv(args.output_dir / "paired_input_draw_indices.csv", index=False)
+    pd.DataFrame({"input_draw_index": draw_indices, "source_draw_id": inputs.source_draw_ids[draw_indices]}).to_csv(args.output_dir / "paired_input_draw_indices.csv", index=False)
 
     for name in specifications:
         fit_path = args.output_dir / f"fits/{name}.npz"

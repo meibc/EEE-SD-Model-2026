@@ -5,15 +5,15 @@
 # quasibinomial svyglm of the outcome on its permitted predictors (the 18
 # pathways of the dynamic model) plus survey year, education, insurance, recent
 # homelessness and illicit drug use (urbanicity is not available in AMIS 2023), using the national
-# raking weights (scripts/5_demographic/01). HIV testing is the frequency measure defined in
+# raking weights (scripts/1_data/07). HIV testing is the frequency measure defined in
 # scripts/1_data/01_clean_amis.R.
 #
 # Output: results/02_inputs/group_associations.xlsx
-#   key_terms    pathway predictors (read by scripts/5_demographic/04)
+#   key_terms    pathway predictors (read by scripts/5_demographic/03)
 #   all_terms    every coefficient, including covariates
 #   diagnostics  fit status and complete-case counts per model
 #
-# Run from the repository root: Rscript scripts/5_demographic/02_group_associations.R
+# Run from the repository root: Rscript scripts/5_demographic/01_group_associations.R
 
 suppressPackageStartupMessages({
   library(tidyverse)

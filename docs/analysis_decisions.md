@@ -1399,6 +1399,32 @@ results/logs/run_<date>_<time>/. A scaled-down run (2 fit draws, 20 scenario sam
 completed every model and results step; it exposed one fragility, fixed: reporting.summaries.interval returns NaN
 when no draw is finite (PrEP gain per AHS point when the scenario removes no AHS in any draw) instead of failing.
 
+## Run-script review changes (2026-10-30)
+
+From an external review (author-approved; stopping on optimizer failures declined): the data stage now always refits
+the epidemic model (new survey inputs with the stored posterior would pair inputs and calibration from different
+data); the model stage alone reuses the posterior unless EPI_FIT=1. scripts/3_model/05 uses the primary PrEP
+translation (respondent-level prevalence ratio) by default; --constant-pr-prep is removed and --contextual-prep-pr
+switches to the contextual bound; the run summary records prep_translation. config/projection.py REPORT_YEARS is
+the full two-year grid 2026-2036 (Fig. 2), and run_pipeline.sh no longer lists the years or sample counts itself.
+run_pipeline.sh rejects unknown stage names and names log folders to the second. Draw IDs: the loss table's column
+is input_draw_index (position in the model-input file); the fit file and paired_input_draw_indices.csv also store
+source_draw_ids (the R bootstrap IDs; position + 1). New config/fit.py: bootstrap draw count, fit draws, draw seed
+and evidence seed. The epidemic risk-term bounds (baseline floor 0.05, ratio limits 0.5-3.0) are defined once in
+models/epi/params.py for the fit and the predictor. Checks: model-input file, fit, bundle, scenario runs and epi
+bundle identical (a run without the removed flag matches the earlier run with it); scaled-down pipeline run
+completes with all report years; 38 tests pass.
+
+## National weights moved to data preparation (2026-10-30)
+
+scripts/2_evidence/02_wording_items.R reads results/01_weights/national_raked.rds, which the national raking script
+writes, so that script belongs to the data stage, not the demographic branch: 5_demographic/01_national_weights.R
+-> 1_data/07_national_weights.R (it needs only 1_data/01 and 02), and the demographic scripts renumber to
+01_group_associations.R, 02_group_bootstrap.R, 03_demographic_descriptives.py. run_pipeline.sh runs the national
+weights in the data stage. Script contents unchanged apart from comments; the repository diagram
+(docs/eee-model-workflow.html) is updated to match, with its text corrected (report years and default translation,
+optimizer label, parameter containers filled by the bundle reader).
+
 ## Open items
 
 - Resolved (2026-10-25): AHS rose sharply between 2021 and 2023 in every demographic group

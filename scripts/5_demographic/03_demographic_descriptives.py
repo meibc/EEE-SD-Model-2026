@@ -8,12 +8,12 @@ Descriptive companion to the state analysis; no group-specific dynamic models.
 - Trajectories: national age-PrEP weighted estimates for six marginal groups
   (Black non-Hispanic, Hispanic/Latino, White non-Hispanic; ages <=24, 25-34,
   >=35) over the observed AMIS waves, with 95% intervals from the 500
-  respondent-bootstrap replicates (scripts/5_demographic/03_group_bootstrap.R). Estimates are the ESS-weighted
+  respondent-bootstrap replicates (scripts/5_demographic/02_group_bootstrap.R). Estimates are the ESS-weighted
   local logit smooth used for these groups, so endpoint years borrow from the
   adjacent wave.
 - Change 2017 -> 2024 with bootstrap intervals.
 - Cross-sectional associations: survey-weighted quasibinomial regressions within
-  each group (scripts/5_demographic/02_group_associations.R), reported as odds ratios.
+  each group (scripts/5_demographic/01_group_associations.R), reported as odds ratios.
 """
 
 import argparse

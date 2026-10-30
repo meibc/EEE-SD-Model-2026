@@ -37,7 +37,7 @@ import numpy as np
 import pandas as pd
 
 from data.state_inputs import StateInputs
-from models.epi.params import POST_YEAR
+from models.epi.params import POST_YEAR, RISK_BASELINE_FLOOR, RISK_RATIO_BOUNDS
 from core.years import align_to_years
 from core.transforms import logit
 
@@ -215,8 +215,8 @@ def build_hierarchical_epi_inputs(config: HierarchicalEpiFitConfig) -> Hierarchi
     inc_g_idx, inc_t_idx = np.where(inc_annual_mask)
     inc_obs_vec = inc_obs[inc_g_idx, inc_t_idx].astype("int64")
 
-    risk_baseline = np.maximum(risk[:, 0], 0.05)
-    risk_ratio = np.clip(risk / risk_baseline[:, None], 0.5, 3.0)
+    risk_baseline = np.maximum(risk[:, 0], RISK_BASELINE_FLOOR)
+    risk_ratio = np.clip(risk / risk_baseline[:, None], *RISK_RATIO_BOUNDS)
     log_risk_ratio = np.log(risk_ratio)
     exposure = no_vs * prep_off_prop
     prevalence0 = hiv_prevalence[:, 0]
