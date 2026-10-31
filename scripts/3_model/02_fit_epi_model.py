@@ -5,7 +5,7 @@ Calibrates incidence and diagnosis parameters for every state to CDC MSM
 estimated incidence and diagnoses, using the AMIS PrEP, risk and testing
 estimates (pipeline/epi_fit.py). Needs scripts/1_data/02_build_cdc_stocks.R,
 01 and 04. The full run (4 chains x 500 draws, 1,000 tuning steps) takes about
-3 hours; --run-mode quick (2 x 100, 300 tuning) checks the wiring.
+5 minutes; --run-mode quick (2 x 100, 300 tuning) checks the wiring.
 
 Outputs (results/02_inputs/epi_fit/):
   posterior.nc              posterior draws

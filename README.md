@@ -1,61 +1,109 @@
 # EEE-SD-Model-2026
 
-Canonical research repository for the EEE stigma–prevention model and paper.
-Data preparation lives in `AMIS-Variable-Trends` and upstream `EEE` files.
-Dashboard integration lives in `EEE-Model-Dashboard-Integration`.
+Code for the paper's state-level model of stigma and HIV prevention among men who have sex with men (MSM)
+in the United States. Survey data from the American Men's Internet Survey (AMIS, 2017-2024) and CDC
+surveillance are combined in two linked models:
 
-## Current accepted workflow
+- **Dynamic model:** how anticipated healthcare stigma (AHS), general social and family stigma, outness,
+  healthcare contact, risk behaviour, PrEP use and HIV testing evolve together in each state. It is fitted
+  hierarchically (nation, Census division, state) to 500 respondent-bootstrap draws.
+- **Epidemic model:** a hierarchical Bayesian model of HIV incidence and diagnoses, fitted to CDC
+  estimates, that turns projected PrEP use, risk behaviour and testing into infections.
 
-The primary state analysis uses joint respondent bootstrapping with fixed final
-raking weights, 500 refits, empirical fifth-percentile references across eight
-constructs, and HIV-testing frequency (`min(test2yrs, 4) / 4`). The retained
-v7d epidemiological posterior is reused; routine scenario runs do not recalibrate it.
+The scenarios project both models to 2036 and compare stigma-reduction scenarios with the baseline
+(for example, halving AHS from its 2024 level).
 
-Primary scenarios: AHS reduction, upstream social/family stigma reduction, and
-all three stigma levels reduced. Reductions are 50% relative to baseline, ramped
-over three two-year steps. The combined scenario contains no pathway attenuation.
+## Repository layout
 
-## Run from this repository
+| Folder | Contents |
+|---|---|
+| `scripts/` | The analysis, in run order: `1_data/` (R), `2_evidence/` (R), `3_model/` (Python), `4_results/` (Python), `5_demographic/` (R + Python) |
+| `config/` | Model structure and settings: variables, pathways and priors (CSV), fitting, projection and scenario settings, sensitivity specifications |
+| `core/` | Shared helpers (logit transforms, year alignment) |
+| `data/` | The model-input file (`state_inputs.py`) and per-state input containers |
+| `models/` | Model equations: `dynamic/` (estimation and prediction), `epi/`, `scenarios/` (interventions, PrEP translation) |
+| `pipeline/` | Fitting and projection runners, scenario runs and their summaries |
+| `artifacts/` | Writer and reader of the research bundle (fitted parameters joined with the epidemic posterior) |
+| `reporting/` | Paths, summaries and plot style shared by the results scripts |
+| `tests/` | Unit tests (`pytest`) |
+| `inputs/` | Public inputs (CDC and AIDSVu files, MSM population margins); `inputs/restricted/` for AMIS (not in the repository) |
+| `docs/` | Decision log, code review guide, supplement change notes, workflow diagram |
+| `deprecated/` | Retired analyses kept for reference; not part of the pipeline |
+
+`docs/eee-model-workflow.html` is a diagram of how the scripts, modules and outputs connect.
+`docs/analysis_decisions.md` records every analytic decision and its rationale.
+
+## Requirements
+
+- **R** 4.5 with `tidyverse`, `survey`, `srvyr`, `haven`, `readxl`, `openxlsx2`, `metafor`.
+- **Python** 3.9 or later:
+
+  ```bash
+  python -m pip install -r requirements-calibration.txt   # requirements.txt plus PyMC for the epidemic model
+  ```
+
+  Tested with Python 3.9.13, NumPy 1.23, pandas 2.3, SciPy 1.12, PyMC 5.12, ArviZ 0.16. The epidemic fit
+  needs a C compiler (on macOS, the Xcode command-line tools); PyTensor uses it to compile the model.
+
+## Data
+
+- **AMIS (restricted).** The annual restricted-use AMIS files (`sitq<year>_*.dta`, 2017-2019 and
+  2021-2024) are obtained under a data use agreement and are not distributed. Place them in
+  `inputs/restricted/amis_raw/`; the folder is ignored by Git. `results/` is also ignored, because
+  several outputs contain respondent-level data.
+- **Public inputs (included).** CDC AtlasPlus and AIDSVu files in `inputs/cdc_raw/` (sources and download
+  dates in `inputs/cdc_raw/SOURCES.md`), and state and national MSM population margins in `inputs/`
+  (from the MSM-Population-Estimates repository).
+
+## Running the analysis
+
+All commands run from the repository root.
 
 ```bash
-python -m pip install -r requirements.txt
-python scripts/export_current_research.py
-python scripts/04_run_sem_scenarios.py --save-draw-level-endpoints
+./run_pipeline.sh data evidence model results demographic   # everything, from the raw AMIS files
+./run_pipeline.sh                                           # model + results only (R outputs already current)
+./run_pipeline.sh results                                   # regenerate figures and tables from existing fits
 ```
 
-The exporter uses the completed 500-refit empirical-reference fit and retained
-CDC posterior bundle already on disk. It validates state/variable/year alignment
-and exports **only the 17 refitted primary states**. It deliberately does not
-apply new references to states whose parameters were fitted under older references.
+| Stage | What it does | Time* |
+|---|---|---|
+| `data` | Clean AMIS; build CDC stocks; state weights and the 500-draw respondent bootstrap (wording-adjusted and unadjusted); precision screen; reported constants; national weights | 3 min |
+| `evidence` | AHS-PrEP association (the evidence target), the 2022 AHS wording change, climate associations | 20 s |
+| `model` | Model-input files; epidemic fit; 10 dynamic-model fits in parallel; bundles; 13 scenario runs in parallel | 2 h |
+| `results` | Paper figures and tables | 1.5 min |
+| `demographic` | Weighted trajectories by demographic group | 1 min |
 
-Required cached inputs:
+\*Measured on a 12-core Mac with 16 GB of memory; the dynamic-model fits take nearly all the time.
 
-- `output/standardized_input_v9.npz`: retained epidemiological parameters and observations.
-- `output/empirical_p05_reference_sensitivity_n500/fits/empirical_p05_references.npz`: current fitted state matrices, drift, and reference vector.
+The epidemic model is refitted (about 5 minutes) whenever the `data` stage runs; otherwise its stored
+posterior is reused unless `EPI_FIT=1` is set. Logs go to `results/logs/run_<date>_<time>/`.
+For a quick end-to-end check, `FIT_DRAWS=2 SCENARIO_SAMPLES=20 ./run_pipeline.sh` shrinks the run; use it
+only in a copy of the repository, since it overwrites `results/`.
 
-Output: `output/current/standardized_research.npz`, with a checksum manifest.
-Scenario results go to `output/current/scenarios/`. Generated artifacts are local
-and ignored by Git. They must be supplied separately when cloning the repository.
+Tests: `python -m pytest`.
 
-## Source layout
+## Outputs
 
-- `config/`, `core/`, `data/`, `input/`, `models/`, `pipeline/`: model implementation.
-- `scripts/amis_joint_respondent_bootstrap_v1.Rmd`: respondent bootstrap preparation.
-- `scripts/16_build_joint_bootstrap_sem_inputs.py`: assembly of model input draws.
-- `scripts/12_final_v9_information_source_ablation.py`: state fitting and sensitivity implementation.
-- `scripts/17_build_population_joint_bootstrap.R`, `18_fit_population_joint_bootstrap.py`: demographic analyses.
-- `paper_figure_scripts/`: paper figure preparation and rendering.
-- `scripts/05_fit_hierarchical_epi_model.py`: optional long-running calibration; dependencies in `requirements-calibration.txt`.
+Paper figures and tables are written to `results/sections/`:
 
-## Consolidation status
+| Paper item | File |
+|---|---|
+| Fig. 1 (observed trajectories) | `trajectories/fig1_trajectories` |
+| Fig. 2 (projections) | `projections/fig2_projections` |
+| Table 1, Fig. 3 (effects of reducing AHS) | `ahs_reduction/table1_pooled.csv`, `ahs_reduction/fig3_state_breakdown` |
+| Sensitivity table | `sensitivity/table_sensitivity.csv` |
+| Supplement: model specification, dynamic-model fit, epidemic calibration, pathways | `supplement/` |
+| Supplement: state effects | `ahs_reduction/figS_state_effects`, `ahs_reduction/tableS_state_effects.csv` |
+| Supplement: PrEP-AHS co-evolution | `coevolution/figS_coevolution` |
+| Supplement: demographic group trajectories | `results/08_demographic/group_trajectories` |
+| Supplement: reported constants (Table S4) | `results/02_inputs/reported_constants.csv` |
 
-Current analysis scripts and local results were transferred from `EEE-SD-Model`.
-Its output directories point here so existing chats can still find their results.
-`docs/consolidation_manifest.json` records transfers; ignored `work/` holds rollback
-copies of overwritten generated figures. Neither repository history was rewritten.
+Intermediate outputs, numbered by stage: `00_amis/`, `00_cdc/` (cleaned data), `01_weights/`,
+`02_inputs/` (bootstrap draws, evidence, model-input files, epidemic posterior), `03_fits/` (primary fit
+and bundle), `04_scenarios/`, `05_sensitivity/`.
 
-The numerical runtime is consolidated. The complete from-source submission run is
-still being assembled: some upstream data paths are machine-specific, older
-analysis/figure defaults need updating, and the all-state dashboard artifact needs
-its own consistency check. Existing figures are not automatically relabeled as
-current; regenerate them from the current scenarios before submission.
+## Dashboard
+
+The research bundle (`results/03_fits/primary/standardized_research.npz`) is also read by the
+EEE-Model-Dashboard-Integration repository, which keeps its own copy of the reader. Its `sem_*` and
+`cdc_*` array names are that dashboard's schema and are kept unchanged.

@@ -1,6 +1,6 @@
 # CDC and AIDSVu inputs
 
-Public data used by `scripts/00_build_cdc_stocks.R` (state-year surveillance and PrEP stocks for MSM)
+Public data used by `scripts/1_data/02_build_cdc_stocks.R` (state-year surveillance and PrEP stocks for MSM)
 and, through its outputs, by the national weights and the epidemiological model.
 
 ## atlasplus_combined.csv

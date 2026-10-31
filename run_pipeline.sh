@@ -3,7 +3,7 @@
 #
 #   ./run_pipeline.sh                   model + results (default: the R outputs are current)
 #   ./run_pipeline.sh data evidence model results demographic
-#   EPI_FIT=1 ./run_pipeline.sh model   also refit the epidemic model (about 3 hours). Without it the stored
+#   EPI_FIT=1 ./run_pipeline.sh model   also refit the epidemic model (about 5 minutes). Without it the stored
 #                                       posterior in results/02_inputs/epi_fit is reused, unless the data
 #                                       stage runs: new survey inputs always refit the epidemic model.
 #
@@ -89,13 +89,13 @@ if has model; then
     step "model: epidemic fit runs because the data stage changed its survey inputs"
   fi
   if [ "${EPI_FIT:-0}" = 1 ]; then
-    step "model: epidemic fit (about 3 hours)"
+    step "model: epidemic fit (about 5 minutes)"
     $PY scripts/3_model/02_fit_epi_model.py > "$LOG/model_02_epi_fit.log" 2>&1
   else
     step "model: epidemic fit skipped (stored posterior reused; EPI_FIT=1 to refit)"
   fi
 
-  step "model: dynamic-model fits, all specifications in parallel (about 3-4 hours)"
+  step "model: dynamic-model fits, all specifications in parallel (about 2 hours)"
   FIT="$PY scripts/3_model/03_fit_dynamic_model.py --force ${FIT_DRAWS:+--n-draws $FIT_DRAWS}"
   {
     echo "fit_primary|$FIT --specifications primary"
