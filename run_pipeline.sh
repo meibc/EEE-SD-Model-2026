@@ -12,7 +12,7 @@
 #                precision screen, reported constants, national weights   needs inputs/restricted/ (AMIS)
 #   evidence     R: AHS-PrEP evidence, 2022 wording items, climate associations
 #   model        Python: model-input files, dynamic-model fits (in parallel), bundles, scenario runs (in parallel)
-#   results      Python: paper figures and tables (results/sections/)
+#   results      Python: paper figures and tables, and every number quoted in the text (results/sections/)
 #   demographic  R + Python: demographic-group trajectories (results/08_demographic/)
 #
 # Logs go to results/logs/run_<date>_<time>/. Settings: config/ (specifications.py, projection.py, ...).
@@ -154,6 +154,12 @@ if has demographic; then
   step "demographic"
   Rscript scripts/5_demographic/01_group_bootstrap.R > "$LOG/demographic_01_bootstrap.log" 2>&1
   $PY scripts/5_demographic/02_demographic_descriptives.py > "$LOG/demographic_02_descriptives.log" 2>&1
+fi
+
+if has results || has demographic; then
+  # Last, because it reads the demographic outputs as well as the results.
+  step "paper numbers"
+  $PY scripts/4_results/paper_numbers.py > "$LOG/results_paper_numbers.log" 2>&1
 fi
 
 step "done"

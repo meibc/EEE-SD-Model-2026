@@ -26,10 +26,8 @@ The scenarios project both models to 2036 and compare stigma-reduction scenarios
 | `artifacts/` | Writer and reader of the research bundle (fitted parameters joined with the epidemic posterior) |
 | `reporting/` | Paths, summaries and plot style shared by the results scripts |
 | `inputs/` | Public inputs (CDC and AIDSVu files, MSM population margins); `inputs/restricted/` for AMIS (not in the repository) |
-| `docs/` | Decision log, code review guide, supplement change notes, workflow diagram |
 
-`docs/eee-model-workflow.html` is a diagram of how the scripts, modules and outputs connect.
-`docs/analysis_decisions.md` records every analytic decision and its rationale.
+`eee-model-workflow.html` (open in a browser) is a diagram of how the scripts, modules and outputs connect.
 
 ## Requirements
 
@@ -84,6 +82,7 @@ Paper figures and tables are written to `results/sections/`:
 
 | Paper item | File |
 |---|---|
+| Every number quoted in the text, in paper order, with its source | `paper_numbers.md` |
 | Fig. 1 (observed trajectories) | `trajectories/fig1_trajectories` |
 | Fig. 2 (projections) | `projections/fig2_projections` |
 | Table 1, Fig. 3 (effects of reducing AHS) | `ahs_reduction/table1_pooled.csv`, `ahs_reduction/fig3_state_breakdown` |

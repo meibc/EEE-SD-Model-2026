@@ -28,8 +28,7 @@ class OptimConfig:
     evidence_horizon: int = 6
     evidence_tau: float = 0.01
 
-    # L-BFGS-B optimizer settings. Some fits need more than 500 iterations to converge
-    # (docs/analysis_decisions.md, 2026-10-23).
+    # L-BFGS-B optimizer settings. Some fits need more than 500 iterations to converge.
     maxiter: int = 5000
     ftol: float = 1e-9
     gtol: float = 1e-6
