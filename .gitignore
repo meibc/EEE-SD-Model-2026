@@ -68,3 +68,8 @@ results/
 
 # Restricted AMIS respondent data (place combined_amis_nocovid.csv here; never commit)
 /inputs/restricted/
+
+# Kept locally, not in the repository
+/tests/
+/deprecated/
+/pytest.ini

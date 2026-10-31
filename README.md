@@ -25,10 +25,8 @@ The scenarios project both models to 2036 and compare stigma-reduction scenarios
 | `pipeline/` | Fitting and projection runners, scenario runs and their summaries |
 | `artifacts/` | Writer and reader of the research bundle (fitted parameters joined with the epidemic posterior) |
 | `reporting/` | Paths, summaries and plot style shared by the results scripts |
-| `tests/` | Unit tests (`pytest`) |
 | `inputs/` | Public inputs (CDC and AIDSVu files, MSM population margins); `inputs/restricted/` for AMIS (not in the repository) |
 | `docs/` | Decision log, code review guide, supplement change notes, workflow diagram |
-| `deprecated/` | Retired analyses kept for reference; not part of the pipeline |
 
 `docs/eee-model-workflow.html` is a diagram of how the scripts, modules and outputs connect.
 `docs/analysis_decisions.md` records every analytic decision and its rationale.
@@ -79,8 +77,6 @@ The epidemic model is refitted (about 5 minutes) whenever the `data` stage runs;
 posterior is reused unless `EPI_FIT=1` is set. Logs go to `results/logs/run_<date>_<time>/`.
 For a quick end-to-end check, `FIT_DRAWS=2 SCENARIO_SAMPLES=20 ./run_pipeline.sh` shrinks the run; use it
 only in a copy of the repository, since it overwrites `results/`.
-
-Tests: `python -m pytest`.
 
 ## Outputs
 
