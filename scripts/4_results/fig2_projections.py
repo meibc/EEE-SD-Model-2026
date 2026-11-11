@@ -2,15 +2,15 @@
 """Results, section 2: projections over time (Fig. 2).
 
 Fig. 2   (A) Anticipated healthcare stigma (AHS), across-state median, 2024-2036: no intervention with the
-         fitted PrEP -> AHS relationship continued and not continued, and AHS halved; the shading is the gap
+         fitted PrEP -> AHS feedback continued and not continued, and AHS halved; the shading is the gap
          halving closes. (B) Reduction in annual HIV incidence, pooled over the primary states, relative to
          the paired baseline, for halving AHS, stigma-resilient PrEP delivery and halving general social and
-         family stigma; relationship continued and not continued; median and 95% interval across draws.
+         family stigma; with and without the feedback; median and 95% interval across draws.
          Projections start from observed 2023-24 values; interventions ramp in from 2026 to full strength
          in 2032. Values are reported at each two-year step of the model.
 
-Outputs (results/sections/projections/): fig2_projections.{png,pdf}; ahs_trajectories.csv;
-incidence_trajectories.csv.
+Outputs: results/paper/main/fig2_projections.{png,pdf}; in results/paper/source_data/, fig2_ahs_trajectories.csv and
+fig2_incidence_trajectories.csv.
 """
 
 from __future__ import annotations
@@ -27,12 +27,11 @@ sys.path.insert(0, str(ROOT))
 from reporting import sources, style  # noqa: E402
 from reporting.summaries import interval, primary_states, projected_ahs  # noqa: E402
 
-OUT = sources.SECTIONS / "projections"
+MAIN, DATA = sources.MAIN, sources.SOURCE_DATA
 START_YEAR = 2024
 SCENARIOS = {"halve_ahs": "Halve AHS", "resilient_prep_delivery": "Stigma-resilient PrEP delivery",
              "halve_upstream_stigma": "Halve social and family stigma"}
 PROJECTIONS = {"continued": sources.CONTINUED, "not_continued": sources.NOT_CONTINUED}
-SHORT = {"continued": "Relationship continued", "not_continued": "Relationship not continued"}
 
 
 def _summarize(values: pd.Series, keys: list[str]) -> pd.DataFrame:
@@ -103,19 +102,19 @@ def figure(ahs: pd.DataFrame, incidence: pd.DataFrame, observed: float) -> plt.F
     axes[0].set_ylabel("Reduction in annual\nHIV incidence (%)")
     fig.text(0.01, 0.575, "B  Effect on HIV incidence, pooled across states", fontweight="bold", fontsize=9)
     handles = [plt.Line2D([], [], color=colors[p], marker=style.MARKERS[p], lw=1.8, ms=4) for p in PROJECTIONS]
-    fig.legend(handles, [SHORT[p] for p in PROJECTIONS], loc="lower center", ncol=2, fontsize=8, bbox_to_anchor=(0.5, 0.05))
+    fig.legend(handles, [style.LABELS[p] for p in PROJECTIONS], loc="lower center", ncol=2, fontsize=8, bbox_to_anchor=(0.5, 0.05))
     fig.text(0.5, 0.01, "Medians; B shaded: 95% of draws. Interventions ramp in from 2026 and reach full strength in 2032.",
              ha="center", fontsize=7, color=style.MUTED)
     return fig
 
 
 def main() -> None:
-    OUT.mkdir(parents=True, exist_ok=True)
+    DATA.mkdir(parents=True, exist_ok=True)
     ahs, incidence = ahs_trajectories(), incidence_trajectories()
-    ahs.to_csv(OUT / "ahs_trajectories.csv")
-    incidence.to_csv(OUT / "incidence_trajectories.csv")
+    ahs.to_csv(DATA / "fig2_ahs_trajectories.csv")
+    incidence.to_csv(DATA / "fig2_incidence_trajectories.csv")
     observed = float(projected_ahs()["observed_2024"].median())
-    style.save(figure(ahs, incidence, observed), OUT / "fig2_projections")
+    style.save(figure(ahs, incidence, observed), MAIN / "fig2_projections")
     print(incidence["median"].unstack("year").round(1).to_string())
 
 

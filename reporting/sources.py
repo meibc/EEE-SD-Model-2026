@@ -7,7 +7,11 @@ from config.projection import CONTEXTUAL_PREP_PRS
 
 ROOT = Path(__file__).resolve().parents[1]
 RESULTS = ROOT / "results"
-SECTIONS = RESULTS / "sections"
+# Paper outputs: main-text and supplement figures and tables, and the CSVs behind them.
+PAPER = RESULTS / "paper"
+MAIN = PAPER / "main"
+SUPPLEMENT = PAPER / "supplement"
+SOURCE_DATA = PAPER / "source_data"
 
 INPUT_DRAWS = RESULTS / "02_inputs/state_inputs.npz"
 PRIMARY_STATES = RESULTS / "02_inputs/state_screen/primary_states.csv"

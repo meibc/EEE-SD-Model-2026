@@ -78,20 +78,17 @@ only in a copy of the repository, since it overwrites `results/`.
 
 ## Outputs
 
-Paper figures and tables are written to `results/sections/`:
+Paper figures and tables are written to `results/paper/`, by where they appear in the paper:
 
-| Paper item | File |
+| Folder | Contents |
 |---|---|
-| Every number quoted in the text, in paper order, with its source | `paper_numbers.md` |
-| Fig. 1 (observed trajectories) | `trajectories/fig1_trajectories` |
-| Fig. 2 (projections) | `projections/fig2_projections` |
-| Table 1, Fig. 3 (effects of reducing AHS) | `ahs_reduction/table1_pooled.csv`, `ahs_reduction/fig3_state_breakdown` |
-| Sensitivity table | `sensitivity/table_sensitivity.csv` |
-| Supplement: model specification, dynamic-model fit, epidemic calibration, pathways | `supplement/` |
-| Supplement: state effects | `ahs_reduction/figS_state_effects`, `ahs_reduction/tableS_state_effects.csv` |
-| Supplement: PrEP-AHS co-evolution | `coevolution/figS_coevolution` |
-| Supplement: demographic group trajectories | `results/08_demographic/group_trajectories` |
-| Supplement: reported constants (Table S4) | `results/02_inputs/reported_constants.csv` |
+| `main/` | Fig. 1 (`fig1_trajectories`), Fig. 2 (`fig2_projections`), Fig. 3 (`fig3_state_effects`), Table 1 (`table1_effects.csv`) |
+| `supplement/` | Supplement figures (`figS_*`) and tables (`tableS_*.csv`): sensitivity analyses, state effects, projected AHS by state, Fig. 3 breakdown, PrEP-AHS co-evolution, demographic group trajectories, pathway structure, dynamic-model fit, epidemic calibration, model specification |
+| `source_data/` | The data behind each figure, named after it (e.g. `fig3_state_breakdown.csv`) |
+| `paper_numbers.md` | Every number quoted in the text, in paper order, with its source |
+
+The two projections are labelled "with PrEP→AHS feedback" (primary) and "without PrEP→AHS feedback".
+Reported constants (Table S4) are in `results/02_inputs/reported_constants.csv`.
 
 Intermediate outputs, numbered by stage: `00_amis/`, `00_cdc/` (cleaned data), `01_weights/`,
 `02_inputs/` (bootstrap draws, evidence, model-input files, epidemic posterior), `03_fits/` (primary fit

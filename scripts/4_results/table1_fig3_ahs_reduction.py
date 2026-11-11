@@ -2,21 +2,24 @@
 """Results, section 3: projected effects of reducing anticipated healthcare stigma (AHS) (Table 1, Fig. 3).
 
 Scenario PrEP changes come from the respondent-level AHS-PrEP prevalence ratio applied at each state's
-projected levels (scripts/3_model/05, the default), with the fitted PrEP -> AHS relationship continued
-(primary) or not continued in the projections.
+projected levels (scripts/3_model/05, the default), with the fitted PrEP -> AHS feedback continued
+(primary) or not continued in the projections ("with" and "without PrEP→AHS feedback" in the figures).
 
 Table 1  Pooled over the primary states: infections averted 2025-2036 (number and percent of baseline)
          and the change in 2036 incidence, median and 95% interval, for halving AHS from its 2024 level,
          stigma-resilient PrEP delivery (half of the PrEP gain from reducing AHS to the 5th-percentile
          benchmark, AHS unchanged) and halving general social and family stigma. (Reducing AHS to the
          benchmark itself is in the sensitivity table: nearly identical to halving.)
-Fig. 3   Where halving AHS helps most, and why, by state (2025-2036): (A) infections averted per 100,000 MSM
-         per year; (B) baseline infections per 100,000 MSM per year; (C) AHS percentage points removed by
-         halving (2036); (D) PrEP gain (percentage points, 2036) per AHS point removed. Per draw,
+Fig. 3   Where halving AHS helps most, and why, by state: (A) infections averted per 100,000 MSM per year,
+         2025-2036, both projections, median and middle 50% of draws; (B, with feedback; C, without) the same
+         against AHS percentage points removed by halving (2036), shaded by baseline infections per 100,000
+         MSM per year, on shared axes; whiskers (middle 50%) for selected states.
+Fig. S   Breakdown of Fig. 3A by state (2025-2036): (A) infections averted per 100,000 MSM per year;
+         (B) baseline infections per 100,000 MSM per year; (C) AHS percentage points removed by halving
+         (2036); (D) PrEP gain (percentage points, 2036) per AHS point removed. Per draw,
          A = B x C x D x infections averted per PrEP point, the last nearly constant across states. A and C
-         by projection; B and D shown for the primary projection (nearly identical in both). Median and
-         middle 50% of draws; states ordered by A (primary).
-Fig. S   By state, relationship continued and not continued: (A) projected 2036 AHS without intervention,
+         by projection; B and D with feedback (nearly identical without). Median and middle 50% of draws.
+Fig. S   By state, with and without the feedback: (A) projected 2036 AHS without intervention,
          with observed 2023-24 AHS, shading above the highest AHS observed in any primary state and period;
          (B) reduction in 2036 incidence from halving AHS. Median, middle 50% and 95% of draws, axes cut
          at 60% (A) and 50% (B) with an arrowhead where the 95% range continues.
@@ -26,10 +29,11 @@ Table S  By state and projection, halving AHS: change in 2036 incidence (%) and 
          level observed in a state). Rate denominators: fixed state MSM population
          (inputs/msm_state_population.csv) x 12 years.
 
-Outputs (results/sections/ahs_reduction/): table1_pooled.csv; fig3_state_breakdown.{png,pdf};
-figS_state_effects.{png,pdf}; tableS_state_effects.csv; state_breakdown.csv (all measures and factors,
-median, interquartile range and 95% interval); breakdown_variance_shares.csv (share of the across-state
-variance in log rate attributable to each factor); state_effects.csv; projected_ahs.csv; association.csv.
+Outputs: results/paper/main/: table1_effects.csv, fig3_state_effects.{png,pdf}. results/paper/supplement/:
+figS_state_breakdown.{png,pdf}, figS_projected_ahs.{png,pdf}, tableS_state_effects.csv. results/paper/source_data/:
+fig3_state_breakdown.csv (all measures and factors, median, interquartile range and 95% interval);
+fig3_variance_shares.csv (share of the across-state variance in log rate attributable to each factor);
+figS_projected_ahs_levels.csv and figS_projected_ahs_effects.csv; ahs_prep_association.csv.
 """
 
 from __future__ import annotations
@@ -38,6 +42,7 @@ from pathlib import Path
 import sys
 
 import matplotlib.pyplot as plt
+from matplotlib.colors import LinearSegmentedColormap, Normalize
 import numpy as np
 import pandas as pd
 
@@ -46,7 +51,7 @@ sys.path.insert(0, str(ROOT))
 from reporting import sources, style  # noqa: E402
 from reporting.summaries import END_YEAR, interval, observed_paths, pooled_effect, primary_states, projected_ahs, state_effects  # noqa: E402
 
-OUT = sources.SECTIONS / "ahs_reduction"
+MAIN, SUPPLEMENT, DATA = sources.MAIN, sources.SUPPLEMENT, sources.SOURCE_DATA
 SCENARIOS = {
     "halve_ahs": "Halve AHS from its 2024 level",
     "resilient_prep_delivery": "Stigma-resilient PrEP delivery",
@@ -135,9 +140,6 @@ def variance_shares(table: pd.DataFrame) -> pd.DataFrame:
     return pd.DataFrame(out)
 
 
-SHORT = {"continued": "Relationship continued", "not_continued": "Relationship not continued"}
-
-
 def _paired(ax, table: dict[str, pd.DataFrame], order: list[str], cap: float) -> None:
     """Median (marker), middle 50% (thick bar) and 95% (thin line) of draws for both projections by state,
     cut at ``cap`` with an arrowhead where the 95% range continues."""
@@ -149,7 +151,7 @@ def _paired(ax, table: dict[str, pd.DataFrame], order: list[str], cap: float) ->
         over = (e["high"] > cap).to_numpy()
         ax.scatter(np.full(over.sum(), cap), yy[over], marker=">", s=12, color=color, alpha=0.6, lw=0)
         ax.scatter(e["median"], yy, marker=style.MARKERS[projection], s=24, color="white", edgecolor=color, lw=1.2,
-                   zorder=3, label=SHORT[projection])
+                   zorder=3, label=style.LABELS[projection])
     ax.set_xlim(0, cap * 1.03)
     ax.set_yticks(y)
     ax.set_yticklabels(order)
@@ -183,6 +185,75 @@ def figure(effects: dict[str, pd.DataFrame], projected: pd.DataFrame, observed_m
     return fig
 
 
+# States labelled in Fig. 3B/C (those discussed in the text) and the subset drawn with whiskers; label offsets
+# (points) where the default would overlap.
+LABELLED = {"continued": ["SC", "AL", "GA", "FL", "UT", "TN", "CO", "MA", "NC"], "not_continued": ["AL", "GA", "SC", "TN", "MA", "FL"]}
+WHISKERS = {"continued": ["SC", "AL", "GA", "MA"], "not_continued": ["AL", "GA"]}
+OFFSETS = {("continued", "FL"): (-12, 3), ("continued", "UT"): (5, -2), ("continued", "TN"): (-13, -7),
+           ("continued", "CO"): (5, -6), ("continued", "MA"): (5, -6), ("continued", "GA"): (-14, 3),
+           ("continued", "NC"): (-14, 2), ("not_continued", "GA"): (-14, 3), ("not_continued", "SC"): (5, -4),
+           ("not_continued", "TN"): (5, 2), ("not_continued", "MA"): (4, 2), ("not_continued", "FL"): (-4, -10)}
+
+
+def state_effects_figure(table: pd.DataFrame) -> plt.Figure:
+    """A: infections averted per 100,000 MSM per year by state, both projections; B, C: the same against AHS
+    points removed, one panel per projection on shared axes, shaded by baseline infections per 100,000."""
+    style.apply()
+    q = {p: table.loc[p].unstack("measure") for p in PROJECTIONS}
+    fig = plt.figure(figsize=(7.2, 6.4))
+    gs = fig.add_gridspec(2, 2, width_ratios=[1, 1.15], wspace=0.3, hspace=0.42)
+    a = fig.add_subplot(gs[:, 0])
+    order = list(q["continued"]["median"]["rate"].sort_values(ascending=False).index)
+    y = np.arange(len(order))
+    for p, dy in (("not_continued", 0.17), ("continued", -0.17)):
+        d = {k: q[p][k]["rate"].loc[order] for k in ("median", "p25", "p75")}
+        a.hlines(y + dy, d["p25"], d["p75"], color=style.COLORS[p], lw=2.6, alpha=0.5)
+        a.scatter(d["median"], y + dy, marker=style.MARKERS[p], s=20, color=style.COLORS[p], edgecolor="white", lw=0.5, zorder=3)
+    a.set_yticks(y)
+    a.set_yticklabels(order)
+    a.invert_yaxis()
+    a.set_xlim(0, None)
+    a.grid(axis="y", visible=False)
+    a.set_title("A  Infections averted per 100,000\nMSM per year, 2025–2036", loc="left", fontsize=7.8, fontweight="bold")
+    a.tick_params(labelsize=7)
+    handles = [plt.Line2D([], [], color=style.COLORS[p], marker=style.MARKERS[p], ls="", ms=5) for p in PROJECTIONS]
+    handles += [plt.Line2D([], [], color=style.MUTED, lw=2.6, alpha=0.5)]
+    a.legend(handles, [style.LABELS[p] for p in PROJECTIONS] + ["Middle 50% of draws"], loc="lower right", fontsize=6.5)
+
+    burden = q["continued"]["median"]["burden"]
+    cmap = LinearSegmentedColormap.from_list("burden", ["#d9d9d9", style.INK])
+    norm = Normalize(burden.min(), burden.max())
+    xmax = 1.15 * max(q[p]["median"]["gap"].max() for p in PROJECTIONS)
+    ymax = 1.15 * max(q[p]["median"]["rate"].max() for p in PROJECTIONS)
+    axes = []
+    for i, p in enumerate(PROJECTIONS):
+        b = fig.add_subplot(gs[i, 1])
+        axes.append(b)
+        m, lo, hi = q[p]["median"], q[p]["p25"], q[p]["p75"]
+        for s in WHISKERS[p]:
+            b.plot([lo.loc[s, "gap"], hi.loc[s, "gap"]], [m.loc[s, "rate"]] * 2, color=style.COLORS[p], lw=0.9, alpha=0.6, zorder=1)
+            b.plot([m.loc[s, "gap"]] * 2, [lo.loc[s, "rate"], hi.loc[s, "rate"]], color=style.COLORS[p], lw=0.9, alpha=0.6, zorder=1)
+        b.scatter(m["gap"], m["rate"], c=cmap(norm(burden.loc[m.index])), marker=style.MARKERS[p], s=30,
+                  edgecolor=style.COLORS[p], lw=0.9, zorder=3)
+        for s in LABELLED[p]:
+            b.annotate(s, (m.loc[s, "gap"], m.loc[s, "rate"]), xytext=OFFSETS.get((p, s), (5, 3)), textcoords="offset points",
+                       fontsize=6.5, color=style.INK)
+        b.set_xlim(0, xmax)
+        b.set_ylim(0, ymax)
+        b.tick_params(labelsize=7)
+        b.set_ylabel("Infections averted\nper 100,000 per year", fontsize=7)
+        b.set_title(f"{'BC'[i]}  {style.LABELS[p]}", loc="left", fontsize=7.8, color=style.COLORS[p], fontweight="bold")
+    axes[-1].set_xlabel(f"AHS percentage points removed by halving ({END_YEAR})", fontsize=7.2)
+    cb = fig.colorbar(plt.cm.ScalarMappable(cmap=cmap, norm=norm), ax=axes, orientation="horizontal", fraction=0.035,
+                      pad=0.16, aspect=30)
+    cb.set_label("Baseline infections per 100,000 MSM per year (B, C)", fontsize=6.8)
+    cb.ax.tick_params(labelsize=6.5)
+    fig.text(0.5, -0.03, "B, C: state medians, same axes; whiskers = middle 50% of draws for selected states (cut at the axis).\n"
+             f"Infections averted are 2025–{END_YEAR} averages; AHS points removed are at {END_YEAR} (full strength).",
+             ha="center", fontsize=6.3, color=style.MUTED)
+    return fig
+
+
 def breakdown_figure(table: pd.DataFrame) -> plt.Figure:
     style.apply()
     q = {p: table.loc[p].unstack("measure") for p in PROJECTIONS}
@@ -207,28 +278,30 @@ def breakdown_figure(table: pd.DataFrame) -> plt.Figure:
     axes[0].invert_yaxis()
     handles = [plt.Line2D([], [], color=style.COLORS[p], marker=style.MARKERS[p], ls="", ms=5) for p in ("continued", "not_continued")]
     handles += [plt.Line2D([], [], color=style.OBSERVED, marker="D", ls="", ms=4), plt.Line2D([], [], color=style.MUTED, lw=2.6, alpha=0.5)]
-    fig.legend(handles, [SHORT["continued"], SHORT["not_continued"], "Primary projection (B, D)", "Middle 50% of draws"],
+    fig.legend(handles, [style.LABELS["continued"], style.LABELS["not_continued"], "With feedback (B, D)", "Middle 50% of draws"],
                loc="lower center", ncol=4, fontsize=7, bbox_to_anchor=(0.5, -0.01))
     return fig
 
 
 def main() -> None:
-    OUT.mkdir(parents=True, exist_ok=True)
+    for d in (MAIN, SUPPLEMENT, DATA):
+        d.mkdir(parents=True, exist_ok=True)
     t1 = table1()
-    t1.to_csv(OUT / "table1_pooled.csv", index=False)
-    association().to_csv(OUT / "association.csv", index=False)
+    t1.to_csv(MAIN / "table1_effects.csv", index=False)
+    association().to_csv(DATA / "ahs_prep_association.csv", index=False)
     effects = {p: state_effects(path, "halve_ahs") for p, path in PROJECTIONS.items()}
-    pd.concat(effects, names=["projection"]).to_csv(OUT / "state_effects.csv")
+    pd.concat(effects, names=["projection"]).to_csv(DATA / "figS_projected_ahs_effects.csv")
     table = state_table({p: state_draws(path) for p, path in PROJECTIONS.items()})
-    table.to_csv(OUT / "state_breakdown.csv")
+    table.to_csv(DATA / "fig3_state_breakdown.csv")
     shares = variance_shares(table)
-    shares.to_csv(OUT / "breakdown_variance_shares.csv", index_label="factor")
-    style.save(breakdown_figure(table), OUT / "fig3_state_breakdown")
+    shares.to_csv(DATA / "fig3_variance_shares.csv", index_label="factor")
+    style.save(state_effects_figure(table), MAIN / "fig3_state_effects")
+    style.save(breakdown_figure(table), SUPPLEMENT / "figS_state_breakdown")
     projected = projected_ahs()
-    projected.to_csv(OUT / "projected_ahs.csv")
-    supplement_table(table, projected).to_csv(OUT / "tableS_state_effects.csv", index=False)
+    projected.to_csv(DATA / "figS_projected_ahs_levels.csv")
+    supplement_table(table, projected).to_csv(SUPPLEMENT / "tableS_state_effects.csv", index=False)
     observed_max = float(observed_paths(("stigma_ahs",))["level"].max())
-    style.save(figure(effects, projected, observed_max), OUT / "figS_state_effects")
+    style.save(figure(effects, projected, observed_max), SUPPLEMENT / "figS_projected_ahs")
     cols = ["scenario", "projection", "averted_median", "averted_low", "averted_high", "averted_pct_median",
             "incidence_pct_median", "incidence_pct_low", "incidence_pct_high"]
     print(t1[cols].round(2).to_string(index=False))

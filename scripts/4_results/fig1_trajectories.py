@@ -9,8 +9,8 @@ Fig. 1B  National anticipated healthcare stigma (AHS) by AMIS cycle as measured 
          2022 item change (the model's input), with experienced healthcare stigma, whose items did not
          change (scripts/2_evidence/02); survey-weighted 95% intervals.
 
-Outputs (results/sections/trajectories/): fig1_trajectories.{png,pdf}; state_changes.csv (level in 2018
-and 2024 and the change with its 95% interval, by measure and state); summary.csv (across-state median
+Outputs: results/paper/main/fig1_trajectories.{png,pdf}; in results/paper/source_data/, fig1_state_changes.csv (level in 2018
+and 2024 and the change with its 95% interval, by measure and state) and fig1_summary.csv (across-state median
 and the number of states with an increase, a decrease or no clear change, by measure).
 """
 
@@ -28,7 +28,7 @@ sys.path.insert(0, str(ROOT))
 from reporting import sources, style  # noqa: E402
 from reporting.summaries import observed_change  # noqa: E402
 
-OUT = sources.SECTIONS / "trajectories"
+MAIN, DATA = sources.MAIN, sources.SOURCE_DATA
 MEASURES = ["stigma_ahs", "stigma_gss", "stigma_family", "out_gid", "seehcp", "risk_behavior", "prep_used", "hivtest12"]
 SHORT_LABELS = {"stigma_ahs": "Anticipated healthcare\nstigma\n(wording-adjusted)", "stigma_gss": "General social\nstigma",
                 "stigma_family": "Family\nstigma", "out_gid": "Disclosure to\nprovider", "seehcp": "Healthcare provider\nvisit (past year)",
@@ -101,13 +101,13 @@ def figure(changes: pd.DataFrame, by_year: pd.DataFrame) -> plt.Figure:
 
 
 def main() -> None:
-    OUT.mkdir(parents=True, exist_ok=True)
+    DATA.mkdir(parents=True, exist_ok=True)
     changes = state_changes()
-    changes.to_csv(OUT / "state_changes.csv", index=False)
+    changes.to_csv(DATA / "fig1_state_changes.csv", index=False)
     summary = summarize(changes)
-    summary.to_csv(OUT / "summary.csv")
+    summary.to_csv(DATA / "fig1_summary.csv")
     by_year = pd.read_csv(sources.WORDING / "items_by_year.csv")
-    style.save(figure(changes, by_year), OUT / "fig1_trajectories")
+    style.save(figure(changes, by_year), MAIN / "fig1_trajectories")
     print(summary.round(1).to_string())
 
 

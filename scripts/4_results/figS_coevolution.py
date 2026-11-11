@@ -9,9 +9,9 @@ Fig. S   Observed past-year PrEP use and anticipated healthcare stigma (AHS) by 
 Also the fitted PrEP -> AHS relationship by state (transition-matrix entry, centered-logit units per
 two-year step) in the primary fit and under the AHS temporal placebo (periods of AHS permuted).
 
-Outputs (results/sections/coevolution/): figS_coevolution.{png,pdf}; observed_paths.csv;
-prep_to_ahs.csv (by state, primary and placebo: median, 95% interval, share of
-draws above zero); prep_to_ahs_overall.csv.
+Outputs: results/paper/supplement/figS_coevolution.{png,pdf}; in results/paper/source_data/,
+figS_coevolution_paths.csv, prep_to_ahs_by_state.csv (by state, primary and placebo: median, 95% interval, share of
+draws above zero) and prep_to_ahs_overall.csv.
 """
 
 from __future__ import annotations
@@ -28,7 +28,7 @@ sys.path.insert(0, str(ROOT))
 from reporting import sources, style  # noqa: E402
 from reporting.summaries import interval, observed_paths, primary_states  # noqa: E402
 
-OUT = sources.SECTIONS / "coevolution"
+SUPPLEMENT, DATA = sources.SUPPLEMENT, sources.SOURCE_DATA
 PERIOD_LABELS = {2018: "2017–18", 2020: "2019–20", 2022: "2021–22", 2024: "2023–24"}
 
 
@@ -79,15 +79,15 @@ def figure(paths: pd.DataFrame) -> plt.Figure:
 
 
 def main() -> None:
-    OUT.mkdir(parents=True, exist_ok=True)
+    DATA.mkdir(parents=True, exist_ok=True)
     paths = observed_paths(("prep_used", "stigma_ahs"))
-    paths.to_csv(OUT / "observed_paths.csv", index=False)
+    paths.to_csv(DATA / "figS_coevolution_paths.csv", index=False)
     primary, primary_all = prep_to_ahs(sources.PRIMARY_FIT)
     placebo, placebo_all = prep_to_ahs(sources.SPECIFICATION_FITS / "placebo_ahs.npz")
-    pd.concat({"primary": primary, "placebo_ahs": placebo}, names=["fit"]).to_csv(OUT / "prep_to_ahs.csv")
+    pd.concat({"primary": primary, "placebo_ahs": placebo}, names=["fit"]).to_csv(DATA / "prep_to_ahs_by_state.csv")
     overall = pd.DataFrame({"primary": primary_all, "placebo_ahs": placebo_all}).T
-    overall.to_csv(OUT / "prep_to_ahs_overall.csv", index_label="fit")
-    style.save(figure(paths), OUT / "figS_coevolution")
+    overall.to_csv(DATA / "prep_to_ahs_overall.csv", index_label="fit")
+    style.save(figure(paths), SUPPLEMENT / "figS_coevolution")
     print(overall.round(3).to_string())
 
 

@@ -16,8 +16,8 @@ Fig. S   Dynamic-model fit: observed state-period values (2020, 2022, 2024) agai
 Fig. S   Epidemic-model calibration: observed CDC period means (new diagnoses, estimated incidence) against
          posterior period means with 90% intervals, primary states (scripts/3_model/02).
 
-Outputs (results/sections/supplement/): tableS_model_specification.csv; figS_pathways.{png,pdf}; figS_dynamic_fit.{png,pdf} and
-dynamic_fit.csv; figS_epi_calibration.{png,pdf} and epi_calibration_summary.csv.
+Outputs (results/paper/supplement/): tableS_model_specification.csv; figS_pathways, figS_dynamic_fit and
+figS_epi_calibration (.png, .pdf); their data in results/paper/source_data/ (figS_dynamic_fit.csv, figS_epi_calibration.csv).
 """
 
 from __future__ import annotations
@@ -38,7 +38,7 @@ from core.transforms import LOGIT_EPS, inverse_logit, logit  # noqa: E402
 from reporting import sources, style  # noqa: E402
 from reporting.summaries import primary_states  # noqa: E402
 
-OUT = sources.SECTIONS / "supplement"
+SUPPLEMENT, DATA = sources.SUPPLEMENT, sources.SOURCE_DATA
 CONFIG = ROOT / "config"
 BUNDLE = sources.RESULTS / "03_fits/primary/standardized_research.npz"
 EPI_FIT = sources.RESULTS / "02_inputs/epi_fit/period_fit_summary.csv"
@@ -246,15 +246,16 @@ def epi_figure(d: pd.DataFrame, summary: pd.DataFrame) -> plt.Figure:
 
 
 def main() -> None:
-    OUT.mkdir(parents=True, exist_ok=True)
-    specification_table().to_csv(OUT / "tableS_model_specification.csv", index=False)
-    style.save(pathway_figure(), OUT / "figS_pathways")
+    for d in (SUPPLEMENT, DATA):
+        d.mkdir(parents=True, exist_ok=True)
+    specification_table().to_csv(SUPPLEMENT / "tableS_model_specification.csv", index=False)
+    style.save(pathway_figure(), SUPPLEMENT / "figS_pathways")
     fit = dynamic_fit()
-    fit.to_csv(OUT / "dynamic_fit.csv", index=False)
-    style.save(dynamic_fit_figure(fit), OUT / "figS_dynamic_fit")
+    fit.to_csv(DATA / "figS_dynamic_fit.csv", index=False)
+    style.save(dynamic_fit_figure(fit), SUPPLEMENT / "figS_dynamic_fit")
     epi, summary = epi_calibration()
-    summary.to_csv(OUT / "epi_calibration_summary.csv", index=False)
-    style.save(epi_figure(epi, summary), OUT / "figS_epi_calibration")
+    summary.to_csv(DATA / "figS_epi_calibration.csv", index=False)
+    style.save(epi_figure(epi, summary), SUPPLEMENT / "figS_epi_calibration")
     fit["abs_error_pp"] = 100 * (fit["observed"] - fit["fitted_median"]).abs()
     print(fit.groupby("measure")[["abs_error_pp", "covered"]].mean().round(2))
     print(summary.round(3).to_string(index=False))

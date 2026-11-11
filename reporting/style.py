@@ -14,13 +14,12 @@ INK = "#222222"
 MUTED = "#6b6b6b"
 GRID = "#e5e5e5"
 OBSERVED = "#4d4d4d"
-CONTINUED = "#0072B2"       # fitted PrEP -> AHS relationship continued (primary)
+CONTINUED = "#0072B2"       # fitted PrEP -> AHS feedback continued in the projections (primary)
 NOT_CONTINUED = "#E69F00"   # not continued
 ACCENT = "#009E73"
 MARKERS = {"continued": "o", "not_continued": "s"}
 COLORS = {"continued": CONTINUED, "not_continued": NOT_CONTINUED}
-LABELS = {"continued": "Fitted PrEP–AHS relationship continued",
-          "not_continued": "Fitted PrEP–AHS relationship not continued"}
+LABELS = {"continued": "With PrEP→AHS feedback", "not_continued": "Without PrEP→AHS feedback"}
 
 MEASURE_LABELS = {
     "stigma_ahs": "Anticipated healthcare stigma", "stigma_gss": "General social stigma",

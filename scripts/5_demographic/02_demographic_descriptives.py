@@ -9,6 +9,8 @@ Descriptive companion to the state analysis; no group-specific dynamic models.
   respondent-bootstrap replicates (scripts/5_demographic/01_group_bootstrap.R). Estimates are the
   weighted proportions in each wave (no smoothing).
 - Change 2017 -> 2024 with bootstrap intervals.
+
+Outputs: CSVs in --output-dir (results/08_demographic/); the figure in results/paper/supplement/figS_group_trajectories.{png,pdf}.
 """
 
 from __future__ import annotations
@@ -25,7 +27,9 @@ import pandas as pd
 
 ROOT = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(ROOT))
-RESULTS = ROOT / "results"
+from reporting import sources  # noqa: E402
+
+RESULTS = sources.RESULTS
 
 GROUPS = {
     "Race and ethnicity": ["black_nh", "hispanic_latino", "white_nh"],
@@ -124,7 +128,8 @@ def main() -> None:
 
     traj.to_csv(args.output_dir / "group_trajectories.csv", index=False)
     change.to_csv(args.output_dir / "group_change_2017_2024.csv", index=False)
-    plot(traj, args.output_dir / "group_trajectories.png")
+    sources.SUPPLEMENT.mkdir(parents=True, exist_ok=True)
+    plot(traj, sources.SUPPLEMENT / "figS_group_trajectories.png")
 
     show = change[change.variable.isin(VARIABLES)].copy()
     show["change"] = show.apply(lambda r: f"{r.change_pp:+.1f} ({r.change_p025:+.1f} to {r.change_p975:+.1f})", axis=1)

@@ -12,8 +12,8 @@
 #                precision screen, reported constants, national weights   needs inputs/restricted/ (AMIS)
 #   evidence     R: AHS-PrEP evidence, 2022 wording items, climate associations
 #   model        Python: model-input files, dynamic-model fits (in parallel), bundles, scenario runs (in parallel)
-#   results      Python: paper figures and tables, and every number quoted in the text (results/sections/)
-#   demographic  R + Python: demographic-group trajectories (results/08_demographic/)
+#   results      Python: paper figures and tables, and every number quoted in the text (results/paper/)
+#   demographic  R + Python: demographic-group trajectories (results/08_demographic/; figure in results/paper/supplement/)
 #
 # Logs go to results/logs/run_<date>_<time>/. Settings: config/ (specifications.py, projection.py, ...).
 # FIT_DRAWS and SCENARIO_SAMPLES (defaults in config/fit.py and config/projection.py) shrink the run for a quick
