@@ -1,5 +1,5 @@
 import numpy as np
-from core.transforms import LOGIT_EPS, inverse_logit, logit, logit_jacobian
+from core.transforms import LOGIT_EPS, inverse_logit, logit
 
 
 class FeatureTransformer:
@@ -10,8 +10,7 @@ class FeatureTransformer:
 
     The reference is either given as probabilities or directly as logits; the
     state-anchored model uses each unit's own mean logit over the observed periods
-    (``state_anchor``). The covariance Jacobian is unchanged by centering because
-    subtracting a constant does not change derivatives.
+    (``state_anchor``).
     """
 
     def __init__(self, reference_probs=None, eps=LOGIT_EPS, reference_logits=None):
@@ -43,18 +42,11 @@ class FeatureTransformer:
             raise ValueError(f"reference_probs length mismatch: {self.reference_logits.size} vs {Ybar.shape[0]}")
         return self.reference_logits
 
-    def transform(self, Ybar, SigmaY=None):
+    def transform(self, Ybar):
+        """Centred logits (measure x period) of proportions clipped to [eps, 1 - eps]."""
         Ybar = np.clip(Ybar, self.eps, 1 - self.eps)
         ref = self._ref_logits_for(Ybar)
-        Xbar = logit(Ybar, self.eps) - ref[:, None]
-
-        if SigmaY is None:
-            return Xbar, None
-
-        p = np.mean(Ybar, axis=1)
-        Jlogit = logit_jacobian(p, self.eps)
-        SigmaX = Jlogit @ SigmaY @ Jlogit
-        return Xbar, SigmaX
+        return logit(Ybar, self.eps) - ref[:, None]
 
     def inverse_transform(self, X):
         arr = np.asarray(X, dtype=float)

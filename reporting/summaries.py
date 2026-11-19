@@ -53,14 +53,6 @@ def pooled_effect(scenario_dir: Path, scenario: str, year: int = END_YEAR) -> di
     return out
 
 
-def state_effects(scenario_dir: Path, scenario: str, variable: str = "incidence", year: int = END_YEAR) -> pd.DataFrame:
-    """Percentage change in ``variable`` in ``year`` by state: median and 95% interval across draws."""
-    d = epi_draws(scenario_dir)
-    d = d[d["scenario"].eq(scenario) & d["year"].eq(year) & d["variable"].eq(variable) & d["unit_id"].isin(primary_states())]
-    rows = {state: interval(g["pct_change"]) for state, g in d.groupby("unit_id")}
-    return pd.DataFrame.from_dict(rows, orient="index").rename_axis("state")
-
-
 @lru_cache(maxsize=None)
 def input_draws() -> StateInputs:
     """The model-input file (observed draws: draw x unit x measure x period)."""
@@ -94,11 +86,10 @@ def observed_paths(measures: tuple[str, ...]) -> pd.DataFrame:
 
 
 def projected_ahs() -> pd.DataFrame:
-    """AHS by primary state: observed in 2023-24 and the 2036 baseline projection with the fitted
-    PrEP -> AHS relationship continued and not continued (median, interquartile range, 95% interval
-    across draws, and the share of draws above 30% and 50%)."""
+    """AHS by primary state: observed in 2023-24 and the 2036 baseline projection for each feedback value
+    (median, interquartile range, 95% interval across draws, and the share of draws above 30% and 50%)."""
     out = observed_change("stigma_ahs")[["level_2024"]].rename(columns={"level_2024": "observed_2024"})
-    for name, path in {"continued": sources.CONTINUED, "not_continued": sources.NOT_CONTINUED}.items():
+    for name, path in sources.FEEDBACK.items():
         s = pd.read_csv(path / "scenario_endpoint_dynamic_draws.csv.gz")
         s = s[s["year"].eq(END_YEAR) & s["variable"].eq("stigma_ahs") & s["scenario"].eq("halve_ahs")]
         g = s.groupby("unit_id")["baseline"]

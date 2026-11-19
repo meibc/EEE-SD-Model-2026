@@ -169,10 +169,24 @@ class StandardizedDynamicLoader(_BaseStandardizedLoader):
         """State anchors, draw x state x measure."""
         return np.asarray(self._data["sem_anchor_logits"], dtype=float)
 
+    @property
+    def mixture_prep_to_ahs(self) -> float | None:
+        """Fixed PrEP -> AHS coefficient of a mixture fit (config/specifications.py); None otherwise."""
+        if "sem_mixture_prep_to_ahs" not in self._data:
+            return None
+        return float(self._data["sem_mixture_prep_to_ahs"])
+
+    def mixture_prep_ceiling(self, unit_id: str) -> float:
+        """The unit's PrEP ceiling in a mixture fit (P0 = ceiling x logistic(state)); 1 if none."""
+        if "sem_mixture_prep_ceiling" not in self._data:
+            return 1.0
+        ceiling = np.asarray(self._data["sem_mixture_prep_ceiling"], dtype=float)
+        return float(ceiling[self._idx(unit_id)] if ceiling.ndim else ceiling)
+
     def ahs_prep_apr(self, sample_idx: int, unit_id: str) -> float:
-        """The draw's AHS-PrEP prevalence ratio from the evidence target (scripts/2_evidence/01)."""
+        """The draw's AHS-PrEP prevalence ratio (scripts/2_evidence/01)."""
         if "sem_ahs_prep_apr" not in self._data:
-            raise ValueError("Bundle has no AHS-PrEP prevalence ratios (fit without the evidence target)")
+            raise ValueError("Bundle has no AHS-PrEP prevalence ratios")
         return float(self._data["sem_ahs_prep_apr"][self._sample_idx(sample_idx), self._idx(unit_id)])
 
     def load_sample(self, sample_idx: int, unit_id: str) -> DynamicParams:

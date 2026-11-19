@@ -1,7 +1,7 @@
 # Individual-level, access-adjusted association between anticipated healthcare stigma (AHS) and
-# past-year PrEP use, by state. The prevalence ratio sets the PrEP change in every scenario (the
-# translation in pipeline/projection.py) and is the evidence constraint on the dynamic model's
-# total AHS -> PrEP response (pipeline/dynamic_fit.py, models/dynamic/estimation/calibration.py).
+# past-year PrEP use, by state. The prevalence ratio r links AHS to PrEP: in the primary model through the
+# mixture P = P0 (1 - A (1 - r)) (pipeline/dynamic_fit.py, pipeline/projection.py), and in the original
+# model through the projection's PrEP translation.
 #
 # For each state passing the median-55 precision screen (a superset of the primary and strict
 # screens), a survey-weighted Poisson model of PrEP use on AHS, adjusted for confounders only:

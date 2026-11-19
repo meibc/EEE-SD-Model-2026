@@ -4,7 +4,7 @@ The bundle (read by ``artifacts.standardized_runtime``) carries, for the fitted
 states only: the epidemiological posterior and CDC inputs (from the base bundle,
 pipeline/epi_fit.py), the fitted transition matrices and drifts for
 each draw, each unit's state anchors (mean logit per measure) for each draw, each
-draw's AHS-PrEP prevalence ratio from the evidence target, the observed point
+draw's AHS-PrEP prevalence ratio (scripts/2_evidence/01), the observed point
 estimates, and each draw's own observed inputs (both from the model-input file, scripts/3_model/01).
 Dynamic-model (sem_*) fields in the base bundle, if any, are replaced from the fit.
 
@@ -23,11 +23,11 @@ from core.transforms import LOGIT_EPS, inverse_logit, logit
 from data.state_inputs import StateInputs
 
 GEO_AXIS0 = {"geo_ids", "sem_obs", "sem_pred", "sem_fit_J_last", "sem_fit_drift",
-             "cdc_raw", "cdc_raw_native", "cdc_kappa_prep", "cdc_risk0"}
+             "cdc_raw", "cdc_raw_native", "cdc_kappa_prep", "cdc_risk0", "sem_mixture_prep_ceiling"}
 GEO_AXIS1 = {"sem_J_samples", "sem_drift_samples", "sem_anchor_logits", "sem_ahs_prep_apr", "cdc_beta", "cdc_alpha",
              "cdc_kdx", "cdc_U0", "cdc_post_multiplier", "sem_obs_samples"}
 GLOBAL_KEYS = {"schema_version", "model_years", "cdc_native_years", "sem_obs_years",
-               "sem_pred_years", "sem_v_names", "cdc_raw_names"}
+               "sem_pred_years", "sem_v_names", "cdc_raw_names", "sem_mixture_prep_to_ahs"}
 
 
 def build_research_bundle(base_path: Path, fit_path: Path, output_path: Path, input_draws_path: Path,
@@ -68,6 +68,12 @@ def build_research_bundle(base_path: Path, fit_path: Path, output_path: Path, in
     arrays["sem_anchor_logits"] = fit["anchor_logits"][:, fx]                 # draw x state x measure
     if "ahs_prep_apr" in fit:
         arrays["sem_ahs_prep_apr"] = fit["ahs_prep_apr"][:, fx]               # draw x state
+    if "mixture_prep_to_ahs" in fit and np.isfinite(fit["mixture_prep_to_ahs"]):
+        # Mixture fit: the PrEP row of J, drift and anchors refers to P0 (pipeline/dynamic_fit.py);
+        # the cached sem_pred trajectories below are on that scale for PrEP.
+        arrays["sem_mixture_prep_to_ahs"] = np.asarray(fit["mixture_prep_to_ahs"], dtype=float)
+        ceiling = np.asarray(fit.get("mixture_prep_ceiling", 1.0), dtype=float)            # by unit (or one value)
+        arrays["sem_mixture_prep_ceiling"] = ceiling[fx] if ceiling.ndim else np.full(len(states), float(ceiling))
     # Medians over draws ("J_last" is the dashboard's key name).
     arrays["sem_fit_J_last"] = np.nanmedian(arrays["sem_J_samples"], axis=0)
     arrays["sem_fit_drift"] = np.nanmedian(arrays["sem_drift_samples"], axis=0)

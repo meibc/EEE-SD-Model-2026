@@ -1826,7 +1826,8 @@ html&gt;body{padding:0}&lt;/style&gt;
         &lt;/button&gt;
         &lt;div class=&quot;eee-cluster-body&quot;&gt;
           &lt;div class=&quot;eee-node kind-r&quot; id=&quot;ahs-evidence&quot;&gt;AHS–PrEP association&lt;br&gt;&lt;small&gt;01_ahs_prep_evidence.R&lt;/small&gt;&lt;/div&gt;
-          &lt;div class=&quot;eee-node kind-data&quot; id=&quot;evidence-target&quot;&gt;State evidence targets&lt;br&gt;&lt;small&gt;evidence-target CSV&lt;/small&gt;&lt;/div&gt;
+          &lt;div class=&quot;eee-node kind-data&quot; id=&quot;prevalence-ratios&quot;&gt;State prevalence ratios&lt;br&gt;&lt;small&gt;ahs_prep_evidence.csv&lt;/small&gt;&lt;/div&gt;
+          &lt;div class=&quot;eee-node kind-r&quot; id=&quot;prep-diffusion&quot;&gt;PrEP ceilings + growth prior&lt;br&gt;&lt;small&gt;04_prep_diffusion.R&lt;/small&gt;&lt;/div&gt;
           &lt;div class=&quot;eee-node kind-r&quot; id=&quot;wording-items&quot;&gt;Wording diagnostics&lt;br&gt;&lt;small&gt;02_wording_items.R&lt;/small&gt;&lt;/div&gt;
           &lt;div class=&quot;eee-node kind-r&quot; id=&quot;climate&quot;&gt;Climate sensitivity&lt;br&gt;&lt;small&gt;03_climate_associations.R&lt;/small&gt;&lt;/div&gt;
         &lt;/div&gt;
@@ -1871,7 +1872,6 @@ html&gt;body{padding:0}&lt;/style&gt;
               &lt;div class=&quot;eee-node kind-dynamic&quot; id=&quot;hierarchy&quot;&gt;Fit nation → divisions → states&lt;br&gt;&lt;small&gt;models/dynamic/estimation/hierarchy.py&lt;/small&gt;&lt;/div&gt;
               &lt;div class=&quot;eee-node kind-dynamic&quot; id=&quot;dynamic-transforms&quot;&gt;Transform model inputs&lt;br&gt;&lt;small&gt;models/dynamic/estimation/transforms.py&lt;/small&gt;&lt;/div&gt;
               &lt;div class=&quot;eee-node kind-dynamic&quot; id=&quot;jacobian&quot;&gt;Estimate transition matrix (optimizer)&lt;br&gt;&lt;small&gt;models/dynamic/estimation/jacobian.py&lt;/small&gt;&lt;/div&gt;
-              &lt;div class=&quot;eee-node kind-dynamic&quot; id=&quot;calibration&quot;&gt;Translate evidence target&lt;br&gt;&lt;small&gt;models/dynamic/estimation/calibration.py&lt;/small&gt;&lt;/div&gt;
               &lt;div class=&quot;eee-node kind-dynamic&quot; id=&quot;loss&quot;&gt;Evaluate joint loss&lt;br&gt;&lt;small&gt;models/dynamic/estimation/loss.py&lt;/small&gt;&lt;/div&gt;
               &lt;div class=&quot;eee-node kind-dynamic&quot; id=&quot;dynamic-params&quot;&gt;Represent fitted parameters&lt;br&gt;&lt;small&gt;models/dynamic/params.py&lt;/small&gt;&lt;/div&gt;
             &lt;/div&gt;
@@ -1911,7 +1911,7 @@ html&gt;body{padding:0}&lt;/style&gt;
             &lt;div class=&quot;eee-node kind-scenario&quot; id=&quot;intervention-config&quot;&gt;Define scenario codes&lt;br&gt;&lt;small&gt;config/interventions.py&lt;/small&gt;&lt;/div&gt;
             &lt;div class=&quot;eee-node kind-scenario&quot; id=&quot;projection-config&quot;&gt;Configure projection runs&lt;br&gt;&lt;small&gt;config/projection.py&lt;/small&gt;&lt;/div&gt;
             &lt;div class=&quot;eee-node kind-scenario&quot; id=&quot;intervention-build&quot;&gt;Build measure changes&lt;br&gt;&lt;small&gt;models/scenarios/intervention.py&lt;/small&gt;&lt;/div&gt;
-            &lt;div class=&quot;eee-node kind-scenario&quot; id=&quot;prep-translation&quot;&gt;Translate AHS–PrEP effect&lt;br&gt;&lt;small&gt;prep_translation.py&lt;/small&gt;&lt;/div&gt;
+            &lt;div class=&quot;eee-node kind-scenario&quot; id=&quot;prep-translation&quot;&gt;Translate AHS–PrEP effect (v2)&lt;br&gt;&lt;small&gt;prep_translation.py&lt;/small&gt;&lt;/div&gt;
           &lt;/div&gt;
         &lt;/section&gt;
 
@@ -2025,26 +2025,26 @@ html&gt;body{padding:0}&lt;/style&gt;
   const svg = document.getElementById(&#x27;eee-links&#x27;);
   const nodeGroup = {
     &#x27;clean-amis&#x27;:&#x27;data&#x27;,&#x27;national-weights&#x27;:&#x27;data&#x27;,&#x27;cdc-stocks&#x27;:&#x27;data&#x27;,&#x27;state-weights&#x27;:&#x27;data&#x27;,&#x27;state-bootstrap&#x27;:&#x27;data&#x27;,&#x27;state-screen&#x27;:&#x27;data&#x27;,&#x27;prepared-inputs&#x27;:&#x27;data&#x27;,
-    &#x27;ahs-evidence&#x27;:&#x27;evidence&#x27;,&#x27;evidence-target&#x27;:&#x27;evidence&#x27;,&#x27;wording-items&#x27;:&#x27;evidence&#x27;,&#x27;climate&#x27;:&#x27;evidence&#x27;,
+    &#x27;ahs-evidence&#x27;:&#x27;evidence&#x27;,&#x27;prevalence-ratios&#x27;:&#x27;evidence&#x27;,&#x27;prep-diffusion&#x27;:&#x27;evidence&#x27;,&#x27;wording-items&#x27;:&#x27;evidence&#x27;,&#x27;climate&#x27;:&#x27;evidence&#x27;,
     &#x27;group-bootstrap&#x27;:&#x27;demographic&#x27;,&#x27;demographic-descriptives&#x27;:&#x27;demographic&#x27;,
     &#x27;build-inputs&#x27;:&#x27;fit&#x27;,&#x27;state-inputs&#x27;:&#x27;fit&#x27;,&#x27;fit-dynamic&#x27;:&#x27;fit&#x27;,&#x27;dynamic-fits&#x27;:&#x27;fit&#x27;,&#x27;fit-epi&#x27;:&#x27;fit&#x27;,&#x27;epi-posterior&#x27;:&#x27;fit&#x27;,
     &#x27;build-bundle&#x27;:&#x27;bundle&#x27;,&#x27;research-bundle&#x27;:&#x27;bundle&#x27;,&#x27;bundle&#x27;:&#x27;bundle&#x27;,&#x27;runtime&#x27;:&#x27;bundle&#x27;,
     &#x27;run-scenarios&#x27;:&#x27;project&#x27;,&#x27;scenarios&#x27;:&#x27;project&#x27;,&#x27;projection&#x27;:&#x27;project&#x27;,&#x27;dynamic-predictor&#x27;:&#x27;project&#x27;,&#x27;epi-adapter&#x27;:&#x27;project&#x27;,&#x27;epi-predictor&#x27;:&#x27;project&#x27;,&#x27;projection-results&#x27;:&#x27;project&#x27;,&#x27;endpoints&#x27;:&#x27;project&#x27;,
-    &#x27;dynamic-config&#x27;:&#x27;dynamic&#x27;,&#x27;optimization-config&#x27;:&#x27;dynamic&#x27;,&#x27;shrinkage-config&#x27;:&#x27;dynamic&#x27;,&#x27;dynamic-fit-module&#x27;:&#x27;dynamic&#x27;,&#x27;hierarchy&#x27;:&#x27;dynamic&#x27;,&#x27;dynamic-transforms&#x27;:&#x27;dynamic&#x27;,&#x27;jacobian&#x27;:&#x27;dynamic&#x27;,&#x27;loss&#x27;:&#x27;dynamic&#x27;,&#x27;calibration&#x27;:&#x27;dynamic&#x27;,&#x27;dynamic-params&#x27;:&#x27;dynamic&#x27;,
+    &#x27;dynamic-config&#x27;:&#x27;dynamic&#x27;,&#x27;optimization-config&#x27;:&#x27;dynamic&#x27;,&#x27;shrinkage-config&#x27;:&#x27;dynamic&#x27;,&#x27;dynamic-fit-module&#x27;:&#x27;dynamic&#x27;,&#x27;hierarchy&#x27;:&#x27;dynamic&#x27;,&#x27;dynamic-transforms&#x27;:&#x27;dynamic&#x27;,&#x27;jacobian&#x27;:&#x27;dynamic&#x27;,&#x27;loss&#x27;:&#x27;dynamic&#x27;,&#x27;dynamic-params&#x27;:&#x27;dynamic&#x27;,
     &#x27;epi-fit-module&#x27;:&#x27;epi&#x27;,&#x27;alignment&#x27;:&#x27;epi&#x27;,&#x27;epi-params&#x27;:&#x27;epi&#x27;,
     &#x27;intervention-config&#x27;:&#x27;interventions&#x27;,&#x27;projection-config&#x27;:&#x27;interventions&#x27;,&#x27;intervention-build&#x27;:&#x27;interventions&#x27;,&#x27;prep-translation&#x27;:&#x27;interventions&#x27;
   };
   const edges = [
     [&#x27;clean-amis&#x27;,&#x27;state-weights&#x27;,&#x27;survey data&#x27;], [&#x27;cdc-stocks&#x27;,&#x27;state-weights&#x27;,&#x27;stocks&#x27;], [&#x27;state-weights&#x27;,&#x27;state-bootstrap&#x27;,&#x27;weighted estimates&#x27;], [&#x27;state-bootstrap&#x27;,&#x27;state-screen&#x27;,&#x27;precision&#x27;], [&#x27;state-screen&#x27;,&#x27;prepared-inputs&#x27;,&#x27;&#x27;],
-    [&#x27;prepared-inputs&#x27;,&#x27;ahs-evidence&#x27;,&#x27;weighted respondents&#x27;], [&#x27;ahs-evidence&#x27;,&#x27;evidence-target&#x27;,&#x27;aPR + uncertainty&#x27;], [&#x27;prepared-inputs&#x27;,&#x27;wording-items&#x27;,&#x27;&#x27;], [&#x27;national-weights&#x27;,&#x27;wording-items&#x27;,&#x27;national weights&#x27;], [&#x27;prepared-inputs&#x27;,&#x27;climate&#x27;,&#x27;weighted respondents + wording shift&#x27;],
+    [&#x27;prepared-inputs&#x27;,&#x27;ahs-evidence&#x27;,&#x27;weighted respondents&#x27;], [&#x27;ahs-evidence&#x27;,&#x27;prevalence-ratios&#x27;,&#x27;aPR + uncertainty&#x27;], [&#x27;prepared-inputs&#x27;,&#x27;prep-diffusion&#x27;,&#x27;weighted respondents&#x27;], [&#x27;prevalence-ratios&#x27;,&#x27;prep-diffusion&#x27;,&#x27;r&#x27;], [&#x27;prepared-inputs&#x27;,&#x27;wording-items&#x27;,&#x27;&#x27;], [&#x27;national-weights&#x27;,&#x27;wording-items&#x27;,&#x27;national weights&#x27;], [&#x27;prepared-inputs&#x27;,&#x27;climate&#x27;,&#x27;weighted respondents + wording shift&#x27;],
     [&#x27;clean-amis&#x27;,&#x27;national-weights&#x27;,&#x27;cleaned respondents&#x27;], [&#x27;cdc-stocks&#x27;,&#x27;national-weights&#x27;,&#x27;age × PrEP targets&#x27;], [&#x27;national-weights&#x27;,&#x27;group-bootstrap&#x27;,&#x27;national weights&#x27;], [&#x27;group-bootstrap&#x27;,&#x27;demographic-descriptives&#x27;,&#x27;trajectory draws&#x27;],
-    [&#x27;prepared-inputs&#x27;,&#x27;build-inputs&#x27;,&#x27;workbook + bootstrap&#x27;], [&#x27;build-inputs&#x27;,&#x27;state-inputs&#x27;,&#x27;&#x27;], [&#x27;state-inputs&#x27;,&#x27;fit-dynamic&#x27;,&#x27;&#x27;], [&#x27;evidence-target&#x27;,&#x27;fit-dynamic&#x27;,&#x27;constrains total response&#x27;], [&#x27;fit-dynamic&#x27;,&#x27;dynamic-fits&#x27;,&#x27;&#x27;],
+    [&#x27;prepared-inputs&#x27;,&#x27;build-inputs&#x27;,&#x27;workbook + bootstrap&#x27;], [&#x27;build-inputs&#x27;,&#x27;state-inputs&#x27;,&#x27;&#x27;], [&#x27;state-inputs&#x27;,&#x27;fit-dynamic&#x27;,&#x27;&#x27;], [&#x27;prevalence-ratios&#x27;,&#x27;fit-dynamic&#x27;,&#x27;r (mixture)&#x27;], [&#x27;prep-diffusion&#x27;,&#x27;fit-dynamic&#x27;,&#x27;ceilings + growth prior&#x27;], [&#x27;fit-dynamic&#x27;,&#x27;dynamic-fits&#x27;,&#x27;&#x27;],
     [&#x27;state-inputs&#x27;,&#x27;fit-epi&#x27;,&#x27;observed inputs&#x27;], [&#x27;cdc-stocks&#x27;,&#x27;fit-epi&#x27;,&#x27;CDC stocks&#x27;], [&#x27;fit-epi&#x27;,&#x27;epi-posterior&#x27;,&#x27;&#x27;],
     [&#x27;state-inputs&#x27;,&#x27;build-bundle&#x27;,&#x27;&#x27;], [&#x27;dynamic-fits&#x27;,&#x27;build-bundle&#x27;,&#x27;&#x27;], [&#x27;epi-posterior&#x27;,&#x27;build-bundle&#x27;,&#x27;&#x27;], [&#x27;build-bundle&#x27;,&#x27;research-bundle&#x27;,&#x27;calls&#x27;,&#x27;call&#x27;], [&#x27;research-bundle&#x27;,&#x27;bundle&#x27;,&#x27;&#x27;], [&#x27;bundle&#x27;,&#x27;runtime&#x27;,&#x27;loads&#x27;],
     [&#x27;runtime&#x27;,&#x27;run-scenarios&#x27;,&#x27;parameters&#x27;], [&#x27;run-scenarios&#x27;,&#x27;scenarios&#x27;,&#x27;calls&#x27;,&#x27;call&#x27;], [&#x27;scenarios&#x27;,&#x27;projection&#x27;,&#x27;runs&#x27;,&#x27;call&#x27;], [&#x27;projection&#x27;,&#x27;dynamic-predictor&#x27;,&#x27;calls&#x27;,&#x27;call&#x27;], [&#x27;dynamic-predictor&#x27;,&#x27;epi-adapter&#x27;,&#x27;trajectories&#x27;], [&#x27;epi-adapter&#x27;,&#x27;epi-predictor&#x27;,&#x27;epidemic inputs&#x27;], [&#x27;projection&#x27;,&#x27;projection-results&#x27;,&#x27;baseline + scenario outputs&#x27;], [&#x27;scenarios&#x27;,&#x27;projection-results&#x27;,&#x27;requests summaries&#x27;,&#x27;call&#x27;], [&#x27;projection-results&#x27;,&#x27;endpoints&#x27;,&#x27;&#x27;],
-    [&#x27;fit-dynamic&#x27;,&#x27;dynamic-fit-module&#x27;,&#x27;calls&#x27;,&#x27;call&#x27;], [&#x27;dynamic-config&#x27;,&#x27;dynamic-fit-module&#x27;,&#x27;configures&#x27;,&#x27;call&#x27;], [&#x27;optimization-config&#x27;,&#x27;dynamic-fit-module&#x27;,&#x27;&#x27;,&#x27;call&#x27;], [&#x27;shrinkage-config&#x27;,&#x27;hierarchy&#x27;,&#x27;&#x27;,&#x27;call&#x27;], [&#x27;dynamic-fit-module&#x27;,&#x27;hierarchy&#x27;,&#x27;&#x27;], [&#x27;hierarchy&#x27;,&#x27;dynamic-transforms&#x27;,&#x27;&#x27;], [&#x27;hierarchy&#x27;,&#x27;jacobian&#x27;,&#x27;&#x27;], [&#x27;jacobian&#x27;,&#x27;loss&#x27;,&#x27;optimizes&#x27;], [&#x27;calibration&#x27;,&#x27;loss&#x27;,&#x27;evidence target&#x27;,&#x27;call&#x27;], [&#x27;runtime&#x27;,&#x27;dynamic-params&#x27;,&#x27;loads draws&#x27;,&#x27;call&#x27;],
+    [&#x27;fit-dynamic&#x27;,&#x27;dynamic-fit-module&#x27;,&#x27;calls&#x27;,&#x27;call&#x27;], [&#x27;dynamic-config&#x27;,&#x27;dynamic-fit-module&#x27;,&#x27;configures&#x27;,&#x27;call&#x27;], [&#x27;optimization-config&#x27;,&#x27;dynamic-fit-module&#x27;,&#x27;&#x27;,&#x27;call&#x27;], [&#x27;shrinkage-config&#x27;,&#x27;hierarchy&#x27;,&#x27;&#x27;,&#x27;call&#x27;], [&#x27;dynamic-fit-module&#x27;,&#x27;hierarchy&#x27;,&#x27;&#x27;], [&#x27;hierarchy&#x27;,&#x27;dynamic-transforms&#x27;,&#x27;&#x27;], [&#x27;hierarchy&#x27;,&#x27;jacobian&#x27;,&#x27;&#x27;], [&#x27;jacobian&#x27;,&#x27;loss&#x27;,&#x27;optimizes&#x27;], [&#x27;runtime&#x27;,&#x27;dynamic-params&#x27;,&#x27;loads draws&#x27;,&#x27;call&#x27;],
     [&#x27;fit-epi&#x27;,&#x27;epi-fit-module&#x27;,&#x27;calls&#x27;,&#x27;call&#x27;], [&#x27;alignment&#x27;,&#x27;epi-fit-module&#x27;,&#x27;&#x27;,&#x27;call&#x27;], [&#x27;runtime&#x27;,&#x27;epi-params&#x27;,&#x27;loads draws&#x27;,&#x27;call&#x27;],
-    [&#x27;intervention-config&#x27;,&#x27;scenarios&#x27;,&#x27;scenario codes&#x27;,&#x27;call&#x27;], [&#x27;projection-config&#x27;,&#x27;run-scenarios&#x27;,&#x27;run settings&#x27;,&#x27;call&#x27;], [&#x27;intervention-build&#x27;,&#x27;projection&#x27;,&#x27;builds changes&#x27;,&#x27;call&#x27;], [&#x27;prep-translation&#x27;,&#x27;projection&#x27;,&#x27;PrEP translation&#x27;,&#x27;call&#x27;]
+    [&#x27;intervention-config&#x27;,&#x27;scenarios&#x27;,&#x27;scenario codes&#x27;,&#x27;call&#x27;], [&#x27;projection-config&#x27;,&#x27;run-scenarios&#x27;,&#x27;run settings&#x27;,&#x27;call&#x27;], [&#x27;intervention-build&#x27;,&#x27;projection&#x27;,&#x27;builds changes&#x27;,&#x27;call&#x27;], [&#x27;prep-translation&#x27;,&#x27;projection&#x27;,&#x27;PrEP translation (v2)&#x27;,&#x27;call&#x27;]
   ];
 
   const nodeDetails = {
@@ -2077,11 +2077,19 @@ html&gt;body{padding:0}&lt;/style&gt;
         &#x27;The 59 units are USA + 9 Census divisions + 49 states represented in the input workbook.&#x27;
       ]
     },
-    &#x27;evidence-target&#x27;: {
+    &#x27;prevalence-ratios&#x27;: {
       heading:&#x27;Current artifact shape&#x27;,
       items:[
+        &#x27;Access-adjusted AHS–PrEP prevalence ratio r by state (old AHS wording, 2017–2021); each fit draws r per unit and draw from the pooled estimate and its SE.&#x27;,
         &#x27;CSV: 26 rows × 13 columns = 25 state estimates plus one &lt;code&gt;POOLED&lt;/code&gt; estimate.&#x27;,
         &#x27;Columns carry sample counts, direct log-aPR and SE, empirical-Bayes pooled log-aPR and SE, aPR intervals, τ and I².&#x27;
+      ]
+    },
+    &#x27;prep-diffusion&#x27;: {
+      heading:&#x27;What it writes&#x27;,
+      items:[
+        &#x27;&lt;code&gt;prep_ceiling.csv&lt;/code&gt;: each unit’s PrEP ceiling (users plus willing non-users among men without AHS, AMIS 2022–2024), states shrunk toward the 24-state value; divisions and the nation are averages of their states.&#x27;,
+        &#x27;&lt;code&gt;prep_growth.csv&lt;/code&gt;: observed state slopes of logit(P₀ ÷ ceiling), 2017–2024, and their random-effects mean, the prior mean of the PrEP growth rate.&#x27;
       ]
     },
     &#x27;state-inputs&#x27;: {
@@ -2095,9 +2103,9 @@ html&gt;body{padding:0}&lt;/style&gt;
     &#x27;dynamic-fits&#x27;: {
       heading:&#x27;Current primary-fit shape&#x27;,
       items:[
-        &#x27;One NPZ per specification; 34 fitted units = USA + 9 divisions + 24 selected states.&#x27;,
+        &#x27;One NPZ per specification (primary model: &lt;code&gt;primary_fb_neg075&lt;/code&gt;, &lt;code&gt;primary_fb_0&lt;/code&gt;, &lt;code&gt;primary_fb_pos075&lt;/code&gt;); 34 fitted units = USA + 9 divisions + 24 selected states.&#x27;,
         &#x27;&lt;code&gt;J&lt;/code&gt;: draw (500) × unit (34) × target measure (8) × source measure (8).&#x27;,
-        &#x27;&lt;code&gt;drift&lt;/code&gt; and &lt;code&gt;anchor_logits&lt;/code&gt;: 500 × 34 × 8; evidence slopes/aPRs: 500 × 34; success flags: 500 × 34.&#x27;
+        &#x27;&lt;code&gt;drift&lt;/code&gt; and &lt;code&gt;anchor_logits&lt;/code&gt;: 500 × 34 × 8; prevalence ratios: 500 × 34; PrEP ceilings: 34; success flags: 500 × 34.&#x27;
       ]
     },
     &#x27;epi-posterior&#x27;: {
@@ -2165,7 +2173,8 @@ html&gt;body{padding:0}&lt;/style&gt;
       heading:&#x27;What it does&#x27;,
       items:[
         &#x27;Runs one intervention specification across requested states and Monte Carlo samples.&#x27;,
-        &#x27;Pairs a dynamic-model draw with an epidemic-posterior draw, projects the prevention system, builds epidemic inputs and returns raw &lt;code&gt;ProjectionOutput&lt;/code&gt; trajectories.&#x27;
+        &#x27;Pairs a dynamic-model draw with an epidemic-posterior draw, projects the prevention system, builds epidemic inputs and returns raw &lt;code&gt;ProjectionOutput&lt;/code&gt; trajectories.&#x27;,
+        &#x27;Primary model: each year steps forward with the feedback b (from last year’s population PrEP), then the interventions hold the targeted measures on their targets; population PrEP is rebuilt each year as ceiling × P₀ share × (1 − AHS × (1 − r)).&#x27;
       ]
     },
     &#x27;dynamic-predictor&#x27;: {
@@ -2199,7 +2208,8 @@ html&gt;body{padding:0}&lt;/style&gt;
     &#x27;dynamic-fit-module&#x27;: {
       heading:&#x27;Runner responsibility&#x27;,
       items:[
-        &#x27;For each model specification and each of 500 input draws, assembles the evidence target and calls the hierarchical fit.&#x27;,
+        &#x27;For each model specification and each of 500 input draws, draws each unit’s prevalence ratio and calls the hierarchical fit.&#x27;,
+        &#x27;Primary model: PrEP is replaced by P₀ ÷ ceiling (PrEP among men without AHS, over the unit’s ceiling); AHS → PrEP leaves J; PrEP → AHS is the feedback value b acting on population PrEP (a known input to AHS, outside J); PrEP persistence is held at 1 with no inputs (logistic diffusion).&#x27;,
         &#x27;Collects fitted matrices, drifts, anchors and diagnostics, then writes one fit NPZ per specification.&#x27;
       ]
     },
@@ -2207,7 +2217,8 @@ html&gt;body{padding:0}&lt;/style&gt;
       heading:&#x27;What it does&#x27;,
       items:[
         &#x27;Fits one draw in parent-first order: USA → Census divisions → selected states.&#x27;,
-        &#x27;The national &lt;code&gt;J&lt;/code&gt; becomes each division’s shrinkage reference; each fitted division &lt;code&gt;J&lt;/code&gt; becomes its states’ reference.&#x27;
+        &#x27;The national &lt;code&gt;J&lt;/code&gt; becomes each division’s shrinkage reference; each fitted division &lt;code&gt;J&lt;/code&gt; becomes its states’ reference.&#x27;,
+        &#x27;Entries of &lt;code&gt;J&lt;/code&gt; held by the specification are passed to the optimizer as equal bounds.&#x27;
       ]
     },
     &#x27;epi-fit-module&#x27;: {
@@ -2220,8 +2231,8 @@ html&gt;body{padding:0}&lt;/style&gt;
     &#x27;intervention-config&#x27;: {
       heading:&#x27;What it defines&#x27;,
       items:[
-        &#x27;&lt;code&gt;INTERVENTION_CODEBOOK&lt;/code&gt;: five measure-level changes—three halving targets, holding AHS at 2024, and moving AHS to its benchmark.&#x27;,
-        &#x27;&lt;code&gt;SCENARIO_CODEBOOK&lt;/code&gt;: five policy scenarios that combine those changes; four are designated for the paper and one for the supplement.&#x27;,
+        &#x27;&lt;code&gt;INTERVENTION_CODEBOOK&lt;/code&gt;: measure-level changes—halving targets, holding a measure at its 2024 level, rises relative to the baseline path, and moving AHS to its benchmark.&#x27;,
+        &#x27;&lt;code&gt;SCENARIO_CODEBOOK&lt;/code&gt;: the policy scenarios; the primary model runs halve AHS, stigma-resilient services (closing half the AHS–PrEP gap), prevent AHS worsening, worsening climate and PrEP stall.&#x27;,
         &#x27;This file declares codes, targets and labels only; it does not run a projection.&#x27;
       ]
     },
@@ -2229,7 +2240,7 @@ html&gt;body{padding:0}&lt;/style&gt;
       heading:&#x27;Current run settings&#x27;,
       items:[
         &#x27;500 paired dynamic/epidemic samples with seed 123; projections end in 2036.&#x27;,
-        &#x27;Interventions ramp over three two-year steps (six years); cumulative infections begin in 2025.&#x27;,
+        &#x27;Interventions ramp over three two-year steps (six years) by default; the primary model’s runs reach full strength in one step (2028). Cumulative infections begin in 2025.&#x27;,
         &#x27;Report years are every two-year step 2026-2036. Scenario PrEP uses the respondent-level prevalence ratio by default; the contextual upper bound (ratios 0.80 and 0.70) is requested per run.&#x27;
       ]
     },
@@ -2244,7 +2255,8 @@ html&gt;body{padding:0}&lt;/style&gt;
     &#x27;prep-translation&#x27;: {
       heading:&#x27;What it does&#x27;,
       items:[
-        &#x27;&lt;code&gt;prevalence_ratio_translation&lt;/code&gt;: primary AHS→PrEP translation using the draw-specific respondent-level ratio.&#x27;,
+        &#x27;Used by v2 only; the primary model links AHS to PrEP through the mixture instead.&#x27;,
+        &#x27;&lt;code&gt;prevalence_ratio_translation&lt;/code&gt;: v2 AHS→PrEP translation using the draw-specific respondent-level ratio.&#x27;,
         &#x27;&lt;code&gt;contextual_translation&lt;/code&gt;: upper-bound translation using the between-state climate ratio.&#x27;,
         &#x27;&lt;code&gt;retain_prep_fraction&lt;/code&gt;: resilient-delivery comparison that retains part of the PrEP gain while returning every other measure to baseline.&#x27;
       ]

@@ -16,8 +16,8 @@ from pipeline.scenarios import ScenarioRunConfig, run_scenarios
 
 def main() -> None:
     parser = argparse.ArgumentParser(description="Run the baseline and scenarios from the research bundle (dynamic + epidemic models)")
-    parser.add_argument("--standardized-input-path", type=Path, default=REPO_ROOT / "results/03_fits/primary/standardized_research.npz")
-    parser.add_argument("--output-dir", type=Path, default=REPO_ROOT / "results/04_scenarios/paper_static")
+    parser.add_argument("--standardized-input-path", type=Path, default=REPO_ROOT / "results/03_fits/primary/bundles/primary_fb_0.npz")
+    parser.add_argument("--output-dir", type=Path, default=REPO_ROOT / "results/04_scenarios/primary/primary_fb_0")
     parser.add_argument("--n-samples", type=int, default=N_SAMPLES)
     parser.add_argument("--seed", type=int, default=SEED)
     parser.add_argument("--target-end-year", type=int, default=TARGET_END_YEAR)
@@ -32,9 +32,6 @@ def main() -> None:
         "--report-year", dest="report_years", type=int, action="append",
         help="Endpoint year to summarize; repeatable. Default: config/projection.py REPORT_YEARS.",
     )
-    parser.add_argument("--contextual-prep-pr", type=float, default=None,
-                        help="Contextual upper bound in place of the primary translation (scenario PrEP from the "
-                             "respondent-level prevalence ratio): multiply scenario PrEP by PR ** (AHS change / 0.10).")
     parser.add_argument("--zero-projection-edge", action="append", default=[], metavar="SOURCE:TARGET",
                         help="Set a pathway to zero in projections (baseline and scenarios), e.g. prep_used:stigma_ahs; repeatable.")
     parser.add_argument("--show-progress", action="store_true")
@@ -55,7 +52,6 @@ def main() -> None:
             show_progress=args.show_progress,
             save_outputs_pickle=args.save_outputs_pickle,
             save_draw_level_endpoints=args.save_draw_level_endpoints,
-            contextual_prep_pr=args.contextual_prep_pr,
             zero_projection_edges=tuple(tuple(e.split(":")) for e in args.zero_projection_edge),
         )
     )

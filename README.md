@@ -21,7 +21,7 @@ The scenarios project both models to 2036 and compare stigma-reduction scenarios
 | `config/` | Model structure and settings: variables, pathways and priors (CSV), fitting, projection and scenario settings, sensitivity specifications |
 | `core/` | Shared helpers (logit transforms, year alignment) |
 | `data/` | The model-input file (`state_inputs.py`) and per-state input containers |
-| `models/` | Model equations: `dynamic/` (estimation and prediction), `epi/`, `scenarios/` (interventions, PrEP translation) |
+| `models/` | Model equations: `dynamic/` (estimation, transforms, PrEP mixture), `epi/`, `scenarios/` (interventions) |
 | `pipeline/` | Fitting and projection runners, scenario runs and their summaries |
 | `artifacts/` | Writer and reader of the research bundle (fitted parameters joined with the epidemic posterior) |
 | `reporting/` | Paths, summaries and plot style shared by the results scripts |
@@ -64,7 +64,7 @@ All commands run from the repository root.
 | Stage | What it does | Time* |
 |---|---|---|
 | `data` | Clean AMIS; build CDC stocks; state weights and the 500-draw respondent bootstrap (wording-adjusted and unadjusted); precision screen; reported constants; national weights | 3 min |
-| `evidence` | AHS-PrEP association (the evidence target), the 2022 AHS wording change, climate associations | 20 s |
+| `evidence` | AHS-PrEP association (prevalence ratio), the 2022 AHS wording change, climate associations | 20 s |
 | `model` | Model-input files; epidemic fit; 10 dynamic-model fits in parallel; bundles; 13 scenario runs in parallel | 2 h |
 | `results` | Paper figures and tables | 1.5 min |
 | `demographic` | Weighted trajectories by demographic group | 1 min |
@@ -83,7 +83,7 @@ Paper figures and tables are written to `results/paper/`, by where they appear i
 | Folder | Contents |
 |---|---|
 | `main/` | Fig. 1 (`fig1_trajectories`), Fig. 2 (`fig2_projections`), Fig. 3 (`fig3_state_effects`), Table 1 (`table1_effects.csv`) |
-| `supplement/` | Supplement figures (`figS_*`) and tables (`tableS_*.csv`): sensitivity analyses, state effects, projected AHS by state, Fig. 3 breakdown, PrEP-AHS co-evolution, demographic group trajectories, pathway structure, dynamic-model fit, epidemic calibration, model specification |
+| `supplement/` | Supplement figures (`figS_*`) and tables (`tableS_*.csv`): sensitivity analyses, observed state changes (all primary states), state effects, projected AHS by state, Fig. 3 breakdown, PrEP-AHS co-evolution, demographic group trajectories, pathway structure, dynamic-model fit, epidemic calibration, model specification |
 | `source_data/` | The data behind each figure, named after it (e.g. `fig3_state_breakdown.csv`) |
 | `paper_numbers.md` | Every number quoted in the text, in paper order, with its source |
 
@@ -96,6 +96,6 @@ and bundle), `04_scenarios/`, `05_sensitivity/`.
 
 ## Dashboard
 
-The research bundle (`results/03_fits/primary/standardized_research.npz`) is also read by the
+The research bundles (`results/03_fits/primary/bundles/`) have the layout read by the
 EEE-Model-Dashboard-Integration repository, which keeps its own copy of the reader. Its `sem_*` and
 `cdc_*` array names are that dashboard's schema and are kept unchanged.

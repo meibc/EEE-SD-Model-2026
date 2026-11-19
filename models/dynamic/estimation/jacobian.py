@@ -11,12 +11,14 @@ from config.optimization import OptimConfig
 from .loss import joint_loss, rebuild_from_theta
 
 
-def get_bounds(sign_mask, M, bounds_range):
+def get_bounds(sign_mask, M, bounds_range, fixed=None):
     """Bounds on the free entries of J - I (the optimized parameters).
 
     Off-diagonal entries (= J): ``bounds_range``, with sign-constrained pathways bounded at 0 on the
     other side. Diagonal entries: J - I in [-1, bounds_range[1]], i.e. persistence J in [0, 1 + bounds_range[1]]
     ([0, 3] with the default (-2, 2)): non-negative (no oscillation) before the stability penalty acts.
+    ``fixed`` (m x m, NaN = estimated) holds entries of J at a given value (both bounds set to it; on the
+    diagonal the parameter is J - I).
     """
     n_free = int(np.sum(M))
     sign_free = sign_mask[M == 1]
@@ -28,6 +30,11 @@ def get_bounds(sign_mask, M, bounds_range):
     LB[sign_free > 0] = 0
     UB[sign_free < 0] = 0
     LB[diag_free] = np.maximum(LB[diag_free], -1.0)
+    if fixed is not None:
+        values = np.asarray(fixed, dtype=float)[M == 1]
+        pinned = np.isfinite(values)
+        target = np.where(diag_free, values - 1.0, values)
+        LB[pinned] = UB[pinned] = target[pinned]
 
     return LB, UB
 
@@ -78,7 +85,6 @@ class JacobianEstimator:
     def fit(
         self,
         Xbar: np.ndarray,
-        SigmaX: np.ndarray,
         M: np.ndarray,
         sign_mask: np.ndarray,
         u: np.ndarray,
@@ -89,11 +95,11 @@ class JacobianEstimator:
         drift_enabled: np.ndarray | None = None,
         drift_prior_mean: np.ndarray | None = None,
         drift_prior_tau: np.ndarray | None = None,
-        evidence_target: dict | None = None,
+        fixed: np.ndarray | None = None,
+        offset: np.ndarray | None = None,
     ) -> JacobianFit:
         """Fit one unit; return its J (m x m), drift and diagnostics."""
         m = M.shape[0]
-        Sigma_eta = (self.opt.sigma_eta_scale ** 2) * np.diag(np.diag(SigmaX))
         drift_enabled = np.zeros(m, dtype=bool) if drift_enabled is None else np.asarray(drift_enabled, dtype=bool)
         if drift_prior_mean is None:
             drift_prior_mean = np.asarray(u, dtype=float)
@@ -102,8 +108,7 @@ class JacobianEstimator:
 
         def loss_fn(theta_free):
             return joint_loss(
-                theta_free, Xbar, SigmaX, Sigma_eta,
-                self.opt.wR, self.opt.wX, u, M,
+                theta_free, Xbar, self.opt.wX, u, M,
                 J_ref, wJ if wJ is not None else 0.0,
                 w_stab=self.opt.w_stab,
                 eps=self.opt.stability_eps,
@@ -114,10 +119,10 @@ class JacobianEstimator:
                 drift_enabled=drift_enabled,
                 drift_prior_mean=drift_prior_mean,
                 drift_prior_tau=drift_prior_tau,
-                evidence_target=evidence_target,
+                offset=offset,
             )
 
-        LB, UB = get_bounds(sign_mask, M, self.opt.bounds)
+        LB, UB = get_bounds(sign_mask, M, self.opt.bounds, fixed)
         n_drift = int(drift_enabled.sum())
         lower = np.concatenate([LB, np.full(n_drift, -self.opt.drift_bounds)])
         upper = np.concatenate([UB, np.full(n_drift, self.opt.drift_bounds)])

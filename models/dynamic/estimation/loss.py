@@ -2,15 +2,10 @@ from __future__ import annotations
 
 import numpy as np
 
-from models.dynamic.estimation.calibration import sustained_shift_response_grad
-
 
 def joint_loss(
     theta_free: np.ndarray,
     Xbar: np.ndarray,
-    Sigma: np.ndarray,
-    Sigma_eta: np.ndarray,
-    wR: float,
     wX: float,
     u: np.ndarray,
     M: np.ndarray,
@@ -26,17 +21,16 @@ def joint_loss(
     drift_enabled: np.ndarray | None = None,
     drift_prior_mean: np.ndarray | None = None,
     drift_prior_tau: np.ndarray | None = None,
-    evidence_target: dict | None = None,
+    offset: np.ndarray | None = None,
 ) -> tuple[float, np.ndarray] | tuple[float, np.ndarray, dict[str, float]]:
     """Combined loss and its gradient:
 
-        L = wR * LR + wX * LX + wJ * LJ + L_prior_J + L_prior_c + L_stab + L_evidence
+        L = wX * LX + wJ * LJ + L_prior_J + L_prior_c + L_stab
 
-    LR: stationary-covariance misfit; LX: trajectory-with-drift misfit; LJ:
-    shrinkage toward J_ref; L_prior_J / L_prior_c: structural and drift priors;
-    L_stab: spectral-radius penalty; L_evidence: evidence target on the total
-    response of one measure to another (``evidence_target``: source, target, horizon,
-    value, tau; models/dynamic/estimation/calibration.py). The parameter vector is [free J-I
+    LX: trajectory-with-drift misfit; LJ: shrinkage toward J_ref; L_prior_J / L_prior_c: structural
+    (pathway and persistence) and drift priors; L_stab: spectral-radius penalty. ``offset`` (measure x
+    period, optional) is a known input added to each step, x(t+1) = J x(t) + c + offset(t): the held
+    PrEP -> AHS feedback acting on population PrEP (pipeline/dynamic_fit.py). The parameter vector is [free J-I
     entries, enabled drift entries]. Weights and the stability threshold (1 - eps)
     come from config/optimization.py; J_ref is None (and wJ 0) for the nation.
     """
@@ -46,16 +40,14 @@ def joint_loss(
     J = _rebuild_J(j_free, M)
     c = _rebuild_drift(c_free, np.asarray(u, dtype=float), drift_enabled)
 
-    LR, gradR = _covariance_loss(J, Sigma, Sigma_eta)
-    LX, gradX, gradc = _mean_drift_loss(J, Xbar, c)
+    LX, gradX, gradc = _mean_drift_loss(J, Xbar, c, offset)
     LJ, gradJ = _shrinkage_loss(J, J_ref)
     L_prior_J, grad_prior_J = _structural_prior_loss(J, structural_prior_mean, structural_prior_tau, M)
     L_prior_c, grad_prior_c = _drift_prior_loss(c_free, drift_enabled, drift_prior_mean, drift_prior_tau)
     L_stab, grad_stab = _stability_penalty(J, w_stab, eps, stability_fd_eps)
-    L_total, grad_total = _evidence_loss(J, evidence_target)
 
-    L = wR * LR + wX * LX + wJ * LJ + L_prior_J + L_prior_c + L_stab + L_total
-    grad_full = wR * gradR + wX * gradX + wJ * gradJ + grad_prior_J + grad_stab + grad_total
+    L = wX * LX + wJ * LJ + L_prior_J + L_prior_c + L_stab
+    grad_full = wX * gradX + wJ * gradJ + grad_prior_J + grad_stab
     grad_free = grad_full[M == 1]
     if c_free.size:
         enabled = np.asarray(drift_enabled, dtype=bool)
@@ -63,8 +55,8 @@ def joint_loss(
 
     if not return_components:
         return L, grad_free
-    components = {"LX": float(LX), "LR": float(LR), "LJ": float(LJ), "L_prior_J": float(L_prior_J),
-                  "L_prior_c": float(L_prior_c), "L_stab": float(L_stab), "L_evidence": float(L_total),
+    components = {"LX": float(LX), "LJ": float(LJ), "L_prior_J": float(L_prior_J),
+                  "L_prior_c": float(L_prior_c), "L_stab": float(L_stab),
                   "L_total": float(L)}
     return L, grad_free, components
 
@@ -92,18 +84,15 @@ def _rebuild_drift(c_free: np.ndarray, u: np.ndarray, drift_enabled: np.ndarray 
     return c
 
 
-def _covariance_loss(J, Sigma, Sigma_eta) -> tuple[float, np.ndarray]:
-    ER = -Sigma + J @ Sigma @ J.T + np.diag(np.diag(Sigma_eta))
-    return float(np.sum(ER ** 2)), 4.0 * ER @ J @ Sigma
-
-
-def _mean_drift_loss(J, Xbar, c) -> tuple[float, np.ndarray, np.ndarray]:
+def _mean_drift_loss(J, Xbar, c, offset=None) -> tuple[float, np.ndarray, np.ndarray]:
     m, T = Xbar.shape
+    if offset is None:
+        offset = np.zeros_like(Xbar)
     LX = 0.0
     gradX = np.zeros((m, m), dtype=float)
     gradc = np.zeros(m, dtype=float)
     for t in range(1, T):
-        EX = Xbar[:, t] - J @ Xbar[:, t - 1] - c
+        EX = Xbar[:, t] - J @ Xbar[:, t - 1] - c - offset[:, t - 1]
         LX += float(EX @ EX)
         gradX -= 2.0 * np.outer(EX, Xbar[:, t - 1])
         gradc -= 2.0 * EX
@@ -159,15 +148,6 @@ def _drift_prior_loss(
     return loss, grad
 
 
-def _evidence_loss(J: np.ndarray, spec: dict | None) -> tuple[float, np.ndarray]:
-    """((response - value) / tau)^2 for the model's total response, with its analytic gradient."""
-    if spec is None:
-        return 0.0, np.zeros_like(J)
-    r, dr = sustained_shift_response_grad(J, spec["source"], spec["target"], spec["horizon"])
-    z = (r - spec["value"]) / spec["tau"]
-    return float(z ** 2), 2.0 * z / spec["tau"] * dr
-
-
 def _stability_penalty(
     J: np.ndarray,
     w_stab: float,
@@ -180,7 +160,19 @@ def _stability_penalty(
     The gradient uses the analytic left/right eigenvector derivative for the
     dominant eigenvalue, with finite-difference fallback when the dominant mode
     is nearly tied or poorly conditioned.
+
+    A row that is a pure integrator (persistence 1 and no inputs: logistic diffusion, pipeline/dynamic_fit.py)
+    has eigenvalue 1 by construction, and J's other eigenvalues are those of J without that row and column;
+    the penalty then applies to the rest of J.
     """
+    off = J - np.diag(np.diag(J))
+    integrator = (np.abs(np.diag(J) - 1.0) < 1e-12) & (np.abs(off).sum(axis=1) < 1e-12)
+    if integrator.any():
+        keep = np.ix_(~integrator, ~integrator)
+        penalty, grad_rest = _stability_penalty(J[keep], w_stab, eps, fd_eps)
+        grad = np.zeros_like(J)
+        grad[keep] = grad_rest
+        return penalty, grad
     eigvals, right_vecs = np.linalg.eig(J)
     abs_vals = np.abs(eigvals)
     dom_idx = int(np.argmax(abs_vals))

@@ -27,8 +27,8 @@ from pipeline.scenario_results import draw_rows, paired_endpoints, summary_rows
 
 @dataclass(frozen=True)
 class ScenarioRunConfig:
-    standardized_input_path: Path = Path("results/03_fits/primary/standardized_research.npz")
-    output_dir: Path = Path("results/04_scenarios/paper_static")
+    standardized_input_path: Path = Path("results/03_fits/primary/bundles/primary_fb_0.npz")
+    output_dir: Path = Path("results/04_scenarios/primary/primary_fb_0")
     scenario_codes: list[str] = field(default_factory=lambda: list(SCENARIO_CODEBOOK.keys()))
     n_samples: int = N_SAMPLES
     seed: int = SEED
@@ -39,7 +39,6 @@ class ScenarioRunConfig:
     show_progress: bool = False
     save_outputs_pickle: bool = False
     save_draw_level_endpoints: bool = False
-    contextual_prep_pr: float | None = None   # contextual upper bound in place of the primary translation (pipeline/projection.py)
     zero_projection_edges: tuple[tuple[str, str], ...] = ()   # (source, target) pathways off in projections
 
 
@@ -97,9 +96,7 @@ def run_scenarios(config: ScenarioRunConfig) -> dict[str, Path]:
             model_years=model_years,
             intervention_codes=spec.get("intervention_codes", []),
             intervention_duration_steps=config.intervention_duration_steps,
-            prep_translation="contextual" if config.contextual_prep_pr is not None else "prevalence_ratio",
-            contextual_prep_pr=config.contextual_prep_pr,
-            prep_only_fraction=spec.get("prep_only_fraction"),
+            ratio_gap_closed=spec.get("ratio_gap_closed"),
             zero_projection_edges=config.zero_projection_edges,
         )
         for report_year in config.report_years or (config.target_end_year,):
@@ -118,7 +115,7 @@ def run_scenarios(config: ScenarioRunConfig) -> dict[str, Path]:
             "scenario": scenario_code,
             "label": spec.get("label", scenario_code),
             "intervention_codes": ",".join(spec.get("intervention_codes", [])),
-            "prep_only_fraction": spec.get("prep_only_fraction"),
+            "ratio_gap_closed": spec.get("ratio_gap_closed"),
             "n_units": len(scenario_output.results),
             "n_samples": config.n_samples,
         })
@@ -142,8 +139,6 @@ def run_scenarios(config: ScenarioRunConfig) -> dict[str, Path]:
             "seed",
             "report_years",
             "cumulative_start_year",
-            "prep_translation",
-            "contextual_prep_pr",
             "zero_projection_edges",
             "elapsed_seconds",
         ],
@@ -156,8 +151,6 @@ def run_scenarios(config: ScenarioRunConfig) -> dict[str, Path]:
             config.seed,
             ",".join(map(str, config.report_years or (config.target_end_year,))),
             config.cumulative_start_year,
-            "contextual" if config.contextual_prep_pr is not None else "prevalence_ratio",
-            config.contextual_prep_pr,
             ",".join(f"{a}:{b}" for a, b in config.zero_projection_edges),
             time.time() - t0,
         ],

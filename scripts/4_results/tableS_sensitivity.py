@@ -1,13 +1,13 @@
 #!/usr/bin/env python3
 """Results, section 4: sensitivity of the effect of halving anticipated healthcare stigma (AHS).
 
-One row per analysis, pooled over the primary states: infections averted 2025-2036 and the change in
-2036 incidence (median and 95% interval), with the assumption changed, why it was tested and how to
-read it. Analyses: the primary projection; AHS reduced to the 5th-percentile benchmark instead of halved; the fitted PrEP -> AHS feedback not continued; the AHS
-temporal placebo (with and without the feedback); the respondent-level association from all
-AMIS cycles (both AHS wordings); AHS not adjusted for the 2022 item change; lower and higher persistence
-priors; and the contextual upper bound (a between-state climate prevalence ratio of 0.80 or 0.70 in place
-of the respondent-level one, with and without the feedback).
+One row per analysis, pooled over the primary states: infections averted 2025-2036 and the change in 2036
+incidence (median and 95% interval), with the assumption changed, why it was tested and how to read it.
+Analyses: the reference (no PrEP -> AHS feedback) and the two other main feedback values (as in Table 1); the
+supplement feedback values (+0.30, the upper end of the range consistent with the wording-adjusted trends, and
++0.45 with AHS not adjusted for the 2022 item change, fitted on the unadjusted inputs); and, each on the
+reference, the prevalence ratio from all AMIS cycles, lower and higher persistence priors and no geographic
+shrinkage (config/specifications.py).
 
 Output: results/paper/supplement/tableS_sensitivity.csv
 """
@@ -25,47 +25,42 @@ from reporting import sources  # noqa: E402
 from reporting.summaries import pooled_effect  # noqa: E402
 
 SUPPLEMENT = sources.SUPPLEMENT
-SPEC = sources.STATIC_SPECIFICATIONS
+SENS = sources.SENSITIVITY / "scenarios"
 ANALYSES = [
-    ("Primary", "Fitted PrEP→AHS feedback continued in the projections", "Reference", sources.CONTINUED,
-     "Primary estimate."),
-    ("Without PrEP→AHS feedback", "Fitted PrEP→AHS feedback removed from the projections",
-     "Projected AHS growth rests on extrapolating the fitted feedback", sources.NOT_CONTINUED,
-     "Effect without projected AHS increases; the difference from the primary is the part due to them."),
-    ("AHS reduced to the benchmark", "AHS reduced to the 5th-percentile state level instead of halved",
-     "Whether halving is a realistic size: the benchmark is a level some states already reach", sources.CONTINUED,
-     "Nearly identical to halving: for the typical state, halving reaches about the benchmark.", "ahs_to_benchmark"),
-    ("AHS temporal placebo, with feedback", "AHS periods permuted within each state before fitting",
-     "Whether the fitted feedback depends on the timing of AHS", sources.PLACEBO / "feedback_on",
-     "Effect when the time order of AHS carries no information."),
-    ("AHS temporal placebo, without feedback", "As above, feedback removed from the projections",
-     "Separates the placebo's effect on the feedback from its effect on baselines", sources.PLACEBO / "feedback_off",
-     "Placebo baseline without the fitted feedback."),
-    ("Association from all AMIS cycles", "Prevalence ratio from 2017-2024 (both AHS wordings) instead of 2017-2021",
-     "The 2022 item change weakened the AHS-PrEP association", SPEC / "evidence_all_years",
-     "Effect if the association measured under both wordings applies."),
-    ("AHS not adjusted for the 2022 item change", "Measured AHS used throughout; all-cycles association",
-     "Unchanged items suggest the 2022 rise was largely real", sources.UNADJUSTED_WORDING,
+    ("Reference: no PrEP→AHS feedback", "Feedback b = 0", "Reference", sources.FEEDBACK["0"],
+     "Reference estimate."),
+    ("Feedback −0.075 (affirming care)", "PrEP contact lowers AHS (b = −0.075)",
+     "Lower edge of the feedback values consistent with the wording-adjusted trends", sources.FEEDBACK["neg075"],
+     "Effect if PrEP care is affirming; AHS falls without intervention, so halving removes fewer points."),
+    ("Feedback +0.15 (best fit)", "PrEP use raises AHS (b = +0.15)",
+     "Best fit to the wording-adjusted trends", sources.FEEDBACK["pos15"],
+     "Effect if AHS keeps rising with PrEP use; halving removes more points."),
+    ("Feedback +0.30", "b = +0.30", "Upper end of the feedback values consistent with the wording-adjusted trends",
+     sources.FEEDBACK_POS30, "Strong feedback: AHS rises steeply without intervention."),
+    ("AHS not adjusted for the 2022 item change", "Measured AHS used throughout, its best-fitting feedback "
+     "(b = +0.45) and the prevalence ratio from all AMIS cycles",
+     "Unchanged items suggest part of the 2022 rise was real", sources.UNADJUSTED_WORDING,
      "Effect if the 2022 rise in AHS is real rather than a wording artifact."),
-    ("Lower persistence", "Targeted persistence priors 0.10 lower", "Persistence shapes the projected baselines",
-     SPEC / "persistence_low", "Faster return toward each state's usual levels."),
-    ("Higher persistence", "Targeted persistence priors 0.10 higher", "Persistence shapes the projected baselines",
-     SPEC / "persistence_high", "Slower return toward each state's usual levels."),
+    ("Prevalence ratio from all AMIS cycles", "AHS-PrEP prevalence ratio from 2017-2024 (both AHS wordings) "
+     "instead of 2017-2021; no feedback", "The 2022 item change weakened the AHS-PrEP association",
+     SENS / "evidence_all_years", "Effect if the association measured under both wordings applies."),
+    ("Lower persistence", "Persistence priors 0.10 lower; no feedback",
+     "Persistence of AHS, testing, risk and disclosure is set by its prior", SENS / "persistence_low",
+     "Faster return toward each state's usual levels."),
+    ("Higher persistence", "Persistence priors 0.10 higher; no feedback",
+     "Persistence of AHS, testing, risk and disclosure is set by its prior", SENS / "persistence_high",
+     "Slower return toward each state's usual levels."),
+    ("No geographic shrinkage", "States fitted without shrinkage toward their division; no feedback",
+     "Each state has three transitions; shrinkage borrows strength from its division", SENS / "no_hierarchy",
+     "Effect from each state's own data alone."),
 ]
-for pr in (0.80, 0.70):
-    for projection, label in (("continued", "with feedback"), ("not_continued", "without feedback")):
-        ANALYSES.append((f"Contextual upper bound, ratio {pr:.2f}, {label}",
-                         f"Climate prevalence ratio {pr:.2f} per 10 points of AHS applied to everyone's PrEP use",
-                         "Whether AHS acts through the broader stigma climate, beyond the men who report it",
-                         sources.CONTEXTUAL[pr] / projection,
-                         "Hypothetical upper bound: treats a between-state association as causal."))
 
 
 def main() -> None:
     SUPPLEMENT.mkdir(parents=True, exist_ok=True)
     rows = []
-    for name, changed, why, path, reading, *scenario in ANALYSES:
-        e = pooled_effect(path, scenario[0] if scenario else "halve_ahs")
+    for name, changed, why, path, reading in ANALYSES:
+        e = pooled_effect(path, "halve_ahs")
         rows.append({"analysis": name, "assumption_changed": changed, "why_tested": why,
                      "averted": e["averted_median"], "averted_low": e["averted_low"], "averted_high": e["averted_high"],
                      "averted_pct": e["averted_pct_median"], "incidence_pct": e["incidence_pct_median"],

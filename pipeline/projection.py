@@ -1,30 +1,83 @@
 """Monte Carlo projection: fitted dynamic model -> epidemic model, with interventions.
 
-Each sample pairs one dynamic-model draw (transition matrix, drift, observed inputs)
-with one epidemic-model posterior draw. Draws are taken without replacement when
-there are enough of them, and the random stream depends only on the seed: sample k
-uses the same dynamic-model draw (bootstrap replicate) and the same epidemic posterior
-draw in every state, so sums over states within a sample are joint realizations and
-pooled intervals carry uncertainty shared across states. Baseline and scenario runs
-with the same seed use the same pairs, so their contrasts are paired.
+The model (``project``): the fit is the mixture model (pipeline/dynamic_fit.py), whose PrEP row is P0 / ceiling
+(P0: PrEP among men without AHS). Each year after 2024
+
+    X[t]       = J X[t-1] + u                                         (centred logits)
+    X[AHS, t] += b x (logit P[t-1] - mean logit of observed P)         (PrEP -> AHS feedback, as in the fit)
+    interventions then hold the intervened measures on their targets  (the feedback cannot undo them)
+
+with population PrEP P = ceiling x P0-share x (1 - AHS x (1 - r)) (``population_prep``). The baseline is the same
+run without interventions.
+
+Monte Carlo (``ProjectionRunner``): each sample pairs one dynamic-model draw (transition matrix, drift, observed
+inputs) with one epidemic-model posterior draw. Draws are taken without replacement when there are enough of
+them, and the random stream depends only on the seed: sample k uses the same dynamic-model draw (bootstrap
+replicate) and the same epidemic posterior draw in every state, so sums over states within a sample are joint
+realizations and pooled intervals carry uncertainty shared across states. Baseline and scenario runs with the
+same seed use the same pairs, so their contrasts are paired.
 """
 
 from __future__ import annotations
 
 from dataclasses import dataclass
 from typing import Any
+
 import numpy as np
 from tqdm import tqdm
 
-from data.unit import Unit
-from models.epi.input_adapter import epi_inputs_from_dynamic
 from core.years import extend_to_end_year
-from models.scenarios.intervention import build_measure_interventions
-from models.scenarios.prep_translation import contextual_translation, prevalence_ratio_translation, retain_prep_fraction
+from data.unit import Unit
+from models.dynamic.transforms import FeatureTransformer
+from models.epi.input_adapter import epi_inputs_from_dynamic
 from models.epi.params import EpiOutput
 from models.epi.prediction.predictor import EpiPredictor
-from models.dynamic.estimation.transforms import FeatureTransformer
-from models.dynamic.prediction.predictor import Predictor
+from models.scenarios.intervention import build_measure_interventions, intervention_window, ramp
+from models.dynamic.mixture import feedback_input, prep_without_ahs
+
+AHS, PREP, HIVTEST, RISK = "stigma_ahs", "prep_used", "hivtest12", "risk_behavior"
+N_ELIGIBLE = "PrEP Eligible"
+
+
+# =============================================================================
+# The model
+# =============================================================================
+
+@dataclass
+class DrawInputs:
+    """One draw's model inputs for one unit."""
+    J: np.ndarray                 # transition matrix (measure x measure)
+    u: np.ndarray                 # drift
+    x_observed: np.ndarray        # observed periods, centred logits (PrEP row: P0 / ceiling)
+    prep_observed: np.ndarray     # observed population PrEP, by period
+    ceiling: float                # PrEP ceiling
+    ratios: np.ndarray            # AHS-PrEP prevalence ratio r, by year
+    b: float                      # PrEP -> AHS feedback
+    transformer: FeatureTransformer   # probabilities <-> centred logits (the unit's anchor)
+    ahs: int                      # row of AHS
+    prep: int                     # row of PrEP
+
+
+def population_prep(d: DrawInputs, y: np.ndarray, t: int) -> float:
+    """Population PrEP in year t from the model's measures y (probabilities); observed in observed periods."""
+    if t < d.x_observed.shape[1]:
+        return d.prep_observed[t]
+    return d.ceiling * y[d.prep] * (1 - y[d.ahs] * (1 - d.ratios[t]))
+
+
+def project(d: DrawInputs, interventions=(), baseline: np.ndarray | None = None) -> np.ndarray:
+    """Projected measures (measure x year), probabilities on the model's scale (PrEP row: P0 / ceiling).
+    ``baseline`` (the run without interventions) caps the intervention targets."""
+    k, n = d.x_observed.shape[1], len(d.ratios)
+    X = np.zeros((d.J.shape[0], n), dtype=float)
+    X[:, :k] = d.x_observed       # observed periods held; the projection starts from the last one
+    for t in range(k, n):
+        X[:, t] = d.J @ X[:, t - 1] + d.u
+        X[d.ahs, t] += feedback_input(population_prep(d, d.transformer.inverse_transform(X[:, t - 1]), t - 1),
+                                      d.prep_observed, d.b)
+        for iv in interventions:
+            X[:, t] = iv.apply(X[:, t], t, transformer=d.transformer, baseline_p=baseline[:, t])
+    return d.transformer.inverse_transform(X)
 
 
 # =============================================================================
@@ -67,13 +120,21 @@ class ProjectionOutput:
     years: np.ndarray
     v_names: list[str]
 
+
 # =============================================================================
 # Projection runner
 # =============================================================================
 
 class ProjectionRunner:
-    """Monte Carlo projection: each sample pairs a dynamic-model draw with an epidemic-model posterior draw."""
-    
+    """Monte Carlo projection: each sample pairs a dynamic-model draw with an epidemic-model posterior draw.
+
+    intervention_codes       config/interventions.py; ramped in over intervention_duration_steps two-year steps
+    ratio_gap_closed         fraction of the PrEP gap for men with AHS (1 - r) closed, on the same ramp
+                             (stigma-resilient services)
+    zero_projection_edges    diagnostic: (source, target) pathways set to zero, baseline and scenario alike;
+                             ("prep_used", "stigma_ahs") sets the feedback b to 0
+    """
+
     def __init__(
         self,
         dynamic_loader: Any,
@@ -82,209 +143,105 @@ class ProjectionRunner:
         model_years: np.ndarray | None = None,
         intervention_codes: list[str] | None = None,
         intervention_duration_steps: int = 1,
-        v_names: list[str] | None = None,
-        hivtest_var: str = 'hivtest12',
-        prep_var: str = 'prep_used',
-        risk_var: str = 'risk_behavior',
-        n_elig_var: str = 'PrEP Eligible',
-        prep_translation: str = "none",
-        contextual_prep_pr: float | None = None,
-        prep_only_fraction: float | None = None,
+        ratio_gap_closed: float | None = None,
         zero_projection_edges: tuple[tuple[str, str], ...] = (),
     ):
-        if prep_translation not in ("none", "prevalence_ratio", "contextual"):
-            raise ValueError(f"Unknown PrEP translation {prep_translation!r}")
-        if prep_translation == "contextual" and (contextual_prep_pr is None or prep_only_fraction is not None):
-            raise ValueError("The contextual translation needs contextual_prep_pr and excludes prep_only_fraction")
-        # Scenario PrEP from the AHS change (models/scenarios/prep_translation.py): "none" keeps the fitted
-        # dynamic response (the baseline run, where AHS does not change), "prevalence_ratio" is the primary
-        # translation and "contextual" the upper bound.
-        self.prep_translation = prep_translation
-        # Resilient delivery (derived policy comparison): only this fraction of the scenario's change in
-        # PrEP (centered logit) is kept, and every other measure, AHS included, stays at baseline.
-        self.prep_only_fraction = prep_only_fraction
-        # Diagnostic: pathways (source, target) set to zero in the projection, baseline and scenario
-        # alike (e.g. PrEP -> AHS, to see how much projected AHS growth relies on that feedback).
-        self.zero_projection_edges = tuple(zero_projection_edges)
-        # Contextual upper bound (sensitivity): scenario PrEP is the baseline PrEP multiplied by
-        # contextual_prep_pr ** (change in AHS / 0.10), the between-state association of AHS climate
-        # with everyone's PrEP use, assumed causal; the counterpart of the primary translation below
-        # with the climate ratio in place of the individual one.
-        self.contextual_prep_pr = contextual_prep_pr
-        # Primary translation: scenario PrEP is the baseline PrEP moved by the draw's
-        # respondent-level prevalence ratio r held constant at the projected levels,
-        # P_s = P_b (1 - A_s (1 - r)) / (1 - A_b (1 - r)), in place of the fitted PrEP response.
+        if getattr(dynamic_loader, "mixture_prep_to_ahs", None) is None:
+            raise ValueError("Projection needs a mixture fit (mixture_feedback); v2 fits are no longer projected")
         self.dynamic_loader = dynamic_loader
         self.epi_loader = epi_loader
         self.units = units
-        self.hivtest_var = hivtest_var
-        self.prep_var = prep_var
-        self.risk_var = risk_var
-        self.n_elig_var = n_elig_var
         self.intervention_codes = list(intervention_codes or [])
         self.intervention_duration_steps = int(intervention_duration_steps)
+        self.ratio_gap_closed = ratio_gap_closed
+        self.zero_projection_edges = tuple(zero_projection_edges)
 
-        self._v_names = list(v_names if v_names is not None else dynamic_loader.v_names)
-        self.model_years = np.asarray(
-            model_years if model_years is not None else dynamic_loader.ts,
-            dtype=int,
-        )
-        self._dynamic_years = extend_to_end_year(
-            dynamic_loader.ts,
-            target_end_year=int(self.model_years[-1]) if self.model_years.size > 0 else None,
-        )
-        self.S_dynamic = dynamic_loader.n_samples
-        self._unit_order = list(dynamic_loader.geo_names)
+        self.v_names = list(dynamic_loader.v_names)
+        self.idx = {v: self.v_names.index(v) for v in (AHS, PREP, HIVTEST, RISK)}
+        self.model_years = np.asarray(model_years if model_years is not None else dynamic_loader.ts, dtype=int)
+        self.dynamic_years = extend_to_end_year(
+            dynamic_loader.ts, target_end_year=int(self.model_years[-1]) if self.model_years.size > 0 else None)
 
-        self._hivtest_idx = self._v_names.index(hivtest_var)
-        self._prep_idx = self._v_names.index(prep_var)
-        self._risk_idx = self._v_names.index(risk_var)
-        self.S_epi = epi_loader.n_samples
-
-    def _build_dynamic_trajectory(self, unit_id: str, dynamic_idx: int) -> np.ndarray:
-        dynamic_params = self.dynamic_loader.load_sample(dynamic_idx, unit_id)
-        J = np.array(dynamic_params.J, dtype=float)
+    def _draw_inputs(self, unit_id: str, dynamic_idx: int) -> DrawInputs:
+        """Load one draw and put it on the fit's scale."""
+        ahs, prep = self.idx[AHS], self.idx[PREP]
+        params = self.dynamic_loader.load_sample(dynamic_idx, unit_id)
+        J = np.array(params.J, dtype=float)
         for source, target in self.zero_projection_edges:
-            J[self._v_names.index(target), self._v_names.index(source)] = 0.0
-        unit = self.units[unit_id]
+            J[self.v_names.index(target), self.v_names.index(source)] = 0.0
+        if J[ahs, prep] != 0:
+            raise ValueError("Mixture fit with a PrEP -> AHS entry in J: refit (the feedback now acts on population PrEP)")
+        b = 0.0 if (PREP, AHS) in self.zero_projection_edges else self.dynamic_loader.mixture_prep_to_ahs
 
-        # This draw's own observed inputs (the bundle's sem_obs_samples).
-        observed = np.asarray(dynamic_params.observed, dtype=float)
-        predictor = Predictor(reference_probs=dynamic_params.reference_probs, reference_logits=dynamic_params.reference_logits)
-        # Same transform as the fit (FeatureTransformer: probabilities clipped to [0.01, 0.99]).
-        x_observed = FeatureTransformer(reference_logits=predictor.reference_logits).transform(observed)[0]
-        x0 = x_observed[:, 0]
-        fixed_prefix = x_observed   # observed periods held; projection starts from the last one
+        # This draw's own observed inputs (the bundle's sem_obs_samples), PrEP row as in the fit: P0 / ceiling.
+        observed = np.array(params.observed, dtype=float)
+        ratio = self.dynamic_loader.ahs_prep_apr(dynamic_idx, unit_id)
+        ceiling = self.dynamic_loader.mixture_prep_ceiling(unit_id)
+        prep_observed = observed[prep].copy()
+        observed[prep] = np.clip(prep_without_ahs(prep_observed, observed[ahs], ratio) / ceiling, 0.0, 0.999)
+        # Same transform as the fit (probabilities clipped to [0.01, 0.99]), centred at the unit's anchor.
+        transformer = FeatureTransformer(reference_probs=params.reference_probs, reference_logits=params.reference_logits)
+        x_observed = transformer.transform(observed)
 
-        u = np.zeros(J.shape[0], dtype=float) if dynamic_params.drift is None else np.asarray(dynamic_params.drift, dtype=float)
-        n_steps = len(self._dynamic_years)
-        baseline_probs, _ = predictor.predict_trajectory(J, x0, u, n_steps, fixed_prefix=fixed_prefix)
+        ratios = np.full(len(self.dynamic_years), ratio)
+        if self.ratio_gap_closed is not None:
+            start, end = intervention_window(self.units[unit_id], self.dynamic_years, self.intervention_duration_steps)
+            for t in range(len(ratios)):
+                ratios[t] = ratio + ramp(t, start, end) * self.ratio_gap_closed * (1 - ratio)
 
-        state_iv = build_measure_interventions(
-            unit, self._dynamic_years, self._v_names,
-            codes=self.intervention_codes,
-            duration_steps=self.intervention_duration_steps,
-        )
-        for iv in state_iv:
-            # Cuts defined relative to the last observed period use this draw's own value there.
-            iv.anchor_p = baseline_probs[:, iv.start_t - 1]
+        u = np.zeros(J.shape[0]) if params.drift is None else np.asarray(params.drift, dtype=float)
+        return DrawInputs(J=J, u=u, x_observed=x_observed, prep_observed=prep_observed, ceiling=ceiling,
+                          ratios=ratios, b=b, transformer=transformer, ahs=ahs, prep=prep)
 
-        ypred, _ = predictor.predict_trajectory(
-            J, x0, u, n_steps,
-            state_interventions=state_iv,
-            baseline_probs=baseline_probs,
-            fixed_prefix=fixed_prefix,
-        )
-        # Scenario PrEP from the AHS change (models/scenarios/prep_translation.py)
-        ahs, prep = self._v_names.index("stigma_ahs"), self._prep_idx
-        if self.prep_translation == "contextual":
-            ypred[prep] = contextual_translation(baseline_probs[prep], baseline_probs[ahs], ypred[ahs],
-                                                 self.contextual_prep_pr)
-        if self.prep_translation == "prevalence_ratio":
-            ypred[prep] = prevalence_ratio_translation(baseline_probs[prep], baseline_probs[ahs], ypred[ahs],
-                                                       self.dynamic_loader.ahs_prep_apr(dynamic_idx, unit_id))
-        if self.prep_only_fraction is not None:
-            ypred = retain_prep_fraction(baseline_probs, ypred, prep, self.prep_only_fraction)
-        return ypred
+    def _trajectory(self, unit_id: str, dynamic_idx: int) -> np.ndarray:
+        """One draw's projected measures (measure x dynamic-model year, probabilities; PrEP row: population PrEP),
+        the baseline or, with interventions, the scenario."""
+        d = self._draw_inputs(unit_id, dynamic_idx)
+        y = project(d)
+        interventions = build_measure_interventions(self.units[unit_id], self.dynamic_years, self.v_names,
+                                                    codes=self.intervention_codes,
+                                                    duration_steps=self.intervention_duration_steps)
+        if interventions:
+            for iv in interventions:
+                iv.anchor_p = y[:, iv.start_t - 1]     # targets relative to 2024 use this draw's own 2024 value
+            y = project(d, interventions, baseline=y)
+        y[d.prep] = [population_prep(d, y[:, t], t) for t in range(y.shape[1])]
+        return y
 
-    def predict_sample(
-        self,
-        unit_id: str,
-        dynamic_idx: int,
-        epi_idx: int,
-    ) -> ProjectionSample:
+    def predict_sample(self, unit_id: str, dynamic_idx: int, epi_idx: int) -> ProjectionSample:
         """Single MC sample."""
-        dynamic_traj = self._build_dynamic_trajectory(unit_id, dynamic_idx)
+        trajectory = self._trajectory(unit_id, dynamic_idx)
         epi_inputs = epi_inputs_from_dynamic(
-            dynamic_traj=dynamic_traj,
-            unit=self.units[unit_id],
-            hivtest_idx=self._hivtest_idx,
-            prep_idx=self._prep_idx,
-            risk_idx=self._risk_idx,
-            dynamic_years=self._dynamic_years,
-            model_years=self.model_years,
-            n_elig_var=self.n_elig_var,
+            dynamic_traj=trajectory, unit=self.units[unit_id],
+            hivtest_idx=self.idx[HIVTEST], prep_idx=self.idx[PREP], risk_idx=self.idx[RISK],
+            dynamic_years=self.dynamic_years, model_years=self.model_years, n_elig_var=N_ELIGIBLE,
         )
-        epi_params = self.epi_loader.load_sample(epi_idx, unit_id)
-        epi_output = EpiPredictor(epi_params).predict(epi_inputs, unit_id)
-        
-        return ProjectionSample(
-            dynamic_idx=dynamic_idx,
-            epi_idx=epi_idx,
-            dynamic_trajectory=dynamic_traj,
-            epi_output=epi_output,
-        )
-    
-    def run(
-        self,
-        unit_id: str,
-        n_samples: int = 1000,
-        seed: int = 123,
-        show_progress: bool = True,
-    ) -> ProjectionResult:
+        epi_output = EpiPredictor(self.epi_loader.load_sample(epi_idx, unit_id)).predict(epi_inputs, unit_id)
+        return ProjectionSample(dynamic_idx=dynamic_idx, epi_idx=epi_idx, dynamic_trajectory=trajectory,
+                                epi_output=epi_output)
+
+    def run(self, unit_id: str, n_samples: int = 1000, seed: int = 123, show_progress: bool = True) -> ProjectionResult:
         """Run MC for one unit."""
         rng = np.random.default_rng(seed)    # same pairs in every state (joint across states)
-        idx_dynamic = rng.choice(self.S_dynamic, size=n_samples, replace=n_samples > self.S_dynamic)
-        idx_epi = rng.choice(self.S_epi, size=n_samples, replace=n_samples > self.S_epi)
-        
-        samples = []
-        iterator = zip(idx_dynamic, idx_epi)
+        S_dynamic, S_epi = self.dynamic_loader.n_samples, self.epi_loader.n_samples
+        pairs = zip(rng.choice(S_dynamic, size=n_samples, replace=n_samples > S_dynamic),
+                    rng.choice(S_epi, size=n_samples, replace=n_samples > S_epi))
         if show_progress:
-            iterator = tqdm(zip(idx_dynamic, idx_epi), total=n_samples, desc=f"MC {unit_id}")
-        
-        for s_dynamic, s_epi in iterator:
-            sample = self.predict_sample(unit_id, int(s_dynamic), int(s_epi))
-            samples.append(sample)
-        
-        return ProjectionResult(
-            unit_id=unit_id,
-            samples=samples,
-            years=self.model_years,
-        )
-    
-    def run_all(
-        self,
-        unit_ids: list[str] | None = None,
-        n_samples: int = 1000,
-        seed: int = 123,
-        show_progress: bool = True,
-    ) -> ProjectionOutput:
-        """Run MC for multiple units."""
-        if unit_ids is None:
-            unit_ids = list(self._unit_order)
+            pairs = tqdm(pairs, total=n_samples, desc=f"MC {unit_id}")
+        samples = [self.predict_sample(unit_id, int(s_dynamic), int(s_epi)) for s_dynamic, s_epi in pairs]
+        return ProjectionResult(unit_id=unit_id, samples=samples, years=self.model_years)
 
-        # Keep only units available in all required sources.
-        available_epi = set(self.epi_loader.geo_names)
-        available_units = set(self.units.keys())
-        available_dynamic = set(self._unit_order)
-        unit_ids = [
-            uid for uid in unit_ids
-            if uid in available_epi and uid in available_units and uid in available_dynamic
-        ]
-        
-        results = {uid: self.run(uid, n_samples, seed, show_progress) for uid in unit_ids}
-        
-        return ProjectionOutput(
-            results=results,
-            years=self.model_years,
-            v_names=self._v_names,
-        )
+    def run_all(self, unit_ids: list[str] | None = None, n_samples: int = 1000, seed: int = 123,
+                show_progress: bool = True) -> ProjectionOutput:
+        """Run MC for the units available in every source (all of them by default)."""
+        available = set(self.dynamic_loader.geo_names) & set(self.epi_loader.geo_names) & set(self.units)
+        unit_ids = [u for u in (unit_ids or self.dynamic_loader.geo_names) if u in available]
+        results = {u: self.run(u, n_samples, seed, show_progress) for u in unit_ids}
+        return ProjectionOutput(results=results, years=self.model_years, v_names=self.v_names)
 
 
-# =============================================================================
-# Convenience Functions
-# =============================================================================
-
-def run_projection(
-    dynamic_loader: Any,
-    epi_loader: Any,
-    units: dict[str, Unit],
-    unit_ids: list[str] | None = None,
-    n_samples: int = 1000,
-    seed: int = 123,
-    show_progress: bool = True,
-    **kwargs,
-) -> ProjectionOutput:
+def run_projection(dynamic_loader: Any, epi_loader: Any, units: dict[str, Unit], unit_ids: list[str] | None = None,
+                   n_samples: int = 1000, seed: int = 123, show_progress: bool = True, **kwargs) -> ProjectionOutput:
     """Run the projection for the given units."""
     runner = ProjectionRunner(dynamic_loader, epi_loader, units, **kwargs)
     return runner.run_all(unit_ids, n_samples, seed, show_progress=show_progress)

@@ -3,8 +3,9 @@
 
 Reads the outputs of the other results scripts and the demographic stage, so run_pipeline.sh runs it last.
 Sections: (1) observed trajectories by state and demographic group; (2) the AHS-PrEP association, the
-fitted PrEP -> AHS feedback and projected AHS; (3) effects of reducing AHS, pooled, by state and in
-the sensitivity analyses; then Methods counts and supplement diagnostics. Each line names its source file.
+PrEP -> AHS feedback profile and projected AHS; (3) effects of reducing AHS, pooled, by state and in
+the sensitivity analyses; then Methods counts and supplement diagnostics. Results are given for each main
+feedback value (-0.075, 0 the reference, +0.15). Each line names its source file.
 Intervals are 95% unless marked IQR.
 
 Output: results/paper/paper_numbers.md
@@ -29,7 +30,8 @@ PAPER, DATA = sources.PAPER, sources.SOURCE_DATA
 IN = sources.RESULTS / "02_inputs"
 GROUPS = {"black_nh": "Black, non-Hispanic", "hispanic_latino": "Hispanic/Latino", "white_nh": "White, non-Hispanic",
           "age_under_24": "age ≤24", "age_25_34": "age 25–34", "age_35_plus": "age ≥35"}
-PROJECTIONS = {"continued": "with PrEP→AHS feedback", "not_continued": "without PrEP→AHS feedback"}
+FEEDBACK = {"neg075": "feedback −0.075 (affirming care)", "0": "no feedback (reference)", "pos15": "feedback +0.15 (best fit)"}
+VALUES = {"neg075": -0.075, "0": 0.0, "pos15": 0.15}
 lines: list[str] = []
 
 
@@ -56,9 +58,21 @@ def count(x: float) -> str:
 def trajectories() -> None:
     out("## 1. Observed trajectories")
     out("")
+    nat = pd.read_csv(DATA / "fig1_national.csv").set_index("survey_year")
+    out("National (Fig. 1), AMIS 2017 to 2024, national weights, 95% intervals. [source_data/fig1_national.csv]")
+    out("")
+    series = {"stigma_ahs": "Anticipated healthcare stigma, as measured",
+              "stigma_ahs_adjusted": "Anticipated healthcare stigma, wording-adjusted",
+              "ehs": "Experienced healthcare stigma"} | {m: MEASURE_LABELS[m] for m in MEASURE_LABELS if m != "stigma_ahs"}
+    for col, label in series.items():
+        a, b = nat.loc[2017], nat.loc[2024]
+        out(f"- **{label}:** {ci(a[col], a[f'{col}_low'], a[f'{col}_high'], pct)} in 2017, "
+            f"{ci(b[col], b[f'{col}_low'], b[f'{col}_high'], pct)} in 2024 ({pp(b[col] - a[col])}); "
+            f"2022 {pct(nat.loc[2022, col])} (2021 {pct(nat.loc[2021, col])}).")
+    out("")
     sc = pd.read_csv(DATA / "fig1_state_changes.csv")
-    out(f"Primary states: {sc.state.nunique()}. Levels are medians across states; changes 2018 to 2024 in "
-        "percentage points; 'clear' = 95% interval of the change excludes zero. AHS is wording-adjusted. "
+    out(f"By state (supplement heatmap), primary states: {sc.state.nunique()}. Levels are medians across states; changes "
+        "2018 to 2024 in percentage points; 'clear' = 95% interval of the change excludes zero. AHS is wording-adjusted. "
         "[source_data/fig1_state_changes.csv]")
     out("")
     for m, g in sc.groupby("measure", sort=False):
@@ -85,7 +99,7 @@ def trajectories() -> None:
 
 
 def relationship() -> None:
-    out("## 2. The AHS–PrEP association and the fitted PrEP → AHS feedback")
+    out("## 2. The AHS–PrEP association, the PrEP → AHS feedback profile and projected AHS")
     out("")
     a = pd.read_csv(DATA / "ahs_prep_association.csv").iloc[0]
     out(f"- Pooled prevalence ratio of PrEP use, AHS vs none (AMIS 2017–2021): {ci(a.pooled_apr, a.pooled_low, a.pooled_high, lambda v: f'{v:.2f}')}; "
@@ -99,28 +113,25 @@ def relationship() -> None:
     out(f"- 2022 item change, AMIS 2022 vs 2021 (log-odds): AHS {w.loc['ahs', 'estimate']:.3f} (SE {w.loc['ahs', 'se']:.3f}); "
         f"unchanged items: experienced healthcare stigma {w.loc['ehs', 'estimate']:.2f}, general social {w.loc['gss', 'estimate']:.2f}, "
         f"family {w.loc['family', 'estimate']:.2f}. [results/02_inputs/wording/shift_2022.csv]")
-    po = pd.read_csv(DATA / "prep_to_ahs_overall.csv").set_index("fit")
-    st = pd.read_csv(DATA / "prep_to_ahs_by_state.csv").query("fit == 'primary'")
-    strong = st[st.share_positive >= 0.9]
-    for fit, label in (("primary", "primary fit"), ("placebo_ahs", "AHS temporal placebo")):
-        r = po.loc[fit]
-        out(f"- Fitted PrEP → AHS ({label}, centred-logit units per two-year step): median {r['median']:.2f} "
-            f"(IQR {r.p25:.2f} to {r.p75:.2f}), {100 * r.share_positive:.0f}% of draws positive.")
-    out(f"- States with ≥90% of draws positive: {', '.join(f'{r.state} ({100 * r.share_positive:.0f}%)' for r in strong.itertuples())}. "
-        "[source_data/prep_to_ahs_*.csv]")
-    t = pd.read_csv(DATA / "fig2_ahs_trajectories.csv").set_index(["projection", "arm", "year"])
-    for p, label in PROJECTIONS.items():
-        b0, b1, h = t.loc[(p, "no_intervention", 2026)], t.loc[(p, "no_intervention", 2036)], t.loc[(p, "ahs_halved", 2036)]
-        out(f"- Across-state median AHS, {label}: {pct(b0['median'])} in 2026 to {ci(b1['median'], b1.low, b1.high, pct)} in 2036 "
-            f"without intervention; {pct(h['median'])} with AHS halved. [source_data/fig2_ahs_trajectories.csv]")
-    pa = pd.read_csv(DATA / "figS_projected_ahs_levels.csv")
-    top = pa[pa.continued_share_above_30 >= 0.3].sort_values("continued_2036", ascending=False)
-    out(f"- Projected 2036 AHS without intervention, median state: {pct(pa.continued_2036.median())} with feedback, "
-        f"{pct(pa.not_continued_2036.median())} without (observed 2024: {pct(pa.observed_2024.median())}).")
-    out("- States with ≥30% of draws above 30% AHS in 2036 (with feedback): " + ", ".join(
-        f"{r.state} {pct(r.observed_2024)} → {pct(r.continued_2036)} ({100 * r.continued_share_above_30:.0f}% of draws; "
-        f"without feedback {pct(r.not_continued_2036)}, {100 * r.not_continued_share_above_30:.0f}%)" for r in top.itertuples())
-        + ". [source_data/figS_projected_ahs_levels.csv]")
+    bb = pd.read_csv(sources.FEEDBACK_PROFILE / "best_b.csv").set_index("inputs")
+    for inputs, label in (("adjusted", "wording-adjusted AHS"), ("unadjusted", "AHS not adjusted for the 2022 item change")):
+        r = bb.loc[inputs]
+        out(f"- PrEP → AHS feedback best fitting the observed trends ({label}; {r.draws:.0f} draws): "
+            f"{ci(r.best_b_median, r.best_b_low, r.best_b_high, lambda v: f'{v:+.2f}')}; "
+            f"{100 * r.share_b_le_0:.0f}% of draws at or below 0. [results/05_sensitivity/feedback_profile/best_b.csv]")
+    t = pd.read_csv(DATA / "fig2_ahs_trajectories.csv", dtype={"feedback": str}).set_index(["feedback", "arm", "year"])
+    for f, label in FEEDBACK.items():
+        b0, b1, h = t.loc[(f, "no_intervention", 2026)], t.loc[(f, "no_intervention", 2036)], t.loc[(f, "ahs_halved", 2036)]
+        out(f"- AHS, primary states combined (MSM-weighted; Fig. 2A), {label}: {pct(b0['median'])} in 2026 to "
+            f"{ci(b1['median'], b1.low, b1.high, pct)} in 2036 without intervention; {pct(h['median'])} with AHS halved "
+            f"({b1['median'] - h['median']:.1f} points removed). [source_data/fig2_ahs_trajectories.csv]")
+    pa = pd.read_csv(DATA / "projected_ahs_by_state.csv")
+    out(f"- Projected 2036 AHS without intervention, median state (observed 2024: {pct(pa.observed_2024.median())}): "
+        + "; ".join(f"{label} {pct(pa[f'{f}_2036'].median())}" for f, label in FEEDBACK.items()) + ".")
+    top = pa[pa.pos15_share_above_30 >= 0.3].sort_values("pos15_2036", ascending=False)
+    out("- States with ≥30% of draws above 30% AHS in 2036 (feedback +0.15): " + (", ".join(
+        f"{r['state']} {pct(r['observed_2024'])} → {pct(r['pos15_2036'])} ({100 * r['pos15_share_above_30']:.0f}% of draws; "
+        f"no feedback {pct(r['0_2036'])})" for _, r in top.iterrows()) or "none") + ". [source_data/projected_ahs_by_state.csv]")
     out("")
 
 
@@ -128,11 +139,13 @@ def effects() -> None:
     out("## 3. Effects of reducing AHS")
     out("")
     t1 = pd.read_csv(sources.MAIN / "table1_effects.csv")
+    ref = t1[t1.feedback.eq(0.0)]
     out(f"Pooled over the primary states; infections averted 2025–2036. Baseline infections 2025–2036: "
-        f"{count(t1.baseline_cumulative_median.iloc[0])} (with feedback). [main/table1_effects.csv]")
+        f"{count(ref.baseline_cumulative_median.iloc[0])} (no feedback). [main/table1_effects.csv]")
     out("")
+    labels = {VALUES[f]: label for f, label in FEEDBACK.items()}
     for r in t1.itertuples():
-        out(f"- **{r.scenario}, {PROJECTIONS[r.projection]}:** {ci(r.averted_median, r.averted_low, r.averted_high, count)} "
+        out(f"- **{r.scenario}, {labels[r.feedback]}:** {ci(r.averted_median, r.averted_low, r.averted_high, count)} "
             f"averted, {pct(r.averted_pct_median)} of baseline ({pct(r.averted_pct_low)} to {pct(r.averted_pct_high)}); "
             f"2036 incidence {ci(r.incidence_pct_median, r.incidence_pct_low, r.incidence_pct_high, lambda v: pct(v, True))}.")
     out("")
@@ -140,8 +153,8 @@ def effects() -> None:
     out("By state, halving AHS (medians; 2036 incidence change, infections averted, per 100,000 MSM per year). "
         "[supplement/tableS_state_effects.csv]")
     out("")
-    for p, label in PROJECTIONS.items():
-        g = ts[ts.projection == p]
+    for p, label in FEEDBACK.items():
+        g = ts[ts.feedback == VALUES[p]]
         inc = g.sort_values("incidence_change_2036_pct_median")
         def top(col, fmt):
             return ", ".join(f"{r.state} {fmt(r[col])}" for _, r in g.nlargest(3, col).iterrows())
@@ -151,8 +164,9 @@ def effects() -> None:
             f"Most averted: {top('infections_averted_median', count)}. "
             f"Per 100,000 MSM per year: {top('averted_per_100k_msm_year_median', lambda x: f'{x:.1f}')}.")
     v = pd.read_csv(DATA / "fig3_variance_shares.csv").set_index("factor")
+    v.columns = v.columns.astype(str)
     names = {"burden": "baseline infection rate", "gap": "AHS points removed", "prep_per_point": "PrEP gain per AHS point"}
-    for p, label in PROJECTIONS.items():
+    for p, label in FEEDBACK.items():
         out(f"- Share of between-state variation in infections averted per MSM ({label}): "
             + ", ".join(f"{names[f]} {100 * v.loc[f, p]:.0f}%" for f in names) + ". [source_data/fig3_variance_shares.csv]")
     out("")

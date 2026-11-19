@@ -3,3 +3,7 @@ prep_used,0.85,0.2,stability_regularization,PrEP use is persistent but externall
 seehcp,0.95,0.2,stability_regularization,Healthcare engagement should be persistent absent evidence of decline; weak diagonal prior prevents unexplained reversion while retaining no-drift specification.
 stigma_gss,0.85,0.2,stability_regularization,General social stigma is upstream and persistent; weak diagonal prior discourages indefinite self-amplification in long-horizon projections.
 stigma_family,0.85,0.2,stability_regularization,Family stigma is upstream and persistent; weak diagonal prior discourages indefinite self-amplification in long-horizon projections.
+stigma_ahs,0.5,0.3,structural_assumption,"Anticipated healthcare stigma responds to recent healthcare experiences (6-12 month items) but the state's healthcare environment carries over; half-life about 2 years per 2-year step. Replaces the implicit persistence from the covariance term (2026-11-18)."
+hivtest12,0.5,0.3,structural_assumption,"Past-year testing is a behaviour that can change quickly; half-life about 2 years (2026-11-18)."
+risk_behavior,0.5,0.3,structural_assumption,"Past-year risk behaviour can change quickly; half-life about 2 years (2026-11-18)."
+out_gid,0.85,0.2,structural_assumption,"Outness is slow-moving, like general and family stigma; half-life about 8.5 years (2026-11-18)."

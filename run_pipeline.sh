@@ -10,7 +10,7 @@
 # Stages (scripts/<stage>/, numbered in run order):
 #   data         R: AMIS file, CDC stocks, state weights and bootstrap (wording-adjusted and unadjusted),
 #                precision screen, reported constants, national weights   needs inputs/restricted/ (AMIS)
-#   evidence     R: AHS-PrEP evidence, 2022 wording items, climate associations
+#   evidence     R: AHS-PrEP evidence, 2022 wording items, climate associations, PrEP diffusion inputs (ceilings, growth prior)
 #   model        Python: model-input files, dynamic-model fits (in parallel), bundles, scenario runs (in parallel)
 #   results      Python: paper figures and tables, and every number quoted in the text (results/paper/)
 #   demographic  R + Python: demographic-group trajectories (results/08_demographic/; figure in results/paper/supplement/)
@@ -33,9 +33,11 @@ LOG=results/logs/run_$(date +%Y%m%d_%H%M%S)
 mkdir -p "$LOG"
 
 IN=results/02_inputs
-SPEC=results/05_sensitivity/model_specification
-UNADJ=results/05_sensitivity/ahs_wording_unadjusted
-SENS=results/05_sensitivity
+PRIMARY=results/03_fits/primary
+PRIMARY_SPECS="primary_fb_neg075 primary_fb_0 primary_fb_pos15 primary_fb_pos30"   # primary model, one fit per PrEP -> AHS feedback value (main set -0.075, 0, +0.15; supplement +0.30)
+SENS=results/05_sensitivity/specifications
+SENS_SPECS="evidence_all_years persistence_low persistence_high no_hierarchy"         # primary_fb_0 with one change
+UNADJ_SPEC=unadjusted_fb_pos45                                                        # supplement: no AHS wording adjustment
 UNADJ_INPUTS=$IN/state_inputs_ahs_unadjusted.npz
 
 has() { [[ " $STAGES " == *" $1 "* ]]; }
@@ -74,6 +76,7 @@ if has evidence; then
   Rscript scripts/2_evidence/01_ahs_prep_evidence.R > "$LOG/evidence_01_ahs_prep.log" 2>&1
   Rscript scripts/2_evidence/02_wording_items.R > "$LOG/evidence_02_wording.log" 2>&1
   Rscript scripts/2_evidence/03_climate_associations.R > "$LOG/evidence_03_climate.log" 2>&1
+  Rscript scripts/2_evidence/04_prep_diffusion.R > "$LOG/evidence_04_prep_diffusion.log" 2>&1
 fi
 
 if has model; then
@@ -98,47 +101,41 @@ if has model; then
   step "model: dynamic-model fits, all specifications in parallel (about 2 hours)"
   FIT="$PY scripts/3_model/03_fit_dynamic_model.py --force ${FIT_DRAWS:+--n-draws $FIT_DRAWS}"
   {
-    echo "fit_primary|$FIT --specifications primary"
-    for s in evidence_all_years persistence_low persistence_high placebo_ahs \
-             trajectory_only covariance_balanced no_hierarchy zero_prep_drift; do
-      echo "fit_$s|$FIT --specifications $s --output-dir $SPEC"
-    done
-    echo "fit_unadjusted|$FIT --specifications primary --output-dir $UNADJ --input-draws $UNADJ_INPUTS --evidence-path $IN/ahs_prep_evidence_all_years.csv"
+    for s in $PRIMARY_SPECS; do echo "fit_$s|$FIT --specifications $s --output-dir $PRIMARY"; done
+    for s in $SENS_SPECS; do echo "fit_$s|$FIT --specifications $s --output-dir $SENS"; done
+    echo "fit_$UNADJ_SPEC|$FIT --specifications $UNADJ_SPEC --output-dir $SENS --input-draws $UNADJ_INPUTS"
   } | run_parallel
-  $PY - <<'EOF'
+  $PY - <<'EOF2'
 import glob, numpy as np
 bad = {f: int((~np.load(f)["success_stack"]).sum()) for f in sorted(glob.glob("results/0[35]_*/**/fits/*.npz", recursive=True))}
 print("optimizer failures:", {k: v for k, v in bad.items() if v} or "none")
-EOF
+EOF2
+
+  step "model: PrEP -> AHS feedback profile (chose the feedback values; config/specifications.py)"
+  $PY scripts/3_model/06_profile_feedback.py > "$LOG/model_06_profile.log" 2>&1
 
   step "model: bundles"
   BUNDLE="$PY scripts/3_model/04_build_bundle.py"
-  $BUNDLE > "$LOG/model_04_bundle.log" 2>&1
-  mkdir -p $SPEC/bundles
-  for s in evidence_all_years persistence_low persistence_high placebo_ahs; do
-    $BUNDLE --fit $SPEC/fits/$s.npz --output $SPEC/bundles/$s.npz >> "$LOG/model_04_bundle.log" 2>&1
+  mkdir -p $PRIMARY/bundles $SENS/bundles
+  for s in $PRIMARY_SPECS; do
+    $BUNDLE --fit $PRIMARY/fits/$s.npz --output $PRIMARY/bundles/$s.npz >> "$LOG/model_04_bundle.log" 2>&1
   done
-  $BUNDLE --fit $UNADJ/fits/primary.npz --input-draws $UNADJ_INPUTS --output $UNADJ/standardized_research.npz \
+  for s in $SENS_SPECS; do
+    $BUNDLE --fit $SENS/fits/$s.npz --output $SENS/bundles/$s.npz >> "$LOG/model_04_bundle.log" 2>&1
+  done
+  $BUNDLE --fit $SENS/fits/$UNADJ_SPEC.npz --input-draws $UNADJ_INPUTS --output $SENS/bundles/$UNADJ_SPEC.npz \
     >> "$LOG/model_04_bundle.log" 2>&1
 
   step "model: scenario runs in parallel"
-  # Report years, samples, seed and the primary PrEP translation come from config/projection.py and the script's defaults.
+  # Report years, samples and seed come from config/projection.py and the script's defaults.
   RUN="$PY scripts/3_model/05_run_scenarios.py --save-draw-level-endpoints ${SCENARIO_SAMPLES:+--n-samples $SCENARIO_SAMPLES}"
-  ALL="--scenario halve_ahs --scenario ahs_to_benchmark --scenario resilient_prep_delivery --scenario halve_upstream_stigma --scenario ahs_no_worsening"
-  OFF="--zero-projection-edge prep_used:stigma_ahs"
+  SCEN="--scenario halve_ahs --scenario resilient_services --scenario prep_stall --scenario ahs_no_worsening --scenario worsening_climate --intervention-duration-steps 1"
   {
-    echo "scen_continued|$RUN $ALL --output-dir results/04_scenarios/paper_static"
-    echo "scen_not_continued|$RUN $ALL $OFF --output-dir $SENS/static_no_prep_ahs_feedback"
-    echo "scen_placebo_continued|$RUN --scenario halve_ahs --standardized-input-path $SPEC/bundles/placebo_ahs.npz --output-dir $SENS/static_placebo_ahs/feedback_on"
-    echo "scen_placebo_not_continued|$RUN --scenario halve_ahs $OFF --standardized-input-path $SPEC/bundles/placebo_ahs.npz --output-dir $SENS/static_placebo_ahs/feedback_off"
-    echo "scen_unadjusted|$RUN $ALL --standardized-input-path $UNADJ/standardized_research.npz --output-dir $UNADJ/scenarios_static"
-    # placebo_ahs runs above (static_placebo_ahs), with and without the feedback.
-    for s in evidence_all_years persistence_low persistence_high; do
-      echo "scen_spec_$s|$RUN --scenario halve_ahs --standardized-input-path $SPEC/bundles/$s.npz --output-dir $SENS/static_specifications/$s"
+    for s in $PRIMARY_SPECS; do
+      echo "scen_$s|$RUN $SCEN --standardized-input-path $PRIMARY/bundles/$s.npz --output-dir results/04_scenarios/primary/$s"
     done
-    for pr in 0.80 0.70; do
-      echo "scen_contextual_${pr}_continued|$RUN --contextual-prep-pr $pr --scenario halve_ahs --output-dir $SENS/contextual_static_pr${pr/./}/continued"
-      echo "scen_contextual_${pr}_not_continued|$RUN --contextual-prep-pr $pr --scenario halve_ahs $OFF --output-dir $SENS/contextual_static_pr${pr/./}/not_continued"
+    for s in $SENS_SPECS $UNADJ_SPEC; do
+      echo "scen_$s|$RUN $SCEN --standardized-input-path $SENS/bundles/$s.npz --output-dir $SENS/scenarios/$s"
     done
   } | run_parallel
 fi

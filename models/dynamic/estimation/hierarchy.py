@@ -8,7 +8,7 @@ import numpy as np
 from config.optimization import OptimConfig
 from config.shrinkage import ShrinkageConfig
 from .jacobian import JacobianEstimator
-from .transforms import FeatureTransformer
+from models.dynamic.transforms import FeatureTransformer
 
 
 def shrinkage_reference(unit, config: ShrinkageConfig, national_J, division_J: dict):
@@ -39,6 +39,7 @@ class FitSettings:
     drift_enabled: np.ndarray
     drift_mean: np.ndarray
     drift_tau: np.ndarray
+    fixed: np.ndarray | None = None    # J entries held at a given value (NaN = estimated); see jacobian.get_bounds
 
 
 @dataclass(frozen=True)
@@ -51,29 +52,28 @@ class UnitFit:
     hierarchy_weight: float | None
 
 
-def fit_hierarchy(units, unit_Y: list[np.ndarray], slopes: np.ndarray, settings: FitSettings,
-                  SigmaY: np.ndarray, M: np.ndarray, source: int, target: int) -> list[UnitFit]:
-    """Fit every unit of one draw in order, each centred at its own mean logit (state anchor), shrunk
-    toward its parent's fitted J and held to its evidence target: the total response of ``target`` to
-    ``source`` should match the unit's slope (models/dynamic/estimation/calibration.py).
+def fit_hierarchy(units, unit_Y: list[np.ndarray], settings: FitSettings, M: np.ndarray,
+                  unit_offsets: list[np.ndarray] | None = None) -> list[UnitFit]:
+    """Fit every unit of one draw in order, each centred at its own mean logit (state anchor) and shrunk
+    toward its parent's fitted J.
 
     ``units`` must list each parent before its children (nation, then each division and its states);
-    ``unit_Y`` holds each unit's observed proportions (measure x period) and ``slopes`` its evidence target.
+    ``unit_Y`` holds each unit's observed proportions (measure x period); ``unit_offsets`` (optional) each
+    unit's known input per step (measure x period; models/dynamic/estimation/loss.py).
     """
     opt = settings.opt
     fits, us_J, division_J = [], None, {}
-    for unit, Y, slope in zip(units, unit_Y, slopes):
+    offsets = unit_offsets if unit_offsets is not None else [None] * len(units)
+    for unit, Y, offset in zip(units, unit_Y, offsets):
         anchor = FeatureTransformer.state_anchor(Y)
-        Xbar, SigmaX = FeatureTransformer(reference_logits=anchor).transform(Y, SigmaY)
+        Xbar = FeatureTransformer(reference_logits=anchor).transform(Y)
         J_ref, wJ = shrinkage_reference(unit, settings.shrink, us_J, division_J)
         result = JacobianEstimator(opt).fit(
-            Xbar=Xbar, SigmaX=SigmaX, M=M, sign_mask=settings.sign, u=np.zeros(Y.shape[0]),
+            Xbar=Xbar, M=M, sign_mask=settings.sign, u=np.zeros(Y.shape[0]),
             J_ref=J_ref, wJ=wJ,
             structural_prior_mean=settings.prior_mean, structural_prior_tau=settings.prior_tau,
             drift_enabled=settings.drift_enabled, drift_prior_mean=settings.drift_mean,
-            drift_prior_tau=settings.drift_tau,
-            evidence_target={"source": source, "target": target, "horizon": opt.evidence_horizon,
-                          "value": float(slope), "tau": opt.evidence_tau},
+            drift_prior_tau=settings.drift_tau, fixed=settings.fixed, offset=offset,
         )
         fits.append(UnitFit(result.J, anchor, result.drift, result.diagnostics, wJ))
         if unit.kind == "nation":

@@ -21,8 +21,3 @@ def inverse_logit(x):
     """Return the logistic inverse of x."""
     return expit(x)
 
-
-def logit_jacobian(p, eps):
-    """Return the diagonal Jacobian of logit at p, after clipping."""
-    p = np.clip(np.asarray(p, dtype=float), eps, 1 - eps)
-    return np.diag(1 / p / (1 - p))

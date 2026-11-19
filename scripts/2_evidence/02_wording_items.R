@@ -11,7 +11,7 @@
 #   items_by_year.csv  national % by survey year (national weights, scripts/1_data/07) with survey-weighted 95%
 #                      intervals: AHS as measured, AHS adjusted as in the model (the scripts/1_data/03 shift for
 #                      2022 onward; its interval is the measured one moved by the same shift), and
-#                      experienced healthcare stigma (Fig. 1B)
+#                      experienced healthcare stigma, and the other seven model measures (Fig. 1)
 #   shift_2022.csv     2022 vs 2021 log-odds shift for AHS and the three unchanged measures, adjusted for
 #                      state and age with state-period weights, estimated as in scripts/1_data/03 (the AHS row
 #                      reproduces the shift the model removes). Unchanged measures rising by a similar
@@ -36,6 +36,7 @@ cycles <- c(amis_17 = "sitq2017_analysis_noid.dta", amis_18 = "sitq2018_analysis
             amis_24 = "sitq2024_analysis_final_NOID.dta")
 wording_shift <- read_csv("results/01_weights/ahs_wording_shift.csv", show_col_types = FALSE)$shift_log_odds
 measures <- c(ahs = "stigma_ahs", ehs = "ehs", gss = "stigma_gss", family = "stigma_family")
+other_measures <- c("stigma_gss", "stigma_family", "out_gid", "seehcp", "risk_behavior", "prep_used", "hivtest12")
 
 # Reconstruct a six-month composite from its component items. AMIS codes 1 as "yes", 0 as "no", and 2
 # as an experience that did not occur within the last six months. Thus:
@@ -67,7 +68,7 @@ ehs <- imap_dfr(cycles, function(file, survey) {
 # whose raw records could be linked to the analytic file; measure-specific missing values are then removed
 # separately below so AHS and EHS each use all linked respondents observed for that measure.
 national <- readRDS("results/01_weights/national_raked.rds")$variables %>%
-  select(rowID, survey_year, stigma_ahs, national_weight) %>%
+  select(rowID, survey_year, stigma_ahs, all_of(other_measures), national_weight) %>%
   inner_join(ehs, by = "rowID")
 
 # Estimate one measure's national weighted prevalence and 95% confidence interval separately by survey
@@ -107,6 +108,11 @@ ahs_by_year <- annual_prevalence(national, "stigma_ahs") %>%
 ehs_by_year <- annual_prevalence(national, "ehs") %>%
   rename(ehs = value, ehs_low = low, ehs_high = high)
 
+# The other seven model measures (general social and family stigma items unchanged in 2022), for Fig. 1.
+other_by_year <- map(other_measures, function(v) {
+  annual_prevalence(national, v) %>% rename(!!v := value, !!paste0(v, "_low") := low, !!paste0(v, "_high") := high)
+}) %>% reduce(inner_join, by = "survey_year")
+
 # For 2022 onward, move a measured AHS probability back by the wording-shift estimate used in the main
 # model: adjusted probability = expit[logit(measured probability) - wording_shift]. The wording shift is
 # treated as fixed here, consistent with the model-input adjustment in scripts/1_data/03_state_weights.R.
@@ -120,6 +126,7 @@ adjust_ahs_wording <- function(probability, year) {
 
 by_year <- ahs_by_year %>%
   inner_join(ehs_by_year, by = "survey_year") %>%
+  inner_join(other_by_year, by = "survey_year") %>%
   mutate(
     stigma_ahs_adjusted = adjust_ahs_wording(stigma_ahs, survey_year),
     stigma_ahs_adjusted_low = adjust_ahs_wording(stigma_ahs_low, survey_year),
@@ -135,7 +142,8 @@ by_year <- ahs_by_year %>%
     stigma_ahs_adjusted_high,
     ehs,
     ehs_low,
-    ehs_high
+    ehs_high,
+    starts_with(other_measures)
   )
 
 # ---- 2022 vs 2021 shifts --------------------------------------------------------------------------

@@ -3,6 +3,22 @@ from config.interventions import INTERVENTION_CODEBOOK
 from core.transforms import PROB_EPS, logit
 
 
+def intervention_window(unit, dynamic_years, duration_steps):
+    """(start, end) steps of the intervention ramp: from the first year after the unit's last observed period to
+    full strength duration_steps two-year steps later."""
+    start = int(np.searchsorted(dynamic_years, int(unit.amis_years[-1]), side="right"))
+    return start, min(start + int(duration_steps), len(dynamic_years) - 1)
+
+
+def ramp(t, start, end):
+    """Fraction of full strength in step t: 0 before start, linear to 1 at end, 1 after."""
+    if t < start:
+        return 0.0
+    if t >= end:
+        return 1.0
+    return float((t - start) / max(end - start, 1))
+
+
 class MeasureIntervention:
     """Change to one measure's probability, ramped linearly from start_t to end_t and held after.
 
@@ -24,20 +40,13 @@ class MeasureIntervention:
         # "probability_relative_to_last_observed").
         self.anchor_p = None
 
-    def _scale(self, t):
-        if t < self.start_t:
-            return 0.0
-        if t >= self.end_t:
-            return 1.0
-        return float((t - self.start_t) / max(self.end_t - self.start_t, 1))
-
-    def apply(self, X_next, t, predictor, baseline_p=None):
+    def apply(self, X_next, t, transformer, baseline_p=None):
         X_new = X_next.copy()
-        scale = self._scale(t)
-        ref_logit = predictor.reference_logits
+        scale = ramp(t, self.start_t, self.end_t)
+        ref_logit = transformer.reference_logits
         if ref_logit is None:
             ref_logit = np.zeros(X_new.shape[0], dtype=float)
-        p_current = predictor.inverse_x(X_new)[self.var_idx]
+        p_current = transformer.inverse_transform(X_new)[self.var_idx]
 
         if self.effect == "probability_relative_to_last_observed":
             # A measure projected to fall below the target follows its baseline.
@@ -45,6 +54,12 @@ class MeasureIntervention:
                 raise ValueError("probability_relative_to_last_observed requires baseline_p and anchor_p")
             p_target = min(float(self.anchor_p[self.var_idx]) * max(0.0, 1.0 + self.delta),
                            float(baseline_p[self.var_idx]))
+            p_new = np.clip((1 - scale) * float(p_current) + scale * p_target, PROB_EPS, 1 - PROB_EPS)
+        elif self.effect == "probability_relative_to_baseline":
+            # Change relative to the measure's own baseline path (e.g. +0.6 = 60% higher than it would be).
+            if baseline_p is None:
+                raise ValueError("probability_relative_to_baseline requires baseline_p")
+            p_target = float(baseline_p[self.var_idx]) * max(0.0, 1.0 + self.delta)
             p_new = np.clip((1 - scale) * float(p_current) + scale * p_target, PROB_EPS, 1 - PROB_EPS)
         elif self.effect == "probability_gap_to_benchmark":
             if self.benchmark is None:
@@ -62,8 +77,7 @@ class MeasureIntervention:
 
 def build_measure_interventions(unit, dynamic_years, v_names, codes, duration_steps=3):
     """Interventions for the given codes, starting after the unit's last observed period."""
-    start_t = int(np.searchsorted(dynamic_years, int(unit.amis_years[-1]), side="right"))
-    end_t = min(start_t + int(duration_steps), len(dynamic_years) - 1)
+    start_t, end_t = intervention_window(unit, dynamic_years, duration_steps)
     if start_t >= len(dynamic_years):
         return []
     interventions = []
