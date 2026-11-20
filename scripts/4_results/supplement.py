@@ -27,6 +27,7 @@ from __future__ import annotations
 
 from pathlib import Path
 import sys
+import textwrap
 
 import matplotlib.pyplot as plt
 from matplotlib.patches import FancyArrowPatch, FancyBboxPatch
@@ -127,17 +128,17 @@ def specification_table() -> pd.DataFrame:
     return pd.DataFrame(rows, columns=["component", "item", "value", "note"])
 
 
-PATHWAY_POS = {"stigma_gss": (0.0, 1.0), "stigma_family": (0.0, -1.0), "stigma_ahs": (1.6, 0.35),
-       "out_gid": (3.5, 1.75), "seehcp": (3.5, -0.75), "hivtest12": (3.5, -2.2),
-       "prep_used": (5.25, 0.9), "risk_behavior": (5.25, -1.3)}
+PATHWAY_POS = {"stigma_gss": (0.0, 1.0), "stigma_family": (0.0, -1.0), "stigma_ahs": (2.0, 0.35),
+       "out_gid": (4.1, 1.75), "seehcp": (4.1, -0.75), "hivtest12": (4.1, -2.2),
+       "prep_used": (6.1, 0.9), "risk_behavior": (6.1, -1.3)}
 PATHWAY_NAME = {"stigma_gss": "General social\nstigma", "stigma_family": "Family stigma", "stigma_ahs": "Anticipated\nhealthcare stigma",
         "out_gid": "Disclosure to\nprovider", "seehcp": "Healthcare\nprovider visit", "hivtest12": "HIV testing",
-        "prep_used": "PrEP use", "risk_behavior": "HIV-related\nrisk behavior"}
+        "prep_used": "PrEP use", "risk_behavior": "Condomless sex,\npartner HIV+/unknown"}
 PATHWAY_SIGN = {"1": style.BLUE, "-1": "#D55E00", "both": "#8c8c8c"}
 PATHWAY_TIER = {"strong": dict(ls="-", lw=2.0), "moderate": dict(ls=(0, (5, 2)), lw=1.3), "weak": dict(ls=(0, (1.2, 1.6)), lw=1.4)}
 PATHWAY_KEY = {("stigma_ahs", "prep_used"): "mixture (r)", ("prep_used", "stigma_ahs"): "feedback (b)"}
 PATHWAY_RAD = {("out_gid", "hivtest12"): -0.55, ("stigma_ahs", "prep_used"): 0.12, ("prep_used", "stigma_ahs"): 0.12}
-BOX_W, BOX_H, BOX_GAP = 1.22, 0.62, 0.06
+BOX_W, BOX_H, BOX_GAP = 1.68, 0.72, 0.06
 
 
 def edge_point(c, o):
@@ -170,7 +171,7 @@ def pathway_figure() -> plt.Figure:
     notes = pathway_notes(v_names, fit)
     P = pd.read_csv(CONFIG / "dynamic_pathway_priors.csv")
     P = P[[bool(M[v_names.index(r.target), v_names.index(r.source)]) for r in P.itertuples()]]
-    fig, ax = plt.subplots(figsize=(7.2, 5.0))
+    fig, ax = plt.subplots(figsize=(style.WIDTH, 5.0))
     pairs = {(r.source, r.target) for r in P.itertuples()} | set(PATHWAY_KEY)
     for r in P.itertuples():
         s, t = PATHWAY_POS[r.source], PATHWAY_POS[r.target]
@@ -187,18 +188,18 @@ def pathway_figure() -> plt.Figure:
         ax.add_patch(FancyArrowPatch(a, b, connectionstyle=f"arc3,rad={rad}", arrowstyle="-|>", mutation_scale=9,
                                      color=style.INK, lw=1.6, zorder=2))
         mid = (np.array(a) + np.array(b)) / 2 + (np.array([0, 0.28]) if source == "stigma_ahs" else np.array([0, -0.3]))
-        ax.text(*mid, label, ha="center", va="center", fontsize=6.3, color=style.INK, zorder=4)
+        ax.text(*mid, label, ha="center", va="center", fontsize=style.FONT, color=style.INK, zorder=4)
     for v, (x, y) in PATHWAY_POS.items():
         key = v in ("stigma_ahs", "prep_used")
         ax.add_patch(FancyBboxPatch((x - BOX_W / 2, y - BOX_H / 2), BOX_W, BOX_H, boxstyle="round,pad=0,rounding_size=0.1",
                                     fc="white", ec=style.INK if key else style.MUTED, lw=1.4 if key else 0.8, zorder=3))
-        ax.text(x, y + (0.07 if notes[v] else 0), PATHWAY_NAME[v], ha="center", va="center", fontsize=6.9 if key else 7.2, zorder=4,
+        ax.text(x, y + (0.07 if notes[v] else 0), PATHWAY_NAME[v], ha="center", va="center", fontsize=style.FONT if key else 7.2, zorder=4,
                 fontweight="bold" if key else "normal", linespacing=1.0)
         if notes[v]:
-            ax.text(x, y - BOX_H / 2 + 0.06, notes[v], ha="center", va="bottom", fontsize=5.6, color=style.MUTED, zorder=4)
-    for x, label in [(0, "Upstream stigma"), (1.6, "Healthcare stigma"), (3.5, "Healthcare engagement"), (5.25, "Prevention")]:
-        ax.text(x, 2.5, label, ha="center", fontsize=7.8, color=style.MUTED, fontweight="bold")
-    ax.set_xlim(-0.75, 6.0)
+            ax.text(x, y - BOX_H / 2 + 0.06, notes[v], ha="center", va="bottom", fontsize=style.FONT, color=style.MUTED, zorder=4)
+    for x, label in [(0, "Upstream stigma"), (2.0, "Healthcare stigma"), (4.1, "Healthcare engagement"), (6.1, "Prevention")]:
+        ax.text(x, 2.5, label, ha="center", fontsize=style.FONT, color=style.MUTED, fontweight="bold")
+    ax.set_xlim(-0.85, 6.95)
     ax.set_ylim(-2.65, 2.75)
     ax.axis("off")
     h = [plt.Line2D([], [], color=PATHWAY_SIGN["1"], lw=1.6, label="Positive"),
@@ -207,11 +208,11 @@ def pathway_figure() -> plt.Figure:
          plt.Line2D([], [], color=style.INK, **PATHWAY_TIER["strong"], label="Strong prior"),
          plt.Line2D([], [], color=style.INK, **PATHWAY_TIER["moderate"], label="Moderate prior"),
          plt.Line2D([], [], color=style.INK, **PATHWAY_TIER["weak"], label="Weak prior")]
-    fig.legend(handles=h, loc="lower center", ncol=6, fontsize=6.8, bbox_to_anchor=(0.5, 0.0), handlelength=2.4)
+    fig.legend(handles=h, loc="lower center", ncol=6, fontsize=style.FONT, bbox_to_anchor=(0.5, 0.0), handlelength=2.4)
     fig.legend(handles=[plt.Line2D([], [], color="#F0E442", alpha=0.6, lw=7)],
                labels=["Outside the transition matrix: AHS → PrEP through the mixture (prevalence ratio r); "
                        "PrEP → AHS the held feedback b."],
-               loc="lower center", fontsize=6.8, bbox_to_anchor=(0.5, -0.045), handlelength=2.4)
+               loc="lower center", fontsize=style.FONT, bbox_to_anchor=(0.5, -0.045), handlelength=2.4)
     return fig
 
 
@@ -253,7 +254,7 @@ def dynamic_fit() -> pd.DataFrame:
 def dynamic_fit_figure(fit: pd.DataFrame) -> plt.Figure:
     style.apply()
     measures = list(dict.fromkeys(fit["measure"]))
-    fig, axes = plt.subplots(2, 4, figsize=(7.2, 4.8))
+    fig, axes = plt.subplots(2, 4, figsize=(style.WIDTH, 5.6))
     colors = {2020: style.ORANGE, 2022: style.ACCENT, 2024: style.BLUE}
     for ax, measure in zip(axes.flat, measures):
         d = fit[fit["measure"].eq(measure)]
@@ -266,13 +267,13 @@ def dynamic_fit_figure(fit: pd.DataFrame) -> plt.Figure:
         hi = 100 * max(d["observed"].max(), d["fitted_high"].max())
         ax.plot([lo, hi], [lo, hi], color=style.MUTED, lw=0.8, ls="--", zorder=0)
         mae = 100 * np.mean(np.abs(d["observed"] - d["fitted_median"]))
-        ax.set_title(f"{LABELS[measure]}\nMAE {mae:.1f} pp (sampling SD {100 * d['observed_sd'].median():.1f})\n"
-                     f"{100 * d['covered'].mean():.0f}% consistent with the fit", loc="left", fontsize=7)
-        ax.tick_params(labelsize=7)
-    fig.supxlabel("Observed (%)", fontsize=9)
-    fig.supylabel("One-step-ahead fitted (%)", fontsize=9)
+        ax.set_title(f"{textwrap.fill(LABELS[measure], 26)}\nMAE {mae:.1f} pp (sampling SD {100 * d['observed_sd'].median():.1f})\n"
+                     f"{100 * d['covered'].mean():.0f}% consistent with the fit", loc="left", fontsize=style.FONT)
+        ax.tick_params(labelsize=style.FONT)
+    fig.supxlabel("Observed (%)", fontsize=style.FONT)
+    fig.supylabel("One-step-ahead fitted (%)", fontsize=style.FONT)
     handles, labels = axes.flat[0].get_legend_handles_labels()
-    fig.legend(handles, labels, loc="lower center", ncol=3, fontsize=8, bbox_to_anchor=(0.5, -0.06))
+    fig.legend(handles, labels, loc="lower center", ncol=3, fontsize=style.FONT, bbox_to_anchor=(0.5, -0.06))
     fig.tight_layout()
     return fig
 
@@ -290,7 +291,7 @@ def epi_figure(d: pd.DataFrame, summary: pd.DataFrame) -> plt.Figure:
     style.apply()
     colors = {"2017-2019": style.ORANGE, "2021-2022": style.ACCENT, "2023-2024": style.BLUE}
     titles = {"diagnoses": "HIV diagnoses", "incidence": "Estimated HIV incidence"}
-    fig, axes = plt.subplots(1, 2, figsize=(7.2, 4.0))
+    fig, axes = plt.subplots(1, 2, figsize=(style.WIDTH, 4.0))
     for ax, outcome in zip(axes, titles):
         e = d[d["outcome"].eq(outcome)]
         for period, color in colors.items():
@@ -307,9 +308,9 @@ def epi_figure(d: pd.DataFrame, summary: pd.DataFrame) -> plt.Figure:
         s = summary[summary["outcome"].eq(outcome)]
         note = "\n".join(f"{r.period.replace('-', '–')}: {100 * r.coverage_90:.0f}% of states in the 90% interval"
                          for r in s.itertuples())
-        ax.set_title(f"{titles[outcome]}\n{note}", loc="left", fontsize=7.5)
+        ax.set_title(f"{titles[outcome]}\n{note}", loc="left", fontsize=style.FONT)
         ax.set_xlabel("Observed (CDC), period mean per year")
-        ax.legend(fontsize=7)
+        ax.legend(fontsize=style.FONT)
     axes[0].set_ylabel("Model posterior (median, 90% interval)")
     fig.tight_layout()
     return fig

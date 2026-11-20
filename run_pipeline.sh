@@ -10,7 +10,8 @@
 # Stages (scripts/<stage>/, numbered in run order):
 #   data         R: AMIS file, CDC stocks, state weights and bootstrap (wording-adjusted and unadjusted),
 #                precision screen, reported constants, national weights   needs inputs/restricted/ (AMIS)
-#   evidence     R: AHS-PrEP evidence, 2022 wording items, climate associations, PrEP diffusion inputs (ceilings, growth prior)
+#   evidence     R: AHS-PrEP evidence, 2022 wording items, climate associations, PrEP diffusion inputs (ceilings, growth prior),
+#                AHS among PrEP non-users by cycle
 #   model        Python: model-input files, dynamic-model fits (in parallel), bundles, scenario runs (in parallel)
 #   results      Python: paper figures and tables, and every number quoted in the text (results/paper/)
 #   demographic  R + Python: demographic-group trajectories (results/08_demographic/; figure in results/paper/supplement/)
@@ -77,6 +78,7 @@ if has evidence; then
   Rscript scripts/2_evidence/02_wording_items.R > "$LOG/evidence_02_wording.log" 2>&1
   Rscript scripts/2_evidence/03_climate_associations.R > "$LOG/evidence_03_climate.log" 2>&1
   Rscript scripts/2_evidence/04_prep_diffusion.R > "$LOG/evidence_04_prep_diffusion.log" 2>&1
+  Rscript scripts/2_evidence/05_ahs_among_nonusers.R > "$LOG/evidence_05_nonusers.log" 2>&1
 fi
 
 if has model; then
@@ -142,7 +144,7 @@ fi
 
 if has results; then
   step "results"
-  for f in fig1_trajectories fig2_projections table1_fig3_ahs_reduction tableS_sensitivity figS_coevolution supplement; do
+  for f in fig1_framework fig2_trajectories fig3_projections table1_fig4_ahs_reduction tableS_sensitivity figS_coevolution fig5_nonusers supplement; do
     $PY scripts/4_results/$f.py > "$LOG/results_$f.log" 2>&1
   done
 fi

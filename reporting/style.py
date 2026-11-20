@@ -19,24 +19,30 @@ ACCENT = GREEN
 # PrEP -> AHS feedback values (reporting/sources.py FEEDBACK), keyed as there
 COLORS = {"neg075": GREEN, "0": BLUE, "pos15": VERMILLION}
 MARKERS = {"neg075": "v", "0": "o", "pos15": "^"}
-LABELS = {"neg075": "Feedback −0.075 (affirming care)", "0": "No feedback (reference)",
-          "pos15": "Feedback +0.15 (best fit)"}
+LABELS = {"neg075": "Feedback (−0.075)", "0": "No feedback", "pos15": "Feedback (+0.15)"}   # meanings in the captions
 SHORT_LABELS = {"neg075": "−0.075", "0": "0", "pos15": "+0.15"}
 UNADJUSTED = "#CC79A7"       # AHS not adjusted for the 2022 item change (supplement)
 
 MEASURE_LABELS = {
     "stigma_ahs": "Anticipated healthcare stigma", "stigma_gss": "General social stigma",
     "stigma_family": "Family stigma", "out_gid": "Disclosure to provider", "seehcp": "Healthcare provider visit (past year)",
-    "risk_behavior": "HIV-related risk behavior", "prep_used": "Past-year PrEP use", "hivtest12": "HIV testing",
+    "risk_behavior": "Condomless anal sex with a partner of positive or unknown HIV status", "prep_used": "Past-year PrEP use", "hivtest12": "HIV testing",
 }
+
+
+FONT = 8              # every text element, pt (AIDS and Behavior: 8-12 pt at final size)
+WIDTH = 174 / 25.4    # full-width figure, inches (Springer double column 174 mm; Nature 183 mm)
 
 
 def apply() -> None:
     plt.rcParams.update({
-        "font.size": 9, "axes.titlesize": 9, "axes.labelsize": 9, "xtick.labelsize": 8, "ytick.labelsize": 8,
+        "font.family": "sans-serif", "font.sans-serif": ["Arial", "Helvetica", "DejaVu Sans"],
+        "font.size": FONT, "axes.titlesize": FONT, "axes.labelsize": FONT, "xtick.labelsize": FONT,
+        "ytick.labelsize": FONT, "legend.fontsize": FONT, "legend.title_fontsize": FONT, "figure.titlesize": FONT,
         "axes.edgecolor": MUTED, "axes.labelcolor": INK, "text.color": INK, "xtick.color": MUTED, "ytick.color": MUTED,
         "axes.spines.top": False, "axes.spines.right": False, "axes.grid": True, "grid.color": GRID,
         "grid.linewidth": 0.6, "legend.frameon": False, "figure.dpi": 150, "savefig.bbox": "tight",
+        "pdf.fonttype": 42, "ps.fonttype": 42,     # embedded TrueType: text stays editable in the PDF
     })
 
 

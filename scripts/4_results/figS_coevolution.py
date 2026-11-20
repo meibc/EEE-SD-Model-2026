@@ -5,7 +5,7 @@ Fig. S   Observed past-year PrEP use and anticipated healthcare stigma (AHS) by 
          periods (2017-18 to 2023-24; median across respondent-bootstrap draws), one panel per state, all
          panels on the same axes.
          These co-movements are what the PrEP -> AHS feedback profile (scripts/3_model/06) is fitted to.
-         (Projected AHS by state is the supplementary figure in scripts/4_results/table1_fig3_ahs_reduction.py.)
+         (Projected AHS by state is the supplementary figure in scripts/4_results/table1_fig4_ahs_reduction.py.)
 
 Outputs: results/paper/supplement/figS_coevolution.{png,pdf}; results/paper/source_data/figS_coevolution_paths.csv.
 """
@@ -30,7 +30,7 @@ PERIOD_LABELS = {2018: "2017–18", 2020: "2019–20", 2022: "2021–22", 2024: 
 def figure(paths: pd.DataFrame) -> plt.Figure:
     style.apply()
     states = sorted(primary_states())
-    fig = plt.figure(figsize=(7.2, 5.2))
+    fig = plt.figure(figsize=(style.WIDTH, 5.2))
     top = fig.add_gridspec(4, 6, left=0.08, right=0.98, top=0.91, bottom=0.1, hspace=0.35, wspace=0.12)
     wide = paths.pivot_table(index=["state", "year"], columns="measure", values="level").reset_index()
     xmax, ymax = wide["prep_used"].max() * 1.08, wide["stigma_ahs"].max() * 1.12
@@ -46,18 +46,18 @@ def figure(paths: pd.DataFrame) -> plt.Figure:
         ax.scatter(d["prep_used"].iloc[[-1]], d["stigma_ahs"].iloc[[-1]], s=14, color=style.INK, zorder=3)
         ax.set_xlim(0, xmax)
         ax.set_ylim(0, ymax)
-        ax.text(0.04, 0.93, s, transform=ax.transAxes, fontsize=8, fontweight="bold", va="top")
+        ax.text(0.04, 0.93, s, transform=ax.transAxes, fontsize=style.FONT, fontweight="bold", va="top")
         if i % 6:
             ax.set_yticklabels([])
         if i < 18:
             ax.set_xticklabels([])
-        ax.tick_params(labelsize=7)
+        ax.tick_params(labelsize=style.FONT)
     fig.text(0.53, 0.02, "Past-year PrEP use (%)", ha="center")
     fig.text(0.012, 0.5, "Anticipated healthcare stigma (%)", rotation=90, va="center")
     fig.legend(handles=[plt.Line2D([], [], marker="o", ls="", mfc="white", mec=style.INK, ms=4, label="2017–18"),
                         plt.Line2D([], [], marker="o", ls="", color="#9a9a9a", ms=3, label="2019–20, 2021–22"),
                         plt.Line2D([], [], marker="o", ls="", color=style.INK, ms=4, label="2023–24")],
-               loc="upper center", ncol=3, bbox_to_anchor=(0.55, 0.995), fontsize=8)
+               loc="upper center", ncol=3, bbox_to_anchor=(0.55, 0.995), fontsize=style.FONT)
     return fig
 
 

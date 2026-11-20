@@ -1812,7 +1812,7 @@ html&gt;body{padding:0}&lt;/style&gt;
         &lt;div class=&quot;eee-cluster-body&quot;&gt;
           &lt;div class=&quot;eee-node kind-r&quot; id=&quot;clean-amis&quot;&gt;Clean AMIS&lt;br&gt;&lt;small&gt;01_clean_amis.R&lt;/small&gt;&lt;/div&gt;
           &lt;div class=&quot;eee-node kind-r&quot; id=&quot;cdc-stocks&quot;&gt;Build CDC stocks&lt;br&gt;&lt;small&gt;02_build_cdc_stocks.R&lt;/small&gt;&lt;/div&gt;
-          &lt;div class=&quot;eee-node kind-r&quot; id=&quot;state-weights&quot;&gt;State weights + workbook&lt;br&gt;&lt;small&gt;03_state_weights.R&lt;/small&gt;&lt;/div&gt;
+          &lt;div class=&quot;eee-node kind-r&quot; id=&quot;state-weights&quot;&gt;State weights + workbook&lt;br&gt;&lt;small&gt;03_state_weights.R&lt;br&gt;AHS wording-adjusted (and unadjusted)&lt;/small&gt;&lt;/div&gt;
           &lt;div class=&quot;eee-node kind-r&quot; id=&quot;state-bootstrap&quot;&gt;Respondent bootstrap&lt;br&gt;&lt;small&gt;04_state_bootstrap.R&lt;/small&gt;&lt;/div&gt;
           &lt;div class=&quot;eee-node kind-r&quot; id=&quot;state-screen&quot;&gt;Precision screen + constants&lt;br&gt;&lt;small&gt;05_state_precision_screen.R&lt;br&gt;06_reported_constants.R&lt;/small&gt;&lt;/div&gt;
           &lt;div class=&quot;eee-node kind-r&quot; id=&quot;national-weights&quot;&gt;National weights&lt;br&gt;&lt;small&gt;07_national_weights.R&lt;/small&gt;&lt;/div&gt;
@@ -1830,6 +1830,7 @@ html&gt;body{padding:0}&lt;/style&gt;
           &lt;div class=&quot;eee-node kind-r&quot; id=&quot;prep-diffusion&quot;&gt;PrEP ceilings + growth prior&lt;br&gt;&lt;small&gt;04_prep_diffusion.R&lt;/small&gt;&lt;/div&gt;
           &lt;div class=&quot;eee-node kind-r&quot; id=&quot;wording-items&quot;&gt;Wording diagnostics&lt;br&gt;&lt;small&gt;02_wording_items.R&lt;/small&gt;&lt;/div&gt;
           &lt;div class=&quot;eee-node kind-r&quot; id=&quot;climate&quot;&gt;Climate sensitivity&lt;br&gt;&lt;small&gt;03_climate_associations.R&lt;/small&gt;&lt;/div&gt;
+          &lt;div class=&quot;eee-node kind-r&quot; id=&quot;nonusers&quot;&gt;AHS among PrEP non-users&lt;br&gt;&lt;small&gt;05_ahs_among_nonusers.R&lt;/small&gt;&lt;/div&gt;
         &lt;/div&gt;
         &lt;/section&gt;
 
@@ -1855,6 +1856,7 @@ html&gt;body{padding:0}&lt;/style&gt;
             &lt;div class=&quot;eee-node kind-py&quot; id=&quot;fit-dynamic&quot;&gt;Fit dynamic model&lt;br&gt;&lt;small&gt;03_fit_dynamic_model.py&lt;/small&gt;&lt;/div&gt;
             &lt;div class=&quot;eee-node kind-py&quot; id=&quot;fit-epi&quot;&gt;Fit epidemic model&lt;br&gt;&lt;small&gt;02_fit_epi_model.py&lt;/small&gt;&lt;/div&gt;
             &lt;div class=&quot;eee-node kind-data&quot; id=&quot;dynamic-fits&quot;&gt;Dynamic-model fits&lt;br&gt;&lt;small&gt;fitted matrices + drift&lt;/small&gt;&lt;/div&gt;
+            &lt;div class=&quot;eee-node kind-py eee-fit-span&quot; id=&quot;profile-feedback&quot;&gt;Profile PrEP → AHS feedback&lt;br&gt;&lt;small&gt;06_profile_feedback.py&lt;/small&gt;&lt;/div&gt;
             &lt;div class=&quot;eee-node kind-data&quot; id=&quot;epi-posterior&quot;&gt;Epidemic posterior&lt;br&gt;&lt;small&gt;parameter draws&lt;/small&gt;&lt;/div&gt;
           &lt;/div&gt;
         &lt;/section&gt;
@@ -1870,10 +1872,11 @@ html&gt;body{padding:0}&lt;/style&gt;
               &lt;div class=&quot;eee-node kind-dynamic&quot; id=&quot;shrinkage-config&quot;&gt;Configure shrinkage, specifications + draws&lt;br&gt;&lt;small&gt;config/shrinkage.py · specifications.py · fit.py&lt;/small&gt;&lt;/div&gt;
               &lt;div class=&quot;eee-node kind-dynamic&quot; id=&quot;dynamic-fit-module&quot;&gt;Coordinate dynamic fit&lt;br&gt;&lt;small&gt;pipeline/dynamic_fit.py&lt;/small&gt;&lt;/div&gt;
               &lt;div class=&quot;eee-node kind-dynamic&quot; id=&quot;hierarchy&quot;&gt;Fit nation → divisions → states&lt;br&gt;&lt;small&gt;models/dynamic/estimation/hierarchy.py&lt;/small&gt;&lt;/div&gt;
-              &lt;div class=&quot;eee-node kind-dynamic&quot; id=&quot;dynamic-transforms&quot;&gt;Transform model inputs&lt;br&gt;&lt;small&gt;models/dynamic/estimation/transforms.py&lt;/small&gt;&lt;/div&gt;
+              &lt;div class=&quot;eee-node kind-dynamic&quot; id=&quot;dynamic-transforms&quot;&gt;Transform model inputs&lt;br&gt;&lt;small&gt;models/dynamic/transforms.py&lt;/small&gt;&lt;/div&gt;
               &lt;div class=&quot;eee-node kind-dynamic&quot; id=&quot;jacobian&quot;&gt;Estimate transition matrix (optimizer)&lt;br&gt;&lt;small&gt;models/dynamic/estimation/jacobian.py&lt;/small&gt;&lt;/div&gt;
               &lt;div class=&quot;eee-node kind-dynamic&quot; id=&quot;loss&quot;&gt;Evaluate joint loss&lt;br&gt;&lt;small&gt;models/dynamic/estimation/loss.py&lt;/small&gt;&lt;/div&gt;
               &lt;div class=&quot;eee-node kind-dynamic&quot; id=&quot;dynamic-params&quot;&gt;Represent fitted parameters&lt;br&gt;&lt;small&gt;models/dynamic/params.py&lt;/small&gt;&lt;/div&gt;
+              &lt;div class=&quot;eee-node kind-dynamic&quot; id=&quot;mixture&quot;&gt;PrEP mixture + feedback&lt;br&gt;&lt;small&gt;models/dynamic/mixture.py&lt;/small&gt;&lt;/div&gt;
             &lt;/div&gt;
           &lt;/section&gt;
 
@@ -1911,7 +1914,6 @@ html&gt;body{padding:0}&lt;/style&gt;
             &lt;div class=&quot;eee-node kind-scenario&quot; id=&quot;intervention-config&quot;&gt;Define scenario codes&lt;br&gt;&lt;small&gt;config/interventions.py&lt;/small&gt;&lt;/div&gt;
             &lt;div class=&quot;eee-node kind-scenario&quot; id=&quot;projection-config&quot;&gt;Configure projection runs&lt;br&gt;&lt;small&gt;config/projection.py&lt;/small&gt;&lt;/div&gt;
             &lt;div class=&quot;eee-node kind-scenario&quot; id=&quot;intervention-build&quot;&gt;Build measure changes&lt;br&gt;&lt;small&gt;models/scenarios/intervention.py&lt;/small&gt;&lt;/div&gt;
-            &lt;div class=&quot;eee-node kind-scenario&quot; id=&quot;prep-translation&quot;&gt;Translate AHS–PrEP effect (v2)&lt;br&gt;&lt;small&gt;prep_translation.py&lt;/small&gt;&lt;/div&gt;
           &lt;/div&gt;
         &lt;/section&gt;
 
@@ -1923,18 +1925,28 @@ html&gt;body{padding:0}&lt;/style&gt;
           &lt;div class=&quot;eee-node kind-py&quot; id=&quot;run-scenarios&quot;&gt;Run scenarios&lt;br&gt;&lt;small&gt;05_run_scenarios.py&lt;/small&gt;&lt;/div&gt;
           &lt;div class=&quot;eee-node kind-module&quot; id=&quot;scenarios&quot;&gt;Coordinate scenarios&lt;br&gt;&lt;small&gt;scenarios.py&lt;/small&gt;&lt;/div&gt;
           &lt;div class=&quot;eee-node kind-module&quot; id=&quot;projection&quot;&gt;Run coupled projection&lt;br&gt;&lt;small&gt;projection.py&lt;/small&gt;&lt;/div&gt;
-          &lt;div class=&quot;eee-node kind-module&quot; id=&quot;dynamic-predictor&quot;&gt;Project dynamic system&lt;br&gt;&lt;small&gt;models/dynamic/prediction/predictor.py&lt;/small&gt;&lt;/div&gt;
           &lt;div class=&quot;eee-node kind-module&quot; id=&quot;epi-adapter&quot;&gt;Build epidemic inputs&lt;br&gt;&lt;small&gt;models/epi/input_adapter.py&lt;/small&gt;&lt;/div&gt;
           &lt;div class=&quot;eee-node kind-module&quot; id=&quot;epi-predictor&quot;&gt;Project HIV outcomes&lt;br&gt;&lt;small&gt;models/epi/prediction/predictor.py&lt;/small&gt;&lt;/div&gt;
           &lt;div class=&quot;eee-node kind-module&quot; id=&quot;projection-results&quot;&gt;Compare and summarize paired results&lt;br&gt;&lt;small&gt;pipeline/scenario_results.py&lt;/small&gt;&lt;/div&gt;
           &lt;div class=&quot;eee-node kind-data&quot; id=&quot;endpoints&quot;&gt;Trajectories + HIV endpoints&lt;br&gt;&lt;small&gt;scenario result files&lt;/small&gt;&lt;/div&gt;
         &lt;/div&gt;
         &lt;/section&gt;
+
+        &lt;section class=&quot;eee-cluster stage-report&quot; data-group=&quot;report&quot;&gt;
+        &lt;button class=&quot;eee-cluster-head cursor-interaction&quot; type=&quot;button&quot; aria-expanded=&quot;true&quot;&gt;
+          &lt;span&gt;6. Report + dashboard&lt;/span&gt;&lt;span class=&quot;eee-toggle&quot;&gt;−&lt;/span&gt;
+        &lt;/button&gt;
+        &lt;div class=&quot;eee-cluster-body&quot;&gt;
+          &lt;div class=&quot;eee-node kind-py&quot; id=&quot;paper-results&quot;&gt;Paper figures, tables + numbers&lt;br&gt;&lt;small&gt;scripts/4_results/&lt;/small&gt;&lt;/div&gt;
+          &lt;div class=&quot;eee-node kind-data&quot; id=&quot;paper-outputs&quot;&gt;Paper outputs&lt;br&gt;&lt;small&gt;results/paper/ (main, supplement, source_data)&lt;/small&gt;&lt;/div&gt;
+          &lt;div class=&quot;eee-node kind-py&quot; id=&quot;dashboard&quot;&gt;Dashboard + website bundle&lt;br&gt;&lt;small&gt;scripts/6_dashboard/&lt;/small&gt;&lt;/div&gt;
+        &lt;/div&gt;
+        &lt;/section&gt;
       &lt;/div&gt;
     &lt;/div&gt;
   &lt;/div&gt;
 
-  &lt;div class=&quot;eee-accessible text-small&quot; aria-live=&quot;polite&quot;&gt;Five-stage workflow: R data preparation and evidence analyses feed separate dynamic-model and epidemic-model fits; those fits are bundled and used by coupled scenario projections. A parallel demographic branch produces descriptive subgroup analyses without feeding the fitted models.&lt;/div&gt;
+  &lt;div class=&quot;eee-accessible text-small&quot; aria-live=&quot;polite&quot;&gt;Six-stage workflow: R data preparation and evidence analyses feed separate dynamic-model and epidemic-model fits; those fits are bundled and used by coupled scenario projections, which feed the paper results and the dashboard. A parallel demographic branch produces descriptive subgroup analyses without feeding the fitted models.&lt;/div&gt;
 &lt;/div&gt;
 
 &lt;style&gt;
@@ -2025,14 +2037,15 @@ html&gt;body{padding:0}&lt;/style&gt;
   const svg = document.getElementById(&#x27;eee-links&#x27;);
   const nodeGroup = {
     &#x27;clean-amis&#x27;:&#x27;data&#x27;,&#x27;national-weights&#x27;:&#x27;data&#x27;,&#x27;cdc-stocks&#x27;:&#x27;data&#x27;,&#x27;state-weights&#x27;:&#x27;data&#x27;,&#x27;state-bootstrap&#x27;:&#x27;data&#x27;,&#x27;state-screen&#x27;:&#x27;data&#x27;,&#x27;prepared-inputs&#x27;:&#x27;data&#x27;,
-    &#x27;ahs-evidence&#x27;:&#x27;evidence&#x27;,&#x27;prevalence-ratios&#x27;:&#x27;evidence&#x27;,&#x27;prep-diffusion&#x27;:&#x27;evidence&#x27;,&#x27;wording-items&#x27;:&#x27;evidence&#x27;,&#x27;climate&#x27;:&#x27;evidence&#x27;,
+    &#x27;ahs-evidence&#x27;:&#x27;evidence&#x27;,&#x27;prevalence-ratios&#x27;:&#x27;evidence&#x27;,&#x27;prep-diffusion&#x27;:&#x27;evidence&#x27;,&#x27;wording-items&#x27;:&#x27;evidence&#x27;,&#x27;climate&#x27;:&#x27;evidence&#x27;,&#x27;nonusers&#x27;:&#x27;evidence&#x27;,
     &#x27;group-bootstrap&#x27;:&#x27;demographic&#x27;,&#x27;demographic-descriptives&#x27;:&#x27;demographic&#x27;,
-    &#x27;build-inputs&#x27;:&#x27;fit&#x27;,&#x27;state-inputs&#x27;:&#x27;fit&#x27;,&#x27;fit-dynamic&#x27;:&#x27;fit&#x27;,&#x27;dynamic-fits&#x27;:&#x27;fit&#x27;,&#x27;fit-epi&#x27;:&#x27;fit&#x27;,&#x27;epi-posterior&#x27;:&#x27;fit&#x27;,
+    &#x27;build-inputs&#x27;:&#x27;fit&#x27;,&#x27;state-inputs&#x27;:&#x27;fit&#x27;,&#x27;fit-dynamic&#x27;:&#x27;fit&#x27;,&#x27;dynamic-fits&#x27;:&#x27;fit&#x27;,&#x27;fit-epi&#x27;:&#x27;fit&#x27;,&#x27;epi-posterior&#x27;:&#x27;fit&#x27;,&#x27;profile-feedback&#x27;:&#x27;fit&#x27;,
     &#x27;build-bundle&#x27;:&#x27;bundle&#x27;,&#x27;research-bundle&#x27;:&#x27;bundle&#x27;,&#x27;bundle&#x27;:&#x27;bundle&#x27;,&#x27;runtime&#x27;:&#x27;bundle&#x27;,
-    &#x27;run-scenarios&#x27;:&#x27;project&#x27;,&#x27;scenarios&#x27;:&#x27;project&#x27;,&#x27;projection&#x27;:&#x27;project&#x27;,&#x27;dynamic-predictor&#x27;:&#x27;project&#x27;,&#x27;epi-adapter&#x27;:&#x27;project&#x27;,&#x27;epi-predictor&#x27;:&#x27;project&#x27;,&#x27;projection-results&#x27;:&#x27;project&#x27;,&#x27;endpoints&#x27;:&#x27;project&#x27;,
-    &#x27;dynamic-config&#x27;:&#x27;dynamic&#x27;,&#x27;optimization-config&#x27;:&#x27;dynamic&#x27;,&#x27;shrinkage-config&#x27;:&#x27;dynamic&#x27;,&#x27;dynamic-fit-module&#x27;:&#x27;dynamic&#x27;,&#x27;hierarchy&#x27;:&#x27;dynamic&#x27;,&#x27;dynamic-transforms&#x27;:&#x27;dynamic&#x27;,&#x27;jacobian&#x27;:&#x27;dynamic&#x27;,&#x27;loss&#x27;:&#x27;dynamic&#x27;,&#x27;dynamic-params&#x27;:&#x27;dynamic&#x27;,
+    &#x27;run-scenarios&#x27;:&#x27;project&#x27;,&#x27;scenarios&#x27;:&#x27;project&#x27;,&#x27;projection&#x27;:&#x27;project&#x27;,&#x27;epi-adapter&#x27;:&#x27;project&#x27;,&#x27;epi-predictor&#x27;:&#x27;project&#x27;,&#x27;projection-results&#x27;:&#x27;project&#x27;,&#x27;endpoints&#x27;:&#x27;project&#x27;,
+    &#x27;dynamic-config&#x27;:&#x27;dynamic&#x27;,&#x27;optimization-config&#x27;:&#x27;dynamic&#x27;,&#x27;shrinkage-config&#x27;:&#x27;dynamic&#x27;,&#x27;dynamic-fit-module&#x27;:&#x27;dynamic&#x27;,&#x27;hierarchy&#x27;:&#x27;dynamic&#x27;,&#x27;dynamic-transforms&#x27;:&#x27;dynamic&#x27;,&#x27;jacobian&#x27;:&#x27;dynamic&#x27;,&#x27;loss&#x27;:&#x27;dynamic&#x27;,&#x27;dynamic-params&#x27;:&#x27;dynamic&#x27;,&#x27;mixture&#x27;:&#x27;dynamic&#x27;,
     &#x27;epi-fit-module&#x27;:&#x27;epi&#x27;,&#x27;alignment&#x27;:&#x27;epi&#x27;,&#x27;epi-params&#x27;:&#x27;epi&#x27;,
-    &#x27;intervention-config&#x27;:&#x27;interventions&#x27;,&#x27;projection-config&#x27;:&#x27;interventions&#x27;,&#x27;intervention-build&#x27;:&#x27;interventions&#x27;,&#x27;prep-translation&#x27;:&#x27;interventions&#x27;
+    &#x27;intervention-config&#x27;:&#x27;interventions&#x27;,&#x27;projection-config&#x27;:&#x27;interventions&#x27;,&#x27;intervention-build&#x27;:&#x27;interventions&#x27;,
+    &#x27;paper-results&#x27;:&#x27;report&#x27;,&#x27;paper-outputs&#x27;:&#x27;report&#x27;,&#x27;dashboard&#x27;:&#x27;report&#x27;
   };
   const edges = [
     [&#x27;clean-amis&#x27;,&#x27;state-weights&#x27;,&#x27;survey data&#x27;], [&#x27;cdc-stocks&#x27;,&#x27;state-weights&#x27;,&#x27;stocks&#x27;], [&#x27;state-weights&#x27;,&#x27;state-bootstrap&#x27;,&#x27;weighted estimates&#x27;], [&#x27;state-bootstrap&#x27;,&#x27;state-screen&#x27;,&#x27;precision&#x27;], [&#x27;state-screen&#x27;,&#x27;prepared-inputs&#x27;,&#x27;&#x27;],
@@ -2041,10 +2054,13 @@ html&gt;body{padding:0}&lt;/style&gt;
     [&#x27;prepared-inputs&#x27;,&#x27;build-inputs&#x27;,&#x27;workbook + bootstrap&#x27;], [&#x27;build-inputs&#x27;,&#x27;state-inputs&#x27;,&#x27;&#x27;], [&#x27;state-inputs&#x27;,&#x27;fit-dynamic&#x27;,&#x27;&#x27;], [&#x27;prevalence-ratios&#x27;,&#x27;fit-dynamic&#x27;,&#x27;r (mixture)&#x27;], [&#x27;prep-diffusion&#x27;,&#x27;fit-dynamic&#x27;,&#x27;ceilings + growth prior&#x27;], [&#x27;fit-dynamic&#x27;,&#x27;dynamic-fits&#x27;,&#x27;&#x27;],
     [&#x27;state-inputs&#x27;,&#x27;fit-epi&#x27;,&#x27;observed inputs&#x27;], [&#x27;cdc-stocks&#x27;,&#x27;fit-epi&#x27;,&#x27;CDC stocks&#x27;], [&#x27;fit-epi&#x27;,&#x27;epi-posterior&#x27;,&#x27;&#x27;],
     [&#x27;state-inputs&#x27;,&#x27;build-bundle&#x27;,&#x27;&#x27;], [&#x27;dynamic-fits&#x27;,&#x27;build-bundle&#x27;,&#x27;&#x27;], [&#x27;epi-posterior&#x27;,&#x27;build-bundle&#x27;,&#x27;&#x27;], [&#x27;build-bundle&#x27;,&#x27;research-bundle&#x27;,&#x27;calls&#x27;,&#x27;call&#x27;], [&#x27;research-bundle&#x27;,&#x27;bundle&#x27;,&#x27;&#x27;], [&#x27;bundle&#x27;,&#x27;runtime&#x27;,&#x27;loads&#x27;],
-    [&#x27;runtime&#x27;,&#x27;run-scenarios&#x27;,&#x27;parameters&#x27;], [&#x27;run-scenarios&#x27;,&#x27;scenarios&#x27;,&#x27;calls&#x27;,&#x27;call&#x27;], [&#x27;scenarios&#x27;,&#x27;projection&#x27;,&#x27;runs&#x27;,&#x27;call&#x27;], [&#x27;projection&#x27;,&#x27;dynamic-predictor&#x27;,&#x27;calls&#x27;,&#x27;call&#x27;], [&#x27;dynamic-predictor&#x27;,&#x27;epi-adapter&#x27;,&#x27;trajectories&#x27;], [&#x27;epi-adapter&#x27;,&#x27;epi-predictor&#x27;,&#x27;epidemic inputs&#x27;], [&#x27;projection&#x27;,&#x27;projection-results&#x27;,&#x27;baseline + scenario outputs&#x27;], [&#x27;scenarios&#x27;,&#x27;projection-results&#x27;,&#x27;requests summaries&#x27;,&#x27;call&#x27;], [&#x27;projection-results&#x27;,&#x27;endpoints&#x27;,&#x27;&#x27;],
+    [&#x27;runtime&#x27;,&#x27;run-scenarios&#x27;,&#x27;parameters&#x27;], [&#x27;run-scenarios&#x27;,&#x27;scenarios&#x27;,&#x27;calls&#x27;,&#x27;call&#x27;], [&#x27;scenarios&#x27;,&#x27;projection&#x27;,&#x27;runs&#x27;,&#x27;call&#x27;], [&#x27;projection&#x27;,&#x27;epi-adapter&#x27;,&#x27;trajectories&#x27;], [&#x27;epi-adapter&#x27;,&#x27;epi-predictor&#x27;,&#x27;epidemic inputs&#x27;], [&#x27;projection&#x27;,&#x27;projection-results&#x27;,&#x27;baseline + scenario outputs&#x27;], [&#x27;scenarios&#x27;,&#x27;projection-results&#x27;,&#x27;requests summaries&#x27;,&#x27;call&#x27;], [&#x27;projection-results&#x27;,&#x27;endpoints&#x27;,&#x27;&#x27;],
     [&#x27;fit-dynamic&#x27;,&#x27;dynamic-fit-module&#x27;,&#x27;calls&#x27;,&#x27;call&#x27;], [&#x27;dynamic-config&#x27;,&#x27;dynamic-fit-module&#x27;,&#x27;configures&#x27;,&#x27;call&#x27;], [&#x27;optimization-config&#x27;,&#x27;dynamic-fit-module&#x27;,&#x27;&#x27;,&#x27;call&#x27;], [&#x27;shrinkage-config&#x27;,&#x27;hierarchy&#x27;,&#x27;&#x27;,&#x27;call&#x27;], [&#x27;dynamic-fit-module&#x27;,&#x27;hierarchy&#x27;,&#x27;&#x27;], [&#x27;hierarchy&#x27;,&#x27;dynamic-transforms&#x27;,&#x27;&#x27;], [&#x27;hierarchy&#x27;,&#x27;jacobian&#x27;,&#x27;&#x27;], [&#x27;jacobian&#x27;,&#x27;loss&#x27;,&#x27;optimizes&#x27;], [&#x27;runtime&#x27;,&#x27;dynamic-params&#x27;,&#x27;loads draws&#x27;,&#x27;call&#x27;],
     [&#x27;fit-epi&#x27;,&#x27;epi-fit-module&#x27;,&#x27;calls&#x27;,&#x27;call&#x27;], [&#x27;alignment&#x27;,&#x27;epi-fit-module&#x27;,&#x27;&#x27;,&#x27;call&#x27;], [&#x27;runtime&#x27;,&#x27;epi-params&#x27;,&#x27;loads draws&#x27;,&#x27;call&#x27;],
-    [&#x27;intervention-config&#x27;,&#x27;scenarios&#x27;,&#x27;scenario codes&#x27;,&#x27;call&#x27;], [&#x27;projection-config&#x27;,&#x27;run-scenarios&#x27;,&#x27;run settings&#x27;,&#x27;call&#x27;], [&#x27;intervention-build&#x27;,&#x27;projection&#x27;,&#x27;builds changes&#x27;,&#x27;call&#x27;], [&#x27;prep-translation&#x27;,&#x27;projection&#x27;,&#x27;PrEP translation (v2)&#x27;,&#x27;call&#x27;]
+    [&#x27;intervention-config&#x27;,&#x27;scenarios&#x27;,&#x27;scenario codes&#x27;,&#x27;call&#x27;], [&#x27;projection-config&#x27;,&#x27;run-scenarios&#x27;,&#x27;run settings&#x27;,&#x27;call&#x27;], [&#x27;intervention-build&#x27;,&#x27;projection&#x27;,&#x27;builds changes&#x27;,&#x27;call&#x27;], [&#x27;mixture&#x27;,&#x27;projection&#x27;,&#x27;population PrEP + feedback&#x27;,&#x27;call&#x27;], [&#x27;mixture&#x27;,&#x27;dynamic-fit-module&#x27;,&#x27;feedback offsets&#x27;,&#x27;call&#x27;],
+    [&#x27;prepared-inputs&#x27;,&#x27;nonusers&#x27;,&#x27;weighted respondents&#x27;], [&#x27;nonusers&#x27;,&#x27;paper-results&#x27;,&#x27;observed composition&#x27;],
+    [&#x27;state-inputs&#x27;,&#x27;profile-feedback&#x27;,&#x27;&#x27;], [&#x27;profile-feedback&#x27;,&#x27;dynamic-fits&#x27;,&#x27;best b (sets the main set)&#x27;,&#x27;call&#x27;],
+    [&#x27;endpoints&#x27;,&#x27;paper-results&#x27;,&#x27;&#x27;], [&#x27;bundle&#x27;,&#x27;paper-results&#x27;,&#x27;fitted draws&#x27;], [&#x27;paper-results&#x27;,&#x27;paper-outputs&#x27;,&#x27;&#x27;], [&#x27;bundle&#x27;,&#x27;dashboard&#x27;,&#x27;fitted draws&#x27;]
   ];
 
   const nodeDetails = {
@@ -2103,7 +2119,7 @@ html&gt;body{padding:0}&lt;/style&gt;
     &#x27;dynamic-fits&#x27;: {
       heading:&#x27;Current primary-fit shape&#x27;,
       items:[
-        &#x27;One NPZ per specification (primary model: &lt;code&gt;primary_fb_neg075&lt;/code&gt;, &lt;code&gt;primary_fb_0&lt;/code&gt;, &lt;code&gt;primary_fb_pos075&lt;/code&gt;); 34 fitted units = USA + 9 divisions + 24 selected states.&#x27;,
+        &#x27;One NPZ per specification (primary model: &lt;code&gt;primary_fb_neg075&lt;/code&gt;, &lt;code&gt;primary_fb_0&lt;/code&gt;, &lt;code&gt;primary_fb_pos15&lt;/code&gt;; supplement &lt;code&gt;primary_fb_pos30&lt;/code&gt;, &lt;code&gt;unadjusted_fb_pos45&lt;/code&gt; and four sensitivity fits); 34 fitted units = USA + 9 divisions + 24 selected states.&#x27;,
         &#x27;&lt;code&gt;J&lt;/code&gt;: draw (500) × unit (34) × target measure (8) × source measure (8).&#x27;,
         &#x27;&lt;code&gt;drift&lt;/code&gt; and &lt;code&gt;anchor_logits&lt;/code&gt;: 500 × 34 × 8; prevalence ratios: 500 × 34; PrEP ceilings: 34; success flags: 500 × 34.&#x27;
       ]
@@ -2177,13 +2193,6 @@ html&gt;body{padding:0}&lt;/style&gt;
         &#x27;Primary model: each year steps forward with the feedback b (from last year’s population PrEP), then the interventions hold the targeted measures on their targets; population PrEP is rebuilt each year as ceiling × P₀ share × (1 − AHS × (1 − r)).&#x27;
       ]
     },
-    &#x27;dynamic-predictor&#x27;: {
-      heading:&#x27;What it does&#x27;,
-      items:[
-        &#x27;Propagates the centered-logit system with &lt;code&gt;X[t+1] = J X[t] + drift&lt;/code&gt;.&#x27;,
-        &#x27;Keeps observed periods fixed, applies measure interventions and converts projected logits back to probabilities.&#x27;
-      ]
-    },
     &#x27;epi-adapter&#x27;: {
       heading:&#x27;What it does&#x27;,
       items:[
@@ -2232,7 +2241,7 @@ html&gt;body{padding:0}&lt;/style&gt;
       heading:&#x27;What it defines&#x27;,
       items:[
         &#x27;&lt;code&gt;INTERVENTION_CODEBOOK&lt;/code&gt;: measure-level changes—halving targets, holding a measure at its 2024 level, rises relative to the baseline path, and moving AHS to its benchmark.&#x27;,
-        &#x27;&lt;code&gt;SCENARIO_CODEBOOK&lt;/code&gt;: the policy scenarios; the primary model runs halve AHS, stigma-resilient services (closing half the AHS–PrEP gap), prevent AHS worsening, worsening climate and PrEP stall.&#x27;,
+        &#x27;&lt;code&gt;SCENARIO_CODEBOOK&lt;/code&gt;: the policy scenarios; &lt;code&gt;PAPER_SCENARIOS&lt;/code&gt; are halve AHS, stigma-resilient services (closing half the AHS–PrEP gap), hold AHS at its 2024 level, worsening climate and PrEP stall.&#x27;,
         &#x27;This file declares codes, targets and labels only; it does not run a projection.&#x27;
       ]
     },
@@ -2241,7 +2250,7 @@ html&gt;body{padding:0}&lt;/style&gt;
       items:[
         &#x27;500 paired dynamic/epidemic samples with seed 123; projections end in 2036.&#x27;,
         &#x27;Interventions ramp over three two-year steps (six years) by default; the primary model’s runs reach full strength in one step (2028). Cumulative infections begin in 2025.&#x27;,
-        &#x27;Report years are every two-year step 2026-2036. Scenario PrEP uses the respondent-level prevalence ratio by default; the contextual upper bound (ratios 0.80 and 0.70) is requested per run.&#x27;
+        &#x27;Report years are every two-year step 2026-2036. Scenario PrEP is rebuilt from the mixture with each draw’s respondent-level prevalence ratio.&#x27;
       ]
     },
     &#x27;intervention-build&#x27;: {
@@ -2252,13 +2261,37 @@ html&gt;body{padding:0}&lt;/style&gt;
         &#x27;At each step it changes the selected probability and returns it to the model’s centered-logit coordinates.&#x27;
       ]
     },
-    &#x27;prep-translation&#x27;: {
+    &#x27;mixture&#x27;: {
       heading:&#x27;What it does&#x27;,
       items:[
-        &#x27;Used by v2 only; the primary model links AHS to PrEP through the mixture instead.&#x27;,
-        &#x27;&lt;code&gt;prevalence_ratio_translation&lt;/code&gt;: v2 AHS→PrEP translation using the draw-specific respondent-level ratio.&#x27;,
-        &#x27;&lt;code&gt;contextual_translation&lt;/code&gt;: upper-bound translation using the between-state climate ratio.&#x27;,
-        &#x27;&lt;code&gt;retain_prep_fraction&lt;/code&gt;: resilient-delivery comparison that retains part of the PrEP gain while returning every other measure to baseline.&#x27;
+        &#x27;Shared by the fit and the projection: &lt;code&gt;prep_without_ahs&lt;/code&gt; gives PrEP among men without AHS (P₀) from population PrEP, AHS and the prevalence ratio r; &lt;code&gt;prep_logit&lt;/code&gt; is the centred PrEP logit.&#x27;,
+        &#x27;&lt;code&gt;feedback_input&lt;/code&gt;: b × (logit of last year’s population PrEP − the unit’s mean observed logit), added to AHS each year, outside J.&#x27;
+      ]
+    },
+    &#x27;profile-feedback&#x27;: {
+      heading:&#x27;What it does&#x27;,
+      items:[
+        &#x27;Refits the primary model over a grid of feedback values b (60 draws) and finds the b that best reproduces the observed trends.&#x27;,
+        &#x27;Wording-adjusted AHS: best b ≈ +0.15 (95% range −0.07 to +0.29); unadjusted: ≈ +0.44. Writes &lt;code&gt;results/05_sensitivity/feedback_profile/&lt;/code&gt;.&#x27;
+      ]
+    },
+    &#x27;nonusers&#x27;: {
+      heading:&#x27;What it writes&#x27;,
+      items:[
+        &#x27;&lt;code&gt;ahs_among_nonusers.csv&lt;/code&gt;: by AMIS cycle (national weights), AHS among all men and among PrEP non-users, their ratio and PrEP use (Fig. 5).&#x27;
+      ]
+    },
+    &#x27;paper-results&#x27;: {
+      heading:&#x27;What it does&#x27;,
+      items:[
+        &#x27;One script per figure or table (Figs. 1–5, Table 1, supplement, sensitivity table) plus &lt;code&gt;paper_numbers.py&lt;/code&gt; for every number quoted in the text.&#x27;,
+        &#x27;Reads the scenario result files, the reference bundle and the evidence outputs; shared paths and styling in &lt;code&gt;reporting/&lt;/code&gt;.&#x27;
+      ]
+    },
+    &#x27;dashboard&#x27;: {
+      heading:&#x27;What it does&#x27;,
+      items:[
+        &#x27;Builds the interactive dashboard (&lt;code&gt;model.js&lt;/code&gt; mirrors the projection; &lt;code&gt;validate.py&lt;/code&gt; checks it against Python) and the website NPZ (new versions added, keys unchanged).&#x27;
       ]
     }
   };
@@ -2273,14 +2306,14 @@ html&gt;body{padding:0}&lt;/style&gt;
     &#x27;epi-fit-module&#x27;:&#x27;runner&#x27;,
     &#x27;scenarios&#x27;:&#x27;runner&#x27;,
     &#x27;projection&#x27;:&#x27;engine&#x27;,
-    &#x27;dynamic-predictor&#x27;:&#x27;model component&#x27;,
     &#x27;epi-adapter&#x27;:&#x27;adapter&#x27;,
     &#x27;epi-predictor&#x27;:&#x27;model component&#x27;,
     &#x27;projection-results&#x27;:&#x27;summarizer&#x27;,
     &#x27;intervention-config&#x27;:&#x27;codebook&#x27;,
     &#x27;projection-config&#x27;:&#x27;settings&#x27;,
     &#x27;intervention-build&#x27;:&#x27;builder&#x27;,
-    &#x27;prep-translation&#x27;:&#x27;translation functions&#x27;
+    &#x27;mixture&#x27;:&#x27;model component&#x27;,
+    &#x27;profile-feedback&#x27;:&#x27;entry point&#x27;
   };
 
   Object.entries(nodeRoles).forEach(([nodeId, role]) =&gt; {

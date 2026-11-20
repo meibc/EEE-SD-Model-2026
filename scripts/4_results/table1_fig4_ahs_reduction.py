@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Results, section 3: projected effects of reducing anticipated healthcare stigma (AHS) (Table 1, Fig. 3).
+"""Results, section 3: projected effects of reducing anticipated healthcare stigma (AHS) (Table 1, Fig. 4).
 
 Every result is given for the three PrEP -> AHS feedback values (reporting/sources.py FEEDBACK): -0.075
 (affirming care), 0 (the reference) and +0.15 (best fit to the wording-adjusted trends).
@@ -9,11 +9,11 @@ Table 1  Pooled over the primary states: infections averted 2025-2036 (number an
          or below its 2024 level, stigma-resilient services (half the PrEP gap for men with AHS closed, AHS
          unchanged), a PrEP stall (PrEP use among men without AHS held at its 2024 level) and a worsening stigma
          climate (general social and family stigma raised by a sustained 2022-sized rise).
-Fig. 3   Where halving AHS helps most, and why, by state: (A) infections averted per 100,000 MSM per year,
-         2025-2036, each feedback value, median and middle 50% of draws; (B-D, one per feedback value) the same
-         against AHS percentage points removed by halving (2036), shaded by baseline infections per 100,000 MSM
-         per year, on shared axes; the states with the most infections averted per capita labelled.
-Fig. S   Breakdown of Fig. 3A by state (2025-2036): (A) infections averted per 100,000 MSM per year;
+Fig. 4   Where halving AHS helps most, and why, by state: (A) infections averted per 100,000 MSM per year,
+         2025-2036, each feedback value, median and middle 50% of draws, states ordered by the reference;
+         (B) the same (no feedback) against the reduction in AHS by 2036 (percentage points), shaded by baseline
+         infections per 100,000 MSM per year; every state labelled.
+Fig. S   Breakdown of Fig. 4A by state (2025-2036): (A) infections averted per 100,000 MSM per year;
          (B) baseline infections per 100,000 MSM per year; (C) AHS percentage points removed by halving
          (2036); (D) PrEP gain (percentage points, 2036) per AHS point removed. Per draw,
          A = B x C x D x infections averted per PrEP point, the last nearly constant across states. A and C
@@ -24,10 +24,10 @@ Table S  By state and feedback value, halving AHS: change in 2036 incidence (%) 
          whose projected 2036 AHS exceeds 30% and 50% (above any level observed in a state). Rate denominators: fixed state MSM population
          (inputs/msm_state_population.csv) x 12 years.
 
-Outputs: results/paper/main/: table1_effects.csv, fig3_state_effects.{png,pdf}. results/paper/supplement/:
+Outputs: results/paper/main/: table1_effects.csv, fig4_state_effects.{png,pdf}. results/paper/supplement/:
 figS_state_breakdown.{png,pdf}, tableS_state_effects.csv. results/paper/source_data/:
-fig3_state_breakdown.csv (all measures and factors, median, interquartile range and 95% interval);
-fig3_variance_shares.csv (share of the across-state variance in log rate attributable to each factor);
+fig4_state_breakdown.csv (all measures and factors, median, interquartile range and 95% interval);
+fig4_variance_shares.csv (share of the across-state variance in log rate attributable to each factor);
 projected_ahs_by_state.csv; ahs_prep_association.csv.
 """
 
@@ -59,7 +59,7 @@ REFERENCE = "0"
 
 
 def offsets(n: int, step: float = 0.25) -> np.ndarray:
-    """Vertical offsets for n feedback values around each state's row (first value on top)."""
+    """Offsets for n feedback values around each state's position (first value first)."""
     return step * (np.arange(n) - (n - 1) / 2)
 
 
@@ -146,63 +146,105 @@ def variance_shares(table: pd.DataFrame) -> pd.DataFrame:
     return pd.DataFrame(out)
 
 
-N_LABELLED = 3     # states labelled in Fig. 3B-D: the most infections averted per capita (reference)
-
-
 def state_effects_figure(table: pd.DataFrame) -> plt.Figure:
-    """A: infections averted per 100,000 MSM per year by state, each feedback value; B-D: the same against AHS
-    points removed, one panel per feedback value on shared axes, shaded by baseline infections per 100,000."""
+    """A: infections averted per 100,000 MSM per year by state (states along x, most first), each feedback value,
+    median and middle 50% of draws; B: the same (no feedback) against the reduction in AHS by 2036, shaded by
+    baseline infections per 100,000 MSM per year, every state labelled."""
     style.apply()
     q = {p: table.loc[p].unstack("measure") for p in FEEDBACK}
-    fig = plt.figure(figsize=(7.2, 7.4))
-    gs = fig.add_gridspec(len(FEEDBACK), 2, width_ratios=[1, 1.15], wspace=0.3, hspace=0.45)
-    a = fig.add_subplot(gs[:, 0])
+    fig = plt.figure(figsize=(style.WIDTH, 6.4))
+    gs = fig.add_gridspec(2, 1, height_ratios=[0.8, 1], hspace=0.3)
+    a = fig.add_subplot(gs[0])
     order = list(q[REFERENCE]["median"]["rate"].sort_values(ascending=False).index)
-    y = np.arange(len(order))
-    for p, dy in zip(FEEDBACK, offsets(len(FEEDBACK))):
+    x = np.arange(len(order))
+    for p, dx in zip(FEEDBACK, offsets(len(FEEDBACK))):
         d = {k: q[p][k]["rate"].loc[order] for k in ("median", "p25", "p75")}
-        a.hlines(y + dy, d["p25"], d["p75"], color=style.COLORS[p], lw=2.2, alpha=0.5)
-        a.scatter(d["median"], y + dy, marker=style.MARKERS[p], s=18, color=style.COLORS[p], edgecolor="white", lw=0.5, zorder=3)
-    a.set_yticks(y)
-    a.set_yticklabels(order)
-    a.invert_yaxis()
-    a.set_xlim(0, None)
-    a.grid(axis="y", visible=False)
-    a.set_title("A  Infections averted per 100,000\nMSM per year, 2025–2036", loc="left", fontsize=7.8, fontweight="bold")
-    a.tick_params(labelsize=7)
+        a.vlines(x + dx, d["p25"], d["p75"], color=style.COLORS[p], lw=2.0, alpha=0.5)
+        a.scatter(x + dx, d["median"], marker=style.MARKERS[p], s=16, color=style.COLORS[p], edgecolor="white", lw=0.5, zorder=3)
+    a.set_xticks(x)
+    a.set_xticklabels(order)
+    a.set_xlim(-0.6, len(order) - 0.4)
+    a.set_ylim(0, None)
+    a.grid(axis="x", visible=False)
+    a.tick_params(axis="x", length=0)
+    a.set_ylabel("Infections averted per\n100,000 MSM per year")
+    a.set_title("a  Infections averted by state", loc="left", fontweight="bold")
     handles = [plt.Line2D([], [], color=style.COLORS[p], marker=style.MARKERS[p], ls="", ms=5) for p in FEEDBACK]
-    handles += [plt.Line2D([], [], color=style.MUTED, lw=2.2, alpha=0.5)]
-    a.legend(handles, [style.LABELS[p] for p in FEEDBACK] + ["Middle 50% of draws"], loc="lower right", fontsize=6.3)
+    handles += [plt.Line2D([], [], color=style.MUTED, lw=2.0, alpha=0.5)]
+    a.legend(handles, [style.LABELS[p] for p in FEEDBACK] + ["Middle 50% of draws"], loc="upper right",
+             title="PrEP→AHS feedback", title_fontsize=style.FONT, alignment="left")
 
-    burden = q[REFERENCE]["median"]["burden"]
+    m = q[REFERENCE]["median"]
     cmap = LinearSegmentedColormap.from_list("burden", ["#d9d9d9", style.INK])
-    norm = Normalize(burden.min(), burden.max())
-    xmax = 1.15 * max(q[p]["median"]["gap"].max() for p in FEEDBACK)
-    ymax = 1.15 * max(q[p]["median"]["rate"].max() for p in FEEDBACK)
-    labelled = order[:N_LABELLED]
-    axes = []
-    for i, p in enumerate(FEEDBACK):
-        b = fig.add_subplot(gs[i, 1])
-        axes.append(b)
-        m = q[p]["median"]
-        b.scatter(m["gap"], m["rate"], c=cmap(norm(burden.loc[m.index])), marker=style.MARKERS[p], s=28,
-                  edgecolor=style.COLORS[p], lw=0.9, zorder=3)
-        b.set_xlim(0, xmax)
-        b.set_ylim(0, ymax)
-        for st in labelled:
-            b.annotate(st, (m.loc[st, "gap"], m.loc[st, "rate"]), xytext=(4, 2), textcoords="offset points",
-                       fontsize=6.5, color=style.INK)
-        b.tick_params(labelsize=7)
-        b.set_ylabel("Infections averted\nper 100,000 per year", fontsize=6.8)
-        b.set_title(f"{'BCD'[i]}  {style.LABELS[p]}", loc="left", fontsize=7.6, color=style.COLORS[p], fontweight="bold")
-    axes[-1].set_xlabel(f"AHS percentage points removed by halving ({END_YEAR})", fontsize=7.2)
-    cb = fig.colorbar(plt.cm.ScalarMappable(cmap=cmap, norm=norm), ax=axes, orientation="horizontal", fraction=0.03,
-                      pad=0.11, aspect=30)
-    cb.set_label("Baseline infections per 100,000 MSM per year", fontsize=6.8)
-    cb.ax.tick_params(labelsize=6.5)
-    fig.text(0.5, 0.05, "B–D: state medians, same axes. Infections averted are 2025–"
-             f"{END_YEAR} averages; AHS points removed are at {END_YEAR}.", ha="center", fontsize=6.3, color=style.MUTED)
+    norm = Normalize(m["burden"].min(), m["burden"].max())
+    b = fig.add_subplot(gs[1])
+    b.scatter(m["gap"], m["rate"], c=cmap(norm(m["burden"])), marker="o", s=40, edgecolor=style.OBSERVED, lw=0.7, zorder=3)
+    b.set_xlim(0, 1.08 * m["gap"].max())
+    b.set_ylim(-1.5, 1.1 * m["rate"].max())                  # room below zero for labels
+    b.spines["left"].set_bounds(0, 25)
+    b.set_yticks(range(0, 26, 5))
+    labels = m.drop(index=list(SHARED_LABELS.values()))           # states on the same spot share one label
+    label_all(b, labels["gap"].to_numpy(), labels["rate"].to_numpy(),
+              [f"{s}, {SHARED_LABELS[s]}" if s in SHARED_LABELS else s for s in labels.index], fixed=FIXED_LABELS)
+    b.set_xlabel(f"Reduction in AHS by {END_YEAR} (percentage points)")
+    b.set_ylabel("Infections averted per\n100,000 MSM per year")
+    b.set_title("b  Infections averted by AHS reduction and baseline incidence (no feedback)", loc="left", fontweight="bold")
+    cax = b.inset_axes([0.09, 0.80, 0.3, 0.045])                       # the empty upper left
+    cb = fig.colorbar(plt.cm.ScalarMappable(cmap=cmap, norm=norm), cax=cax, orientation="horizontal")
+    cb.set_label("Baseline infections per 100,000 MSM per year", labelpad=2)
+    cb.ax.xaxis.set_label_position("top")
     return fig
+
+
+SHARED_LABELS = {"MO": "WA"}      # Fig. 4B: WA sits on MO (within 0.1 on both axes), labelled together
+FIXED_LABELS: dict[str, tuple[float, float]] = {}   # hand-set label offsets (points) for crowded states in Fig. 4B
+
+
+LABEL_POSITIONS = [(5, 0), (-5, 0), (0, 6), (0, -6), (5, 5), (-5, 5), (5, -5), (-5, -5),
+                   (12, 0), (-12, 0), (0, 12), (0, -12), (10, 9), (-10, 9), (10, -9), (-10, -9)]   # offsets, points
+
+
+def label_all(ax, xs, ys, names, fontsize: float = style.FONT, marker_pts: float = 4.5, fixed: dict | None = None) -> None:
+    """Label every point: for each (largest y first), the first candidate offset whose text box overlaps no
+    placed label and no marker; a leader line when the label sits away from the point. ``fixed``: offsets set by
+    hand for crowded points (placed first)."""
+    fixed = fixed or {}
+    fig = ax.figure
+    fig.canvas.draw()
+    renderer = fig.canvas.get_renderer()
+    scale = fig.dpi / 72
+    pts = ax.transData.transform(np.column_stack([xs, ys]))
+    r = marker_pts * scale
+    placed = []
+    order = sorted(range(len(names)), key=lambda i: (names[i] not in fixed, -ys[i]))
+    for i in order:
+        (px, py), name = pts[i], names[i]
+        probe = ax.text(0, 0, name, fontsize=fontsize)
+        bb = probe.get_window_extent(renderer)
+        probe.remove()
+        w, h = bb.width + 2, bb.height + 1
+        best = None
+        for dx, dy in ([fixed[name]] if name in fixed else LABEL_POSITIONS):
+            cx, cy = px + dx * scale, py + dy * scale
+            x0 = cx if dx > 0 else cx - w if dx < 0 else cx - w / 2
+            y0 = cy - h / 2 if dy == 0 else cy if dy > 0 else cy - h
+            box = (x0, y0, x0 + w, y0 + h)
+            hits_label = any(not (box[2] < b[0] or box[0] > b[2] or box[3] < b[1] or box[1] > b[3]) for b in placed)
+            hits_point = any(box[0] - r < qx < box[2] + r and box[1] - r < qy < box[3] + r
+                             for j, (qx, qy) in enumerate(pts) if j != i)
+            if name in fixed or (not hits_label and not hits_point):
+                best = (dx, dy, box)
+                break
+        if best is None:
+            dx, dy = LABEL_POSITIONS[0]
+            best = (dx, dy, (px + dx * scale, py - h / 2, px + dx * scale + w, py + h / 2))
+        dx, dy, box = best
+        placed.append(box)
+        far = abs(dx) > 6 or abs(dy) > 6
+        ax.annotate(name, (xs[i], ys[i]), xytext=(dx, dy), textcoords="offset points", fontsize=fontsize,
+                    color=style.INK, va="center" if dy == 0 else "bottom" if dy > 0 else "top",
+                    ha="left" if dx > 0 else "right" if dx < 0 else "center",
+                    arrowprops=dict(arrowstyle="-", color=style.MUTED, lw=0.5, shrinkA=0, shrinkB=3) if far else None)
 
 
 def breakdown_figure(table: pd.DataFrame) -> plt.Figure:
@@ -210,28 +252,28 @@ def breakdown_figure(table: pd.DataFrame) -> plt.Figure:
     q = {p: table.loc[p].unstack("measure") for p in FEEDBACK}
     order = list(q[REFERENCE]["median"]["rate"].sort_values(ascending=False).index)
     y = np.arange(len(order))
-    fig, axes = plt.subplots(1, 4, figsize=(7.2, 6.0), sharey=True, gridspec_kw={"width_ratios": [1.5, 0.9, 1.2, 0.9], "wspace": 0.22})
-    panels = [("rate", "A  Infections averted\nper 100,000 MSM\nper year", True), ("burden", "B  Baseline\ninfections per\n100,000 MSM/year", False),
-              ("gap", "C  AHS points\nremoved by\nhalving", True), ("prep_per_point", "D  PrEP gain\nper AHS point\nremoved", False)]
+    fig, axes = plt.subplots(1, 4, figsize=(style.WIDTH, 6.0), sharey=True, gridspec_kw={"width_ratios": [1.5, 0.9, 1.2, 0.9], "wspace": 0.22})
+    panels = [("rate", "a  Infections averted\nper 100,000 MSM\nper year", True), ("burden", "b  Baseline\ninfections per\n100,000 MSM/year", False),
+              ("gap", "c  AHS points\nremoved by\nhalving", True), ("prep_per_point", "d  PrEP gain\nper AHS point\nremoved", False)]
     for ax, (col, title, both) in zip(axes, panels):
         runs = zip(FEEDBACK, offsets(len(FEEDBACK))) if both else ((REFERENCE, 0.0),)
         for feedback, dy in runs:
             d = {k: q[feedback][k][col].loc[order] for k in ("median", "p25", "p75")}
-            color = style.COLORS[feedback] if both else style.OBSERVED
+            color = style.COLORS[feedback]
             ax.hlines(y + dy, d["p25"], d["p75"], color=color, lw=2.2, alpha=0.5)
-            ax.scatter(d["median"], y + dy, marker=style.MARKERS[feedback] if both else "D", s=16 if both else 14,
-                       color=color, edgecolor="white", lw=0.5, zorder=3)
-        ax.set_title(title, loc="left", fontsize=7.8, fontweight="bold" if col == "rate" else "normal")
+            ax.scatter(d["median"], y + dy, marker=style.MARKERS[feedback], s=16, color=color, edgecolor="white",
+                       lw=0.5, zorder=3)
+        ax.set_title(title, loc="left", fontsize=style.FONT, fontweight="bold" if col == "rate" else "normal")
         ax.set_xlim(0, None)
         ax.grid(axis="y", visible=False)
-        ax.tick_params(labelsize=7)
+        ax.tick_params(labelsize=style.FONT)
     axes[0].set_yticks(y)
     axes[0].set_yticklabels(order)
     axes[0].invert_yaxis()
     handles = [plt.Line2D([], [], color=style.COLORS[p], marker=style.MARKERS[p], ls="", ms=5) for p in FEEDBACK]
-    handles += [plt.Line2D([], [], color=style.OBSERVED, marker="D", ls="", ms=4), plt.Line2D([], [], color=style.MUTED, lw=2.2, alpha=0.5)]
-    fig.legend(handles, [style.LABELS[p] for p in FEEDBACK] + ["No feedback (B, D)", "Middle 50% of draws"],
-               loc="lower center", ncol=3, fontsize=6.8, bbox_to_anchor=(0.5, -0.04))
+    handles += [plt.Line2D([], [], color=style.MUTED, lw=2.2, alpha=0.5)]
+    fig.legend(handles, [style.LABELS[p] for p in FEEDBACK] + ["Middle 50% of draws"],
+               title="PrEP→AHS feedback (b, d: no feedback only)", title_fontsize=style.FONT, loc="lower center", ncol=4, fontsize=style.FONT, bbox_to_anchor=(0.5, -0.04))
     return fig
 
 
@@ -242,10 +284,10 @@ def main() -> None:
     t1.to_csv(MAIN / "table1_effects.csv", index=False)
     association().to_csv(DATA / "ahs_prep_association.csv", index=False)
     table = state_table({p: state_draws(path) for p, path in FEEDBACK.items()})
-    table.to_csv(DATA / "fig3_state_breakdown.csv")
+    table.to_csv(DATA / "fig4_state_breakdown.csv")
     shares = variance_shares(table)
-    shares.to_csv(DATA / "fig3_variance_shares.csv", index_label="factor")
-    style.save(state_effects_figure(table), MAIN / "fig3_state_effects")
+    shares.to_csv(DATA / "fig4_variance_shares.csv", index_label="factor")
+    style.save(state_effects_figure(table), MAIN / "fig4_state_effects")
     style.save(breakdown_figure(table), SUPPLEMENT / "figS_state_breakdown")
     projected = projected_ahs()
     projected.to_csv(DATA / "projected_ahs_by_state.csv")

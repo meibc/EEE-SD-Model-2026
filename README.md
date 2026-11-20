@@ -82,9 +82,9 @@ Paper figures and tables are written to `results/paper/`, by where they appear i
 
 | Folder | Contents |
 |---|---|
-| `main/` | Fig. 1 (`fig1_trajectories`), Fig. 2 (`fig2_projections`), Fig. 3 (`fig3_state_effects`), Table 1 (`table1_effects.csv`) |
-| `supplement/` | Supplement figures (`figS_*`) and tables (`tableS_*.csv`): sensitivity analyses, observed state changes (all primary states), state effects, projected AHS by state, Fig. 3 breakdown, PrEP-AHS co-evolution, demographic group trajectories, pathway structure, dynamic-model fit, epidemic calibration, model specification |
-| `source_data/` | The data behind each figure, named after it (e.g. `fig3_state_breakdown.csv`) |
+| `main/` | Fig. 1 (`fig1_framework`), Fig. 2 (`fig2_trajectories`), Fig. 3 (`fig3_projections`), Fig. 4 (`fig4_state_effects`), Fig. 5 (`fig5_nonusers`), Table 1 (`table1_effects.csv`) |
+| `supplement/` | Supplement figures (`figS_*`) and tables (`tableS_*.csv`): sensitivity analyses, observed state changes (all primary states), state effects, projected AHS by state, Fig. 4 breakdown, PrEP-AHS co-evolution, demographic group trajectories, pathway structure, dynamic-model fit, epidemic calibration, model specification |
+| `source_data/` | The data behind each figure, named after it (e.g. `fig4_state_breakdown.csv`) |
 | `paper_numbers.md` | Every number quoted in the text, in paper order, with its source |
 
 The two projections are labelled "with PrEP→AHS feedback" (primary) and "without PrEP→AHS feedback".

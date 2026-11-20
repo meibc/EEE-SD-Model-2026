@@ -1,4 +1,4 @@
-# AMIS 2022 change to the anticipated healthcare stigma (AHS) items: the national series for Fig. 1B and
+# AMIS 2022 change to the anticipated healthcare stigma (AHS) items: the national series for Fig. 2B and
 # the evidence that the wording adjustment (scripts/1_data/03) is conservative.
 #
 # Both AHS items (stigma_b1, b2) changed in 2022 from "worry someone may learn you have sex with men" to
@@ -11,7 +11,7 @@
 #   items_by_year.csv  national % by survey year (national weights, scripts/1_data/07) with survey-weighted 95%
 #                      intervals: AHS as measured, AHS adjusted as in the model (the scripts/1_data/03 shift for
 #                      2022 onward; its interval is the measured one moved by the same shift), and
-#                      experienced healthcare stigma, and the other seven model measures (Fig. 1)
+#                      experienced healthcare stigma, and the other seven model measures (Fig. 2)
 #   shift_2022.csv     2022 vs 2021 log-odds shift for AHS and the three unchanged measures, adjusted for
 #                      state and age with state-period weights, estimated as in scripts/1_data/03 (the AHS row
 #                      reproduces the shift the model removes). Unchanged measures rising by a similar
@@ -62,7 +62,7 @@ ehs <- imap_dfr(cycles, function(file, survey) {
     transmute(rowID = paste(survey, row_number(), sep = "_"), ehs = recent_any(stigma_b3, stigma_b4))
 })
 
-# ---- National series by year (Fig. 1B) ---------------------------------------------------------
+# ---- National series by year (Fig. 2B) ---------------------------------------------------------
 
 # Use the national raking weights from scripts/1_data/07. The inner join deliberately retains only respondents
 # whose raw records could be linked to the analytic file; measure-specific missing values are then removed
@@ -108,7 +108,7 @@ ahs_by_year <- annual_prevalence(national, "stigma_ahs") %>%
 ehs_by_year <- annual_prevalence(national, "ehs") %>%
   rename(ehs = value, ehs_low = low, ehs_high = high)
 
-# The other seven model measures (general social and family stigma items unchanged in 2022), for Fig. 1.
+# The other seven model measures (general social and family stigma items unchanged in 2022), for Fig. 2.
 other_by_year <- map(other_measures, function(v) {
   annual_prevalence(national, v) %>% rename(!!v := value, !!paste0(v, "_low") := low, !!paste0(v, "_high") := high)
 }) %>% reduce(inner_join, by = "survey_year")

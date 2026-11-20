@@ -5,4 +5,4 @@ SEED = 123                          # the same seed for the baseline and every s
 TARGET_END_YEAR = 2036
 INTERVENTION_DURATION_STEPS = 3     # two-year steps over which interventions ramp to full strength (6 years)
 CUMULATIVE_START_YEAR = 2025        # cumulative infections are counted from this year
-REPORT_YEARS = (2026, 2028, 2030, 2032, 2034, 2036)  # every two-year step (Fig. 2); --report-year overrides
+REPORT_YEARS = (2026, 2028, 2030, 2032, 2034, 2036)  # every two-year step (Fig. 3); --report-year overrides
